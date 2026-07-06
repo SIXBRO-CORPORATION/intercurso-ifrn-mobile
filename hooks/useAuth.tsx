@@ -1,27 +1,21 @@
-// implementar hook de autenticação, nesse padrão
-
-/*
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { authService } from '../services/auth.service';
-import type { LoginRequest } from '../types/auth';
 import type { User } from '../types/user';
 
 interface AuthContextData {
     user: User | null;
-    isLoading: boolean;
     isAuthenticated: boolean;
-    login: (credentials: LoginRequest) => Promise<void>;
-    logout: () => void;
+    isLoading: boolean;
+    isInitializing: boolean;
+    loginWithSuap: () => Promise<void>;
+    logout: () => Promise<void>;
     refetch: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-    const router = useRouter();
-    const segments = useSegments();
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isInitializing, setIsInitializing] = useState(true);
@@ -32,78 +26,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return;
         }
 
-        setIsLoading(true);
         try {
             const userData = await authService.getMe();
             setUser(userData);
         } catch (error) {
-            console.error('Failed to fetch user:', error);
+            console.error('Falha ao buscar usuário autenticado:', error);
             setUser(null);
-            authService.logout();
+            await authService.logout();
+        }
+    }, []);
+
+    const loginWithSuap = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const userData = await authService.loginWithSuap();
+            setUser(userData);
         } finally {
             setIsLoading(false);
         }
     }, []);
 
-    const login = useCallback(async (credentials: LoginRequest) => {
+    const logout = useCallback(async () => {
         setIsLoading(true);
         try {
-            await authService.login(credentials);
-            await fetchUser();
-            router.replace('/(tabs)');
-        } catch (error) {
+            await authService.logout();
+        } finally {
+            setUser(null);
             setIsLoading(false);
-            throw error;
         }
-    }, [router, fetchUser]);
-
-    const logout = useCallback(() => {
-        authService.logout();
-        setUser(null);
-        router.replace('/login');
-    }, [router]);
+    }, []);
 
     const refetch = useCallback(async () => {
         await fetchUser();
     }, [fetchUser]);
 
-    const isAuthenticated = authService.isAuthenticated();
-
     useEffect(() => {
-        const initAuth = async () => {
-            if (authService.isAuthenticated()) {
-                await fetchUser();
-            }
+        (async () => {
+            await fetchUser();
             setIsInitializing(false);
             await SplashScreen.hideAsync();
-        };
-
-        initAuth();
+        })();
     }, [fetchUser]);
-
-    useEffect(() => {
-        if (isInitializing) return;
-
-        const inAuthGroup = segments[0] === 'auth';
-
-        if (!isAuthenticated && !inAuthGroup) {
-            router.replace('/login');
-        } else if (isAuthenticated && inAuthGroup) {
-            router.replace('/(tabs)');
-        }
-    }, [isAuthenticated, isInitializing, segments]);
-
-    if (isInitializing) {
-        return null;
-    }
 
     return (
         <AuthContext.Provider
             value={{
                 user,
+                isAuthenticated: !!user,
                 isLoading,
-                isAuthenticated,
-                login,
+                isInitializing,
+                loginWithSuap,
                 logout,
                 refetch,
             }}
@@ -121,4 +93,4 @@ export function useAuth() {
     }
 
     return context;
-}*/
+}

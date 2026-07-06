@@ -1,7 +1,7 @@
 import { tokenManager } from './storage';
 import type { ApiResponse } from '../types/api';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
 interface RequestConfig extends RequestInit {
     skipAuth?: boolean;
