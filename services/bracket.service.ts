@@ -3,8 +3,11 @@ import type {
     BracketConfigSuggestionResponse,
     BracketCreateRequest,
     BracketDeleteMatchResponse,
+    BracketDetailResponse,
+    BracketMatchResponse,
     BracketPreviewParams,
     BracketResponse,
+    BracketSummaryResponse,
 } from '@/types/bracket';
 import type { MatchResponse, MatchUpdateRequest } from '@/types/match';
 
@@ -33,6 +36,42 @@ class BracketService {
         );
 
         return unwrap(response.data, 'O backend não retornou a sugestão de configuração');
+    }
+
+    async listBracketsBySeason(
+        seasonId: string,
+        signal?: AbortSignal
+    ): Promise<BracketSummaryResponse[]> {
+        const response = await httpClient.get<BracketSummaryResponse[]>(
+            `${BASE_PATH}/season/${seasonId}`,
+            { signal }
+        );
+
+        return unwrap(response.data, 'O backend não retornou a lista de chaveamentos');
+    }
+
+    async getBracketDetails(
+        bracketId: string,
+        signal?: AbortSignal
+    ): Promise<BracketDetailResponse> {
+        const response = await httpClient.get<BracketDetailResponse>(
+            `${BASE_PATH}/${bracketId}`,
+            { signal }
+        );
+
+        return unwrap(response.data, 'O backend não retornou os detalhes do chaveamento');
+    }
+
+    async listBracketMatches(
+        bracketId: string,
+        signal?: AbortSignal
+    ): Promise<BracketMatchResponse[]> {
+        const response = await httpClient.get<BracketMatchResponse[]>(
+            `${BASE_PATH}/${bracketId}/matches`,
+            { signal }
+        );
+
+        return unwrap(response.data, 'O backend não retornou as partidas do chaveamento');
     }
 
     async createBracket(request: BracketCreateRequest): Promise<BracketResponse> {

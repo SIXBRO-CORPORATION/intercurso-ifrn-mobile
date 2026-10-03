@@ -25,6 +25,9 @@ export const queryKeys = {
     },
     brackets: {
         all: ['brackets'] as const,
+        bySeason: (seasonId: string) => ['brackets', 'season', seasonId] as const,
+        detail: (bracketId: string) => ['brackets', 'detail', bracketId] as const,
+        matches: (bracketId: string) => ['brackets', 'matches', bracketId] as const,
         preview: (modalityId: string, format?: string) =>
             ['brackets', 'preview', modalityId, format ?? ''] as const,
     },
