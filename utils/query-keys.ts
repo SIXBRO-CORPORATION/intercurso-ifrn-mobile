@@ -1,5 +1,6 @@
 
 import type { SeasonListFilters } from '@/types/season';
+import type { TeamListFilters } from '@/types/team';
 
 export const queryKeys = {
     users: {
@@ -15,5 +16,11 @@ export const queryKeys = {
         list: (filters?: SeasonListFilters) => ['seasons', 'list', filters ?? {}] as const,
         active: () => ['seasons', 'active'] as const,
         detail: (seasonId: string) => ['seasons', 'detail', seasonId] as const,
+    },
+    teams: {
+        all: ['teams'] as const,
+        list: (filters?: TeamListFilters) => ['teams', 'list', filters ?? {}] as const,
+        detail: (teamId: string) => ['teams', 'detail', teamId] as const,
+        invite: (inviteToken: string) => ['teams', 'invite', inviteToken] as const,
     },
 } as const;
