@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import * as SplashScreen from 'expo-splash-screen';
 import { authService } from '../services/auth.service';
 import type { User } from '../types/user';
 
@@ -64,7 +63,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         (async () => {
             await fetchUser();
             setIsInitializing(false);
-            await SplashScreen.hideAsync();
         })();
     }, [fetchUser]);
 

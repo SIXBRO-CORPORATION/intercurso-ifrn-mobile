@@ -1,7 +1,16 @@
+import { fetch } from 'expo/fetch';
 import { tokenManager } from './storage';
 import { ApiError, type ApiResponse } from '../types/api';
 
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+const RAW_API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+
+if (!RAW_API_BASE_URL) {
+    throw new Error(
+        'EXPO_PUBLIC_API_URL não está definida. Configure essa variável no .env (ou .env.development/.env.production) antes de iniciar o app.'
+    );
+}
+
+export const API_BASE_URL = RAW_API_BASE_URL;
 
 interface RequestConfig extends RequestInit {
     skipAuth?: boolean;
@@ -15,16 +24,16 @@ export const setToastCallback = (callback: (message: string, type: 'success' | '
 };
 
 class HttpClient {
-    private isRefreshing = false;
-    private refreshSubscribers: ((token: string) => void)[] = [];
 
-    private subscribeTokenRefresh(callback: (token: string) => void) {
-        this.refreshSubscribers.push(callback);
-    }
+    private refreshPromise: Promise<string | null> | null = null;
 
-    private onTokenRefreshed(token: string) {
-        this.refreshSubscribers.forEach((callback) => callback(token));
-        this.refreshSubscribers = [];
+    private getOrCreateRefreshPromise(): Promise<string | null> {
+        if (!this.refreshPromise) {
+            this.refreshPromise = this.refreshToken().finally(() => {
+                this.refreshPromise = null;
+            });
+        }
+        return this.refreshPromise;
     }
 
     private async refreshToken(): Promise<string | null> {
@@ -82,23 +91,11 @@ class HttpClient {
                 headers: requestHeaders,
             });
 
-            // Token expirado - tentar refresh
             if (response.status === 401 && !skipAuth) {
-                if (!this.isRefreshing) {
-                    this.isRefreshing = true;
-                    const newToken = await this.refreshToken();
-                    this.isRefreshing = false;
+                const newToken = await this.getOrCreateRefreshPromise();
 
-                    if (newToken) {
-                        this.onTokenRefreshed(newToken);
-                        return this.request<T>(endpoint, config);
-                    }
-                } else {
-                    return new Promise((resolve) => {
-                        this.subscribeTokenRefresh(() => {
-                            resolve(this.request<T>(endpoint, config));
-                        });
-                    });
+                if (newToken) {
+                    return this.request<T>(endpoint, config);
                 }
             }
 

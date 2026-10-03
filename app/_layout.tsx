@@ -6,14 +6,13 @@ import { QueryProvider } from '../providers/QueryProvider';
 import * as SplashScreen from 'expo-splash-screen';
 import { useReactNavigationDevTools } from '@dev-plugins/react-navigation';
 import { useReactQueryDevTools } from '@dev-plugins/react-query';
-import { AuthProvider } from '../hooks/useAuth';
+import { AuthProvider, useAuth } from '../hooks/useAuth';
 import { ToastProvider } from '../providers/ToastProvider';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useColorScheme } from 'react-native';
 import { queryClient } from '../QueryClient';
 
 export {
-    // Captura qualquer erro lançado pelo componente de Layout.
     ErrorBoundary,
 } from 'expo-router';
 
@@ -34,18 +33,24 @@ function RootLayout() {
         if (error) throw error;
     }, [error]);
 
-    useEffect(() => {
-        if (loaded) {
-            // Oculta a Splash Screen assim que as fontes carregarem
-            SplashScreen.hideAsync();
-        }
-    }, [loaded]);
-
     if (!loaded) {
         return null;
     }
 
     return <RootLayoutNav />;
+}
+
+
+function SplashGate() {
+    const { isInitializing } = useAuth();
+
+    useEffect(() => {
+        if (!isInitializing) {
+            SplashScreen.hideAsync();
+        }
+    }, [isInitializing]);
+
+    return null;
 }
 
 function RootLayoutNav() {
@@ -61,6 +66,7 @@ function RootLayoutNav() {
                 <QueryProvider>
                     <ToastProvider>
                         <AuthProvider>
+                            <SplashGate />
                             <Slot />
                         </AuthProvider>
                     </ToastProvider>
