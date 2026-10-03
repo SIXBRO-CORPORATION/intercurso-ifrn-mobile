@@ -1,11 +1,29 @@
-export type UserRole = 'USER' | 'MONITOR' | 'ADMIN' | string;
+import type { UserRole } from './enums';
+
+export type { UserRole };
 
 export interface User {
     user_id: string;
     name: string;
     email: string | null;
-    matricula: number;
+    matricula: string;
     role: UserRole;
     atleta: boolean;
     active: boolean;
+}
+
+export interface AdminCreateUserRequest {
+    name: string;
+    email?: string;
+    cpf: string;
+    matricula: string;
+    role: Extract<UserRole, 'MONITOR' | 'ADMIN'>;
+}
+
+export interface AdminUpdateUserRequest {
+    name?: string;
+    email?: string;
+    role?: UserRole;
+    atleta?: boolean;
+    active?: boolean;
 }
