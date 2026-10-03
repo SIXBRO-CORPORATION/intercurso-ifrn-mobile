@@ -13,14 +13,14 @@ import type {
 export function useSeasons(filters?: SeasonListFilters) {
     return useQuery({
         queryKey: queryKeys.seasons.list(filters),
-        queryFn: () => seasonService.listSeasons(filters),
+        queryFn: ({ signal }) => seasonService.listSeasons(filters, signal),
     });
 }
 
 export function useSeasonDetails(seasonId: string) {
     return useQuery({
         queryKey: queryKeys.seasons.detail(seasonId),
-        queryFn: () => seasonService.getSeasonDetails(seasonId),
+        queryFn: ({ signal }) => seasonService.getSeasonDetails(seasonId, signal),
         enabled: !!seasonId,
     });
 }
@@ -29,12 +29,12 @@ export function useSeasonDetails(seasonId: string) {
 export function useActiveSeason() {
     return useQuery({
         queryKey: queryKeys.seasons.active(),
-        queryFn: () => seasonService.getActiveSeason(),
+        queryFn: ({ signal }) => seasonService.getActiveSeason(signal),
         retry: (failureCount, error) => {
             if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
                 return false;
             }
-            return failureCount < 3;
+            return failureCount < 1;
         },
     });
 }

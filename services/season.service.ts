@@ -14,7 +14,6 @@ import type {
 
 const BASE_PATH = '/season';
 
-/** Substitui `status` por string, pois o backend envia o label em português. */
 type WithWireStatus<T extends { status: SeasonStatus }> = Omit<T, 'status'> & {
     status: string;
 };
@@ -39,7 +38,6 @@ function unwrap<T>(data: T | undefined, message: string): T {
 }
 
 class SeasonService {
-    /** POST /api/season/ — requer papel MONITOR. */
     async createSeason(request: SeasonCreateRequest): Promise<SeasonCreateResponse> {
         const response = await httpClient.post<SeasonCreateResponseWire>(`${BASE_PATH}/`, request);
 
@@ -48,8 +46,7 @@ class SeasonService {
         );
     }
 
-    /** GET /api/season/ — requer papel MONITOR. */
-    async listSeasons(filters?: SeasonListFilters): Promise<SeasonSummary[]> {
+    async listSeasons(filters?: SeasonListFilters, signal?: AbortSignal): Promise<SeasonSummary[]> {
         const params = new URLSearchParams();
 
         if (filters?.status) {
@@ -62,32 +59,29 @@ class SeasonService {
         const query = params.toString();
         const endpoint = query ? `${BASE_PATH}/?${query}` : `${BASE_PATH}/`;
 
-        const response = await httpClient.get<SeasonSummaryWire[]>(endpoint);
+        const response = await httpClient.get<SeasonSummaryWire[]>(endpoint, { signal });
 
         return unwrap(response.data, 'O backend não retornou a lista de temporadas').map(
             (wire) => parseStatus(wire)
         );
     }
 
-    /** GET /api/season/active — pública. Rejeita com ApiError (400) quando não há temporada ativa. */
-    async getActiveSeason(): Promise<SeasonSummary> {
-        const response = await httpClient.get<SeasonSummaryWire>(`${BASE_PATH}/active`);
+    async getActiveSeason(signal?: AbortSignal): Promise<SeasonSummary> {
+        const response = await httpClient.get<SeasonSummaryWire>(`${BASE_PATH}/active`, { signal });
 
         return parseStatus(
             unwrap(response.data, 'O backend não retornou a temporada ativa')
         );
     }
 
-    /** GET /api/season/{season_id} — requer papel MONITOR. */
-    async getSeasonDetails(seasonId: string): Promise<SeasonDetails> {
-        const response = await httpClient.get<SeasonDetailsWire>(`${BASE_PATH}/${seasonId}`);
+    async getSeasonDetails(seasonId: string, signal?: AbortSignal): Promise<SeasonDetails> {
+        const response = await httpClient.get<SeasonDetailsWire>(`${BASE_PATH}/${seasonId}`, { signal });
 
         return parseStatus(
             unwrap(response.data, 'O backend não retornou os detalhes da temporada')
         );
     }
 
-    /** PATCH /api/season/{season_id}/dates — requer papel MONITOR. */
     async editSeasonDates(
         seasonId: string,
         request: SeasonEditDatesRequest
@@ -102,7 +96,6 @@ class SeasonService {
         );
     }
 
-    /** POST /api/season/{season_id}/close-registration — requer papel MONITOR. */
     async closeRegistration(seasonId: string): Promise<SeasonStatusResponse> {
         const response = await httpClient.post<SeasonStatusResponseWire>(
             `${BASE_PATH}/${seasonId}/close-registration`
@@ -113,7 +106,6 @@ class SeasonService {
         );
     }
 
-    /** POST /api/season/{season_id}/reopen-registration — requer papel MONITOR. */
     async reopenRegistration(
         seasonId: string,
         request: SeasonReopenRequest
@@ -128,7 +120,6 @@ class SeasonService {
         );
     }
 
-    /** POST /api/season/{season_id}/finish — requer papel MONITOR. */
     async finishSeason(
         seasonId: string,
         request: SeasonFinishRequest
