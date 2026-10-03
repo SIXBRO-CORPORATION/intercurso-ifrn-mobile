@@ -23,4 +23,9 @@ export const queryKeys = {
         detail: (teamId: string) => ['teams', 'detail', teamId] as const,
         invite: (inviteToken: string) => ['teams', 'invite', inviteToken] as const,
     },
+    brackets: {
+        all: ['brackets'] as const,
+        preview: (modalityId: string, format?: string) =>
+            ['brackets', 'preview', modalityId, format ?? ''] as const,
+    },
 } as const;

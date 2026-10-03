@@ -66,6 +66,14 @@ export const SeasonStatusLabel: Record<SeasonStatus, string> = {
     FINISHED: 'Finalizada',
 };
 
+export type BracketStatus = 'DRAFT' | 'ACTIVE' | 'FINISHED';
+
+export const BracketStatusLabel: Record<BracketStatus, string> = {
+    DRAFT: 'Rascunho',
+    ACTIVE: 'Ativo',
+    FINISHED: 'Finalizado',
+};
+
 export type MatchStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'FINISHED';
 
 export const MatchStatusLabel: Record<MatchStatus, string> = {
