@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { userService } from '../services/user.service';
-import { queryKeys } from '../utils/query-keys';
-import type { AdminCreateUserRequest, AdminUpdateUserRequest } from '../types/user';
+import { userService } from '@/services/user.service';
+import { queryKeys } from '@/utils/query-keys';
+import type { AdminCreateUserRequest, AdminUpdateUserRequest } from '@/types/user';
 
 export function useCreateUser() {
     const queryClient = useQueryClient();

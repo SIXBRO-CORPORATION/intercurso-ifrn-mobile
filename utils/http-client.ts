@@ -1,6 +1,6 @@
 import { fetch } from 'expo/fetch';
 import { tokenManager } from './storage';
-import { ApiError, type ApiResponse } from '../types/api';
+import { ApiError, type ApiResponse } from '@/types/api';
 
 const RAW_API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 

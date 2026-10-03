@@ -1,16 +1,16 @@
 import { Slot, useNavigationContainerRef } from 'expo-router';
-import { ThemeProvider, DarkTheme, DefaultTheme } from 'expo-router';
+import { ThemeProvider, DarkTheme, DefaultTheme } from 'expo-router/react-navigation';
 import { useEffect } from 'react';
 import { useFonts } from 'expo-font';
-import { QueryProvider } from '../providers/QueryProvider';
+import { QueryProvider } from '@/providers/QueryProvider';
 import * as SplashScreen from 'expo-splash-screen';
 import { useReactNavigationDevTools } from '@dev-plugins/react-navigation';
 import { useReactQueryDevTools } from '@dev-plugins/react-query';
-import { AuthProvider, useAuth } from '../hooks/useAuth';
-import { ToastProvider } from '../providers/ToastProvider';
+import { AuthProvider, useAuth } from '@/hooks/useAuth';
+import { ToastProvider } from '@/providers/ToastProvider';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useColorScheme } from 'react-native';
-import { queryClient } from '../QueryClient';
+import { queryClient } from '@/QueryClient';
 
 export {
     ErrorBoundary,
@@ -39,7 +39,6 @@ function RootLayout() {
 
     return <RootLayoutNav />;
 }
-
 
 function SplashGate() {
     const { isInitializing } = useAuth();

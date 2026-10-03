@@ -1,10 +1,10 @@
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 
-import { httpClient, API_BASE_URL } from '../utils/http-client';
-import { tokenManager } from '../utils/storage';
-import type { User } from '../types/user';
-import { AuthCallbackParams, AuthCancelledError } from '../types/auth';
+import { httpClient, API_BASE_URL } from '@/utils/http-client';
+import { tokenManager } from '@/utils/storage';
+import type { User } from '@/types/user';
+import { AuthCallbackParams, AuthCancelledError } from '@/types/auth';
 
 const AUTH_CALLBACK_PATH = 'callback';
 const SUAP_LOGIN_ENDPOINT = '/auth/login/suap';

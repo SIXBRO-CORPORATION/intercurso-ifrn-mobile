@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useAuth } from '../hooks/useAuth';
-import { useToast } from '../providers/ToastProvider';
-import { AuthCancelledError } from '../types/auth';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/providers/ToastProvider';
+import { AuthCancelledError } from '@/types/auth';
 
 export default function Home() {
     const { user, isAuthenticated, isInitializing, isLoading, loginWithSuap, logout } = useAuth();

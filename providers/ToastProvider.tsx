@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useCallback, useEffect } from 'react';
 import Toast from 'react-native-toast-message';
-import { setToastCallback } from '../utils/http-client';
+import { setToastCallback } from '@/utils/http-client';
 
 type ToastType = 'success' | 'error' | 'info';
 

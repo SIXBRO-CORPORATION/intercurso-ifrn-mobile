@@ -1,10 +1,10 @@
-import { httpClient } from '../utils/http-client';
-import { ScoreTypeCodec } from '../types/enums';
+import { httpClient } from '@/utils/http-client';
+import { ScoreTypeCodec } from '@/types/enums';
 import type {
     ModalityConfiguration,
     ModalityCreateRequest,
     ModalityCreateResponse,
-} from '../types/modality';
+} from '@/types/modality';
 
 const BASE_PATH = '/modality';
 

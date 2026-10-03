@@ -1,5 +1,5 @@
-import { httpClient } from '../utils/http-client';
-import type { AdminCreateUserRequest, AdminUpdateUserRequest, User } from '../types/user';
+import { httpClient } from '@/utils/http-client';
+import type { AdminCreateUserRequest, AdminUpdateUserRequest, User } from '@/types/user';
 
 const BASE_PATH = '/user';
 

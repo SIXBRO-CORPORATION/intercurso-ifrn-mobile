@@ -1,5 +1,5 @@
-import type { User } from '../types/user';
-import type { UserRole } from '../types/enums';
+import type { User } from '@/types/user';
+import type { UserRole } from '@/types/enums';
 
 export function hasRole(user: User | null | undefined, role: UserRole): boolean {
     if (!user) {

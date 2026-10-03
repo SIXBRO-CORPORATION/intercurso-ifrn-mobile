@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { modalityService } from '../services/modality.service';
-import { queryKeys } from '../utils/query-keys';
-import type { ModalityCreateRequest } from '../types/modality';
+import { modalityService } from '@/services/modality.service';
+import { queryKeys } from '@/utils/query-keys';
+import type { ModalityCreateRequest } from '@/types/modality';
 
 export function useCreateModality() {
     const queryClient = useQueryClient();
