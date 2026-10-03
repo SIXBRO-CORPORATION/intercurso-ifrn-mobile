@@ -31,4 +31,8 @@ export const queryKeys = {
         preview: (modalityId: string, format?: string) =>
             ['brackets', 'preview', modalityId, format ?? ''] as const,
     },
+    matches: {
+        all: ['matches'] as const,
+        detail: (matchId: string) => ['matches', 'detail', matchId] as const,
+    },
 } as const;
