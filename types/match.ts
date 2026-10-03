@@ -84,6 +84,12 @@ export interface MatchPenaltyResult {
     winner_id?: string | null;
 }
 
+export interface MatchPublicPlayerResponse {
+    user_id: string;
+    name: string;
+    role: string;
+}
+
 export interface MatchManagementResponse {
     match_id: string;
     bracket_id: string;
@@ -120,4 +126,9 @@ export interface MatchManagementResponse {
     match_point_reached?: boolean | null;
     reactivated_player_id?: string | null;
     correction_alert?: Record<string, unknown> | null;
+}
+
+export interface MatchPublicResponse extends Omit<MatchManagementResponse, 'team1_players' | 'team2_players'> {
+    team1_players: MatchPublicPlayerResponse[];
+    team2_players: MatchPublicPlayerResponse[];
 }

@@ -1,7 +1,15 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { matchService } from '@/services/match.service';
 import { queryKeys } from '@/utils/query-keys';
 import type { MatchCardRequest, MatchGoalRequest, MatchPenaltyKickRequest } from '@/types/match';
+
+export function useMatchDetails(matchId: string | undefined) {
+    return useQuery({
+        queryKey: queryKeys.matches.detail(matchId ?? ''),
+        queryFn: ({ signal }) => matchService.getMatchState(matchId as string, signal),
+        enabled: !!matchId,
+    });
+}
 
 interface MatchIdVariables {
     matchId: string;

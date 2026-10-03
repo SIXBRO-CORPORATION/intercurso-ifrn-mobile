@@ -4,6 +4,7 @@ import type {
     MatchGoalRequest,
     MatchManagementResponse,
     MatchPenaltyKickRequest,
+    MatchPublicResponse,
 } from '@/types/match';
 
 const BASE_PATH = '/match';
@@ -16,6 +17,12 @@ function unwrap<T>(data: T | undefined, message: string): T {
 }
 
 class MatchService {
+    async getMatchState(matchId: string, signal?: AbortSignal): Promise<MatchPublicResponse> {
+        const response = await httpClient.get<MatchPublicResponse>(`${BASE_PATH}/${matchId}`, { signal });
+
+        return unwrap(response.data, 'O backend não retornou os dados da partida');
+    }
+
     async startMatch(matchId: string): Promise<MatchManagementResponse> {
         const response = await httpClient.post<MatchManagementResponse>(
             `${BASE_PATH}/${matchId}/start`
