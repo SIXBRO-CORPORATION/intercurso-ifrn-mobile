@@ -21,7 +21,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [isInitializing, setIsInitializing] = useState(true);
 
     const fetchUser = useCallback(async () => {
-        if (!authService.isAuthenticated()) {
+        if (!(await authService.isAuthenticated())) {
             setUser(null);
             return;
         }

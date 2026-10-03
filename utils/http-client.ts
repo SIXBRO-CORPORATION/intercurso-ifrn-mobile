@@ -1,5 +1,5 @@
 import { tokenManager } from './storage';
-import type { ApiResponse } from '../types/api';
+import { ApiError, type ApiResponse } from '../types/api';
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -28,7 +28,7 @@ class HttpClient {
     }
 
     private async refreshToken(): Promise<string | null> {
-        const refreshToken = tokenManager.getRefreshToken();
+        const refreshToken = await tokenManager.getRefreshToken();
         if (!refreshToken) {
             return null;
         }
@@ -49,10 +49,10 @@ class HttpClient {
             const data = await response.json();
             const { access_token, refresh_token } = data.data;
 
-            tokenManager.setTokens(access_token, refresh_token);
+            await tokenManager.setTokens(access_token, refresh_token);
             return access_token;
         } catch (error) {
-            tokenManager.clearTokens();
+            await tokenManager.clearTokens();
             return null;
         }
     }
@@ -64,7 +64,7 @@ class HttpClient {
         const { skipAuth = false, skipToast = false, headers = {}, ...restConfig } = config;
 
         const url = `${API_BASE_URL}${endpoint}`;
-        const accessToken = tokenManager.getAccessToken();
+        const accessToken = await tokenManager.getAccessToken();
 
         const requestHeaders = new Headers(headers as HeadersInit);
 
@@ -111,11 +111,9 @@ class HttpClient {
                     toastCallback(errorMessage, 'error');
                 }
 
-                return Promise.reject({
-                    message: errorMessage,
-                    status: response.status,
-                    data: data,
-                });
+                return Promise.reject(
+                    new ApiError(errorMessage, response.status, data.code, data)
+                );
             }
 
             if (!skipToast && data.message && toastCallback && restConfig.method !== 'GET') {
@@ -124,7 +122,7 @@ class HttpClient {
 
             return data;
         } catch (error) {
-            if (error && typeof error === 'object' && 'message' in error && 'status' in error) {
+            if (error instanceof ApiError) {
                 return Promise.reject(error);
             }
 
@@ -132,10 +130,7 @@ class HttpClient {
                 toastCallback('Erro de conexão. Tente novamente.', 'error');
             }
 
-            return Promise.reject({
-                message: 'Erro de conexão. Tente novamente.',
-                status: 0,
-            });
+            return Promise.reject(new ApiError('Erro de conexão. Tente novamente.', 0, 'NETWORK_ERROR'));
         }
     }
 

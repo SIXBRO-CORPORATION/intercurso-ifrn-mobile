@@ -45,7 +45,7 @@ class AuthService {
             throw new Error('O backend não retornou um token de acesso');
         }
 
-        tokenManager.setTokens(queryParams.token, queryParams.refresh_token ?? '');
+        await tokenManager.setTokens(queryParams.token, queryParams.refresh_token ?? '');
 
         return this.getMe();
     }
@@ -61,7 +61,7 @@ class AuthService {
     }
 
     async logout(): Promise<void> {
-        const refreshToken = tokenManager.getRefreshToken();
+        const refreshToken = await tokenManager.getRefreshToken();
 
         try {
             await httpClient.post(
@@ -72,11 +72,11 @@ class AuthService {
         } catch (error) {
             console.warn('Falha ao invalidar sessão no backend:', error);
         } finally {
-            tokenManager.clearTokens();
+            await tokenManager.clearTokens();
         }
     }
 
-    isAuthenticated(): boolean {
+    isAuthenticated(): Promise<boolean> {
         return tokenManager.hasTokens();
     }
 }
