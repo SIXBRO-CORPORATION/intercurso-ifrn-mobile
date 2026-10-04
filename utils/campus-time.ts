@@ -47,3 +47,28 @@ export function formatMatchClock(totalSeconds: number): string {
     const safe = Math.max(0, Math.floor(totalSeconds));
     return `${pad(Math.floor(safe / 60))}:${pad(safe % 60)}`;
 }
+
+const formatIsoAt = (year: number, month: number, day: number, time: string, ms: number) =>
+    formatIsoAtCampus(year, month, day, time, ms);
+
+export function getCampusYear(now: Date = new Date()): number {
+    return toCampusWallClock(now).getUTCFullYear();
+}
+
+export function parseCampusDateInput(input: string, endOfDay: boolean): string | null {
+    const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(input.trim());
+    if (!match) return null;
+
+    const day = Number(match[1]);
+    const month = Number(match[2]);
+    const year = Number(match[3]);
+
+    const probe = new Date(Date.UTC(year, month - 1, day));
+    if (probe.getUTCFullYear() !== year || probe.getUTCMonth() !== month - 1 || probe.getUTCDate() !== day) {
+        return null;
+    }
+
+    return endOfDay
+        ? formatIsoAt(year, month - 1, day, '23:59:59', 999)
+        : formatIsoAt(year, month - 1, day, '00:00:00', 0);
+}

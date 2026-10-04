@@ -22,3 +22,10 @@ export function useCreateModality() {
         },
     });
 }
+
+export function useAllModalities() {
+    return useQuery({
+        queryKey: queryKeys.modalities.list(),
+        queryFn: ({ signal }) => modalityService.listModalities(undefined, signal),
+    });
+}
