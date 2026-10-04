@@ -6,6 +6,43 @@ import { openSseConnection } from '@/utils/sse-client';
 import { API_BASE_URL } from '@/utils/http-client';
 import { queryKeys } from '@/utils/query-keys';
 import type { RealtimeConnectionStatus, RealtimeMatchEventPayload } from '@/types/realtime';
+import type { MatchPublicResponse } from '@/types/match';
+import type { MatchListItemResponse, MatchListResponse } from '@/types/match-list';
+import type { InfiniteData, QueryClient } from '@tanstack/react-query';
+
+const LIST_REFRESH_EVENTS = new Set(['match_started', 'match_finished']);
+
+function applyMatchToLists(queryClient: QueryClient, matchId: string, match: MatchPublicResponse) {
+    queryClient.setQueriesData<InfiniteData<MatchListResponse>>(
+        { queryKey: queryKeys.matches.lists() },
+        (data) => {
+            if (!data) return data;
+            return {
+                ...data,
+                pages: data.pages.map((page) => ({
+                    ...page,
+                    items: page.items.map((item) =>
+                        item.match_id === matchId ? mergeMatchIntoListItem(item, match) : item
+                    ),
+                })),
+            };
+        }
+    );
+}
+
+function mergeMatchIntoListItem(item: MatchListItemResponse, match: MatchPublicResponse): MatchListItemResponse {
+    return {
+        ...item,
+        status: match.status,
+        team1: match.team1,
+        team2: match.team2,
+        winner_id: match.winner_id,
+        clock_seconds: match.clock_seconds,
+        clock_running: match.clock_running,
+        current_period: match.current_period,
+        scheduled_date: match.scheduled_date ?? item.scheduled_date,
+    };
+}
 
 const RECONNECT_BASE_DELAY_MS = 1000;
 const RECONNECT_MAX_DELAY_MS = 15000;
@@ -155,6 +192,10 @@ export function useSeasonLive(seasonId: string | undefined) {
                                     queryKeys.matches.detail(payload.match_id),
                                     payload.match
                                 );
+                                applyMatchToLists(queryClient, payload.match_id, payload.match);
+                            }
+                            if (LIST_REFRESH_EVENTS.has(payload.event)) {
+                                queryClient.invalidateQueries({ queryKey: queryKeys.matches.lists() });
                             }
                             if (payload.event === 'match_finished') {
                                 queryClient.invalidateQueries({ queryKey: queryKeys.brackets.all });

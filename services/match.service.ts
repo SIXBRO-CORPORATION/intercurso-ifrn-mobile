@@ -1,4 +1,5 @@
 import { httpClient } from '@/utils/http-client';
+import type { MatchListFilters, MatchListResponse } from '@/types/match-list';
 import type {
     MatchCardRequest,
     MatchGoalRequest,
@@ -17,6 +18,30 @@ function unwrap<T>(data: T | undefined, message: string): T {
 }
 
 class MatchService {
+    async listMatches(
+        filters: MatchListFilters,
+        page: number,
+        size: number,
+        signal?: AbortSignal
+    ): Promise<MatchListResponse> {
+        const params = new URLSearchParams({
+            season_id: filters.seasonId,
+            page: String(page),
+            size: String(size),
+        });
+
+        if (filters.modalityId) params.set('modality_id', filters.modalityId);
+        if (filters.status) params.set('status', filters.status);
+        if (filters.dateFrom) params.set('date_from', filters.dateFrom);
+        if (filters.dateTo) params.set('date_to', filters.dateTo);
+
+        const response = await httpClient.get<MatchListResponse>(`${BASE_PATH}/?${params.toString()}`, {
+            signal,
+        });
+
+        return unwrap(response.data, 'O backend não retornou a lista de partidas');
+    }
+
     async getMatchState(matchId: string, signal?: AbortSignal): Promise<MatchPublicResponse> {
         const response = await httpClient.get<MatchPublicResponse>(`${BASE_PATH}/${matchId}`, { signal });
 

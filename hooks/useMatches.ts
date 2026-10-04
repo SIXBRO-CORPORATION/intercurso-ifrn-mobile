@@ -1,7 +1,22 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { matchService } from '@/services/match.service';
 import { queryKeys } from '@/utils/query-keys';
 import type { MatchCardRequest, MatchGoalRequest, MatchPenaltyKickRequest } from '@/types/match';
+import type { MatchListFilters } from '@/types/match-list';
+
+export const MATCH_LIST_PAGE_SIZE = 20;
+
+export function useMatchList(filters: MatchListFilters, enabled: boolean) {
+    return useInfiniteQuery({
+        queryKey: queryKeys.matches.list(filters),
+        queryFn: ({ pageParam, signal }) =>
+            matchService.listMatches(filters, pageParam, MATCH_LIST_PAGE_SIZE, signal),
+        initialPageParam: 1,
+        getNextPageParam: (lastPage) =>
+            lastPage.page * lastPage.size < lastPage.total ? lastPage.page + 1 : undefined,
+        enabled,
+    });
+}
 
 export function useMatchDetails(matchId: string | undefined) {
     return useQuery({

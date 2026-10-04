@@ -1,4 +1,5 @@
 
+import type { MatchListFilters } from '@/types/match-list';
 import type { SeasonListFilters } from '@/types/season';
 import type { TeamListFilters } from '@/types/team';
 
@@ -9,6 +10,7 @@ export const queryKeys = {
     },
     modalities: {
         all: ['modalities'] as const,
+        list: (seasonId?: string) => ['modalities', 'list', seasonId ?? ''] as const,
         detail: (modalityId: string) => ['modalities', modalityId] as const,
     },
     seasons: {
@@ -33,6 +35,8 @@ export const queryKeys = {
     },
     matches: {
         all: ['matches'] as const,
+        lists: () => ['matches', 'list'] as const,
+        list: (filters?: MatchListFilters) => ['matches', 'list', filters ?? {}] as const,
         detail: (matchId: string) => ['matches', 'detail', matchId] as const,
     },
 } as const;
