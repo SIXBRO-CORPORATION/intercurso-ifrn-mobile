@@ -1,7 +1,11 @@
 import { useCallback } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { Stack } from 'expo-router/stack';
+import { Button } from '@/components/button';
+import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/providers/ToastProvider';
+import { colors, radius, spacing } from '@/theme';
 import { AuthCancelledError } from '@/types/auth';
 
 export default function Home() {
@@ -30,6 +34,7 @@ export default function Home() {
     if (isInitializing) {
         return (
             <View style={styles.center}>
+                <Stack.Title>Intercurso IFRN</Stack.Title>
                 <ActivityIndicator size="large" />
             </View>
         );
@@ -38,25 +43,26 @@ export default function Home() {
     if (!isAuthenticated || !user) {
         return (
             <View style={styles.center}>
-                <Text style={styles.title}>Intercurso IFRN</Text>
-                <Text style={styles.subtitle}>Entre com sua conta SUAP para continuar</Text>
-
-                <Pressable style={styles.button} onPress={handleLogin} disabled={isLoading}>
-                    {isLoading ? (
-                        <ActivityIndicator color="#fff" />
-                    ) : (
-                        <Text style={styles.buttonText}>Entrar com SUAP</Text>
-                    )}
-                </Pressable>
+                <Stack.Title>Intercurso IFRN</Stack.Title>
+                <ThemedText variant="subhead" style={styles.centered}>
+                    Entre com sua conta SUAP para continuar
+                </ThemedText>
+                <Button
+                    title="Entrar com SUAP"
+                    loading={isLoading}
+                    onPress={handleLogin}
+                    style={styles.button}
+                />
             </View>
         );
     }
 
     return (
-        <ScrollView contentContainerStyle={styles.profile}>
-            <Text style={styles.title}>Olá, {user.name}</Text>
+        <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.profile}>
+            <Stack.Title>Perfil</Stack.Title>
 
             <View style={styles.card}>
+                <InfoRow label="Nome" value={user.name} />
                 <InfoRow label="Matrícula" value={String(user.matricula)} />
                 <InfoRow label="Email" value={user.email ?? '-'} />
                 <InfoRow label="Perfil" value={user.role} />
@@ -64,13 +70,7 @@ export default function Home() {
                 <InfoRow label="Ativo" value={user.active ? 'Sim' : 'Não'} />
             </View>
 
-            <Pressable style={[styles.button, styles.logoutButton]} onPress={handleLogout} disabled={isLoading}>
-                {isLoading ? (
-                    <ActivityIndicator color="#fff" />
-                ) : (
-                    <Text style={styles.buttonText}>Sair</Text>
-                )}
-            </Pressable>
+            <Button title="Sair" variant="destructive" loading={isLoading} onPress={handleLogout} />
         </ScrollView>
     );
 }
@@ -78,8 +78,10 @@ export default function Home() {
 function InfoRow({ label, value }: { label: string; value: string }) {
     return (
         <View style={styles.row}>
-            <Text style={styles.rowLabel}>{label}</Text>
-            <Text style={styles.rowValue}>{value}</Text>
+            <ThemedText variant="subhead">{label}</ThemedText>
+            <ThemedText variant="headline" selectable style={styles.value}>
+                {value}
+            </ThemedText>
         </View>
     );
 }
@@ -89,57 +91,35 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 24,
-        gap: 16,
+        padding: spacing.lg,
+        gap: spacing.md,
     },
     profile: {
         flexGrow: 1,
-        padding: 24,
-        gap: 16,
+        padding: spacing.lg,
+        gap: spacing.md,
     },
-    title: {
-        fontSize: 22,
-        fontWeight: '700',
-        textAlign: 'center',
-    },
-    subtitle: {
-        fontSize: 14,
-        opacity: 0.7,
+    centered: {
         textAlign: 'center',
     },
     button: {
-        backgroundColor: '#1a73e8',
-        paddingVertical: 14,
-        paddingHorizontal: 24,
-        borderRadius: 8,
-        alignItems: 'center',
-        justifyContent: 'center',
         minWidth: 200,
-    },
-    logoutButton: {
-        backgroundColor: '#d93025',
-        marginTop: 8,
-    },
-    buttonText: {
-        color: '#fff',
-        fontWeight: '600',
-        fontSize: 16,
     },
     card: {
         borderWidth: 1,
-        borderColor: '#e0e0e0',
-        borderRadius: 12,
-        padding: 16,
-        gap: 12,
+        borderColor: colors.separator,
+        borderRadius: radius.md,
+        borderCurve: 'continuous',
+        padding: spacing.md,
+        gap: spacing.md,
     },
     row: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        gap: spacing.md,
     },
-    rowLabel: {
-        opacity: 0.6,
-    },
-    rowValue: {
-        fontWeight: '600',
+    value: {
+        flexShrink: 1,
+        textAlign: 'right',
     },
 });

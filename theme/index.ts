@@ -5,3 +5,4 @@ export { radius } from './radius';
 export { shadows, liveGlow } from './shadows';
 export { motion } from './motion';
 export { lightNav, darkNav } from './navigation';
+export { fonts, fontFamily, typography, type TypographyVariant } from './typography';

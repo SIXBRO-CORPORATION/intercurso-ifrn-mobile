@@ -113,12 +113,23 @@ Estilos nomeados, nunca `fontSize` solto em tela.
 Regras:
 
 - Fontes estáticas: peso no nome da família. **Não defina `fontWeight` junto** com uma família carregada por arquivo.
-- Acesso por componente de texto, nunca `fontSize` direto em tela.
+- Acesso por `ThemedText` de `components/themed-text.tsx` (`<ThemedText variant="headline" />`), nunca `fontSize` direto em tela.
 - **Títulos de tela vêm do header da stack**, com `Stack.Title` ou `options.title`.
 - **Dynamic Type:** `minHeight` e padding para linhas crescerem. Nunca `allowFontScaling={false}`.
 - Dados copiáveis (rota, código, ID): `selectable`.
 
-Família de fontes: **pendente de decisão** (§14).
+### 6.1 Famílias
+
+Pacotes `@expo-google-fonts/*`, sem arquivos de fonte no repositório. Cada peso é importado pelo subpath (`@expo-google-fonts/archivo/400Regular`) para não empacotar a família inteira. Tokens e mapa de `useFonts` em `theme/typography.ts`; o carregamento acontece em `app/_layout.tsx`.
+
+| Família | Peso | Papéis |
+|---|---|---|
+| Barlow | 700 | `largeTitle`, `title`, `score` |
+| Archivo | 600 | `headline` |
+| Archivo | 400 | `body`, `subhead`, `caption` |
+| JetBrains Mono | 500 | `code` |
+
+Novo peso: importe o subpath, adicione em `fonts` e em `fontFamily`. Nunca `fontWeight`.
 
 ---
 
@@ -424,8 +435,8 @@ Toda tela com dados tem quatro estados:
 
 ## 14. Pendências
 
-- **Fontes:** o projeto carrega Inter (`assets/fonts`). Este documento propõe Archivo, Barlow e JetBrains Mono. Decidir qual família usar antes de criar a tipografia.
 - **Tema padrão:** `app.json` define `userInterfaceStyle: "light"`. O design é validado no escuro. Decidir se o app passa a seguir o sistema.
+- **Layout raiz:** usa `Stack` (`expo-router/stack`) com o tema de `theme/navigation.ts`, porque só existe a rota `index`. Migrar para `NativeTabs` e grupos de rota (§8.1) quando as telas de Times e Gestão existirem, e decidir como o login convive com as abas.
 - Confirmar que `NativeTabs` e `role="search"` estão disponíveis no projeto.
 - Confirmar a aplicação de tint da marca nas abas nativas.
 - Definir o equivalente Android dos ícones de `Link.MenuAction`.

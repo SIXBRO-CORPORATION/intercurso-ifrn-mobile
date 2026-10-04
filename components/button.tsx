@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, Text, type StyleProp, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, type StyleProp, type ViewStyle } from 'react-native';
+import { ThemedText } from '@/components/themed-text';
 import { colors, onTint, radius, spacing, useBrandColors } from '@/theme';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'destructive';
@@ -70,7 +71,9 @@ export function Button({
             {loading ? (
                 <ActivityIndicator color={foreground[variant]} />
             ) : (
-                <Text style={{ color: foreground[variant], fontWeight: '600', fontSize: 17 }}>{title}</Text>
+                <ThemedText variant="headline" style={{ color: foreground[variant] }}>
+                    {title}
+                </ThemedText>
             )}
         </Pressable>
     );

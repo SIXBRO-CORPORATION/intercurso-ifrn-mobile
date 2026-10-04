@@ -1,5 +1,6 @@
-import { Slot, useNavigationContainerRef } from 'expo-router';
-import { ThemeProvider, DarkTheme, DefaultTheme } from 'expo-router/react-navigation';
+import { useNavigationContainerRef } from 'expo-router';
+import { Stack } from 'expo-router/stack';
+import { ThemeProvider } from 'expo-router/react-navigation';
 import { useEffect } from 'react';
 import { useFonts } from 'expo-font';
 import { QueryProvider } from '@/providers/QueryProvider';
@@ -11,6 +12,7 @@ import { ToastProvider } from '@/providers/ToastProvider';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useColorScheme } from 'react-native';
 import { queryClient } from '@/QueryClient';
+import { colors, darkNav, fontFamily, fonts, lightNav } from '@/theme';
 
 export {
     ErrorBoundary,
@@ -19,15 +21,7 @@ export {
 SplashScreen.preventAutoHideAsync();
 
 function RootLayout() {
-    const [loaded, error] = useFonts({
-        SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-        Inter: require('../assets/fonts/Inter_18pt-Regular.ttf'),
-        'Inter-extralight': require('../assets/fonts/Inter_18pt-ExtraLight.ttf'),
-        'Inter-light': require('../assets/fonts/Inter_18pt-Light.ttf'),
-        'Inter-semibold': require('../assets/fonts/Inter_18pt-SemiBold.ttf'),
-        'Inter-bold': require('../assets/fonts/Inter_24pt-Bold.ttf'),
-        'Inter-extrabold': require('../assets/fonts/Inter_18pt-ExtraBold.ttf'),
-    });
+    const [loaded, error] = useFonts(fonts);
 
     useEffect(() => {
         if (error) throw error;
@@ -61,12 +55,18 @@ function RootLayoutNav() {
 
     return (
         <SafeAreaProvider>
-            <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <ThemeProvider value={colorScheme === 'dark' ? darkNav : lightNav}>
                 <QueryProvider>
                     <ToastProvider>
                         <AuthProvider>
                             <SplashGate />
-                            <Slot />
+                            <Stack
+                                screenOptions={{
+                                    headerShadowVisible: false,
+                                    headerTitleStyle: { color: colors.label, fontFamily: fontFamily.display },
+                                    headerBackButtonDisplayMode: 'minimal',
+                                }}
+                            />
                         </AuthProvider>
                     </ToastProvider>
                 </QueryProvider>
