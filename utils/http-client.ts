@@ -2,15 +2,15 @@ import { fetch } from 'expo/fetch';
 import { tokenManager } from './storage';
 import { ApiError, type ApiResponse } from '@/types/api';
 
-const RAW_API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? '';
 
-if (!RAW_API_BASE_URL) {
-    throw new Error(
-        'EXPO_PUBLIC_API_URL não está definida. Configure essa variável no .env (ou .env.development/.env.production) antes de iniciar o app.'
+if (!API_BASE_URL) {
+    console.error(
+        '[http-client] EXPO_PUBLIC_API_URL não está definida. Copie .env.example para .env ' +
+            '(ou .env.development/.env.production), defina a URL do backend e reinicie o Metro ' +
+            '("npx expo start -c"). Até lá, qualquer chamada à API vai falhar de forma controlada.'
     );
 }
-
-export const API_BASE_URL = RAW_API_BASE_URL;
 
 interface RequestConfig extends RequestInit {
     skipAuth?: boolean;
@@ -71,6 +71,20 @@ class HttpClient {
         config: RequestConfig = {}
     ): Promise<ApiResponse<T>> {
         const { skipAuth = false, skipToast = false, headers = {}, ...restConfig } = config;
+
+        if (!API_BASE_URL) {
+            const error = new ApiError(
+                'App não configurado: defina EXPO_PUBLIC_API_URL e reinicie o Metro.',
+                0,
+                'MISSING_API_URL'
+            );
+
+            if (!skipToast && toastCallback) {
+                toastCallback(error.message, 'error');
+            }
+
+            return Promise.reject(error);
+        }
 
         const url = `${API_BASE_URL}${endpoint}`;
         const accessToken = await tokenManager.getAccessToken();
