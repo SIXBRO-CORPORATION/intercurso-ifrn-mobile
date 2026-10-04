@@ -5,6 +5,7 @@
   "dependencies": {
     "@dev-plugins/react-navigation": "^0.4.0",
     "@dev-plugins/react-query": "^0.4.0",
+    "@expo/ui": "~57.0.21",
     "@expo-google-fonts/archivo": "^0.4.2",
     "@expo-google-fonts/barlow": "^0.4.1",
     "@expo-google-fonts/jetbrains-mono": "^0.4.1",

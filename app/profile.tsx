@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
-import { Stack } from 'expo-router/stack';
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
@@ -8,7 +7,7 @@ import { useToast } from '@/providers/ToastProvider';
 import { colors, radius, spacing } from '@/theme';
 import { AuthCancelledError } from '@/types/auth';
 
-export default function Home() {
+export default function ProfileScreen() {
     const { user, isAuthenticated, isInitializing, isLoading, loginWithSuap, logout } = useAuth();
     const toast = useToast();
 
@@ -34,7 +33,6 @@ export default function Home() {
     if (isInitializing) {
         return (
             <View style={styles.center}>
-                <Stack.Title>Intercurso IFRN</Stack.Title>
                 <ActivityIndicator size="large" />
             </View>
         );
@@ -43,24 +41,16 @@ export default function Home() {
     if (!isAuthenticated || !user) {
         return (
             <View style={styles.center}>
-                <Stack.Title>Intercurso IFRN</Stack.Title>
                 <ThemedText variant="subhead" style={styles.centered}>
-                    Entre com sua conta SUAP para continuar
+                    Entre com sua conta SUAP para ver seu perfil
                 </ThemedText>
-                <Button
-                    title="Entrar com SUAP"
-                    loading={isLoading}
-                    onPress={handleLogin}
-                    style={styles.button}
-                />
+                <Button title="Entrar com SUAP" loading={isLoading} onPress={handleLogin} style={styles.button} />
             </View>
         );
     }
 
     return (
         <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.profile}>
-            <Stack.Title>Perfil</Stack.Title>
-
             <View style={styles.card}>
                 <InfoRow label="Nome" value={user.name} />
                 <InfoRow label="Matrícula" value={String(user.matricula)} />

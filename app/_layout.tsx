@@ -12,7 +12,7 @@ import { ToastProvider } from '@/providers/ToastProvider';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useColorScheme } from 'react-native';
 import { queryClient } from '@/QueryClient';
-import { colors, darkNav, fontFamily, fonts, lightNav } from '@/theme';
+import { darkNav, fonts, lightNav } from '@/theme';
 
 export {
     ErrorBoundary,
@@ -60,13 +60,17 @@ function RootLayoutNav() {
                     <ToastProvider>
                         <AuthProvider>
                             <SplashGate />
-                            <Stack
-                                screenOptions={{
-                                    headerShadowVisible: false,
-                                    headerTitleStyle: { color: colors.label, fontFamily: fontFamily.display },
-                                    headerBackButtonDisplayMode: 'minimal',
-                                }}
-                            />
+                            <Stack screenOptions={{ headerShown: false }}>
+                                <Stack.Screen name="(tabs)" />
+                                <Stack.Screen
+                                    name="profile"
+                                    options={{
+                                        headerShown: true,
+                                        title: 'Perfil',
+                                        headerBackButtonDisplayMode: 'minimal',
+                                    }}
+                                />
+                            </Stack>
                         </AuthProvider>
                     </ToastProvider>
                 </QueryProvider>
