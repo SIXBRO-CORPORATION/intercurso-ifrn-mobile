@@ -6,7 +6,7 @@ import { FormField } from '@/components/form/form-field';
 import { ThemedText } from '@/components/themed-text';
 import { useAllModalities } from '@/hooks/useModalities';
 import { useCreateSeason } from '@/hooks/useSeasons';
-import { ApiError } from '@/types/api';
+import { friendlyErrorMessage } from '@/utils/api-error-message';
 import type { SeasonCreateRequest } from '@/types/season';
 import { colors, radius, spacing, useBrandColors } from '@/theme';
 import { getCampusYear, parseCampusDateInput } from '@/utils/campus-time';
@@ -84,7 +84,7 @@ export default function CreateSeasonScreen() {
             await createSeason.mutateAsync(request);
             router.back();
         } catch (error) {
-            setSubmitError(error instanceof ApiError ? error.message : 'Não foi possível criar a temporada.');
+            setSubmitError(friendlyErrorMessage(error, 'Não foi possível criar a temporada.'));
         }
     };
 

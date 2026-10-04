@@ -1,10 +1,11 @@
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { ManagementRow } from '@/components/management/management-row';
+import { ScrollView, StyleSheet } from 'react-native';
+import { ManagementCard } from '@/components/management/management-card';
 import { EmptyState, LoadingState } from '@/components/states/screen-states';
+import { ThemedText } from '@/components/themed-text';
 import { useAllModalities } from '@/hooks/useModalities';
 import { useAuth } from '@/hooks/useAuth';
 import { useSeasons } from '@/hooks/useSeasons';
-import { colors, radius, spacing } from '@/theme';
+import { colors, spacing } from '@/theme';
 
 interface CountableQuery {
     isPending: boolean;
@@ -26,19 +27,19 @@ function ManagementHub() {
 
     return (
         <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
-            <View style={styles.group}>
-                <ManagementRow
-                    title="Temporadas"
-                    subtitle={countLabel(seasons, 'temporada', 'temporadas')}
-                    href="/seasons"
-                />
-                <View style={styles.separator} />
-                <ManagementRow
-                    title="Modalidades"
-                    subtitle={countLabel(modalities, 'modalidade', 'modalidades')}
-                    href="/modalities"
-                />
-            </View>
+            <ThemedText variant="caption" style={styles.section}>
+                MÓDULOS
+            </ThemedText>
+            <ManagementCard
+                title="Temporadas"
+                subtitle={countLabel(seasons, 'temporada', 'temporadas')}
+                href="/seasons"
+            />
+            <ManagementCard
+                title="Modalidades"
+                subtitle={countLabel(modalities, 'modalidade', 'modalidades')}
+                href="/modalities"
+            />
         </ScrollView>
     );
 }
@@ -67,16 +68,12 @@ export default function ManagementScreen() {
 const styles = StyleSheet.create({
     content: {
         padding: spacing.md,
+        gap: spacing.md,
     },
-    group: {
-        backgroundColor: colors.secondarySystemBackground as string,
-        borderRadius: radius.lg,
-        borderCurve: 'continuous',
-        overflow: 'hidden',
-    },
-    separator: {
-        height: StyleSheet.hairlineWidth,
-        marginLeft: spacing.md,
-        backgroundColor: colors.separator as string,
+    section: {
+        marginLeft: spacing.sm,
+        marginBottom: -spacing.xs,
+        color: colors.secondaryLabel as string,
+        textAlign: 'left',
     },
 });

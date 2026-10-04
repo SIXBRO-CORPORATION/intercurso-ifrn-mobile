@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { EmptyState, ErrorState, LoadingState } from '@/components/states/screen-states';
 import { ThemedText } from '@/components/themed-text';
 import { useAllModalities } from '@/hooks/useModalities';
-import { ApiError } from '@/types/api';
+import { friendlyErrorMessage } from '@/utils/api-error-message';
 import type { ModalitySummaryResponse } from '@/types/modality-list';
 import { colors, radius, spacing } from '@/theme';
 
@@ -38,7 +38,7 @@ export default function ModalitiesScreen() {
             return (
                 <ErrorState
                     title="Não foi possível carregar as modalidades"
-                    description={modalities.error instanceof ApiError ? modalities.error.message : 'Tente de novo.'}
+                    description={friendlyErrorMessage(modalities.error, 'Tente de novo.')}
                     onRetry={() => modalities.refetch()}
                     retrying={modalities.isRefetching}
                 />

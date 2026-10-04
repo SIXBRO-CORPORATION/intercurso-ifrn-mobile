@@ -6,7 +6,7 @@ import { FilterChips, type FilterChipOption } from '@/components/filter-chips';
 import { FormField } from '@/components/form/form-field';
 import { ThemedText } from '@/components/themed-text';
 import { useCreateModality } from '@/hooks/useModalities';
-import { ApiError } from '@/types/api';
+import { friendlyErrorMessage } from '@/utils/api-error-message';
 import { ScoreTypeLabel, type ScoreType } from '@/types/enums';
 import type { ModalityCreateRequest } from '@/types/modality';
 import { spacing, useBrandColors } from '@/theme';
@@ -106,7 +106,7 @@ export default function CreateModalityScreen() {
             await createModality.mutateAsync(request);
             router.back();
         } catch (error) {
-            setSubmitError(error instanceof ApiError ? error.message : 'Não foi possível criar a modalidade.');
+            setSubmitError(friendlyErrorMessage(error, 'Não foi possível criar a modalidade.'));
         }
     };
 

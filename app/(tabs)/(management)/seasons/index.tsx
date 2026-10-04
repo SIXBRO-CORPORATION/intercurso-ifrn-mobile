@@ -6,6 +6,7 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/states/screen
 import { ThemedText } from '@/components/themed-text';
 import { useSeasons } from '@/hooks/useSeasons';
 import { ApiError } from '@/types/api';
+import { friendlyErrorMessage } from '@/utils/api-error-message';
 import { SeasonStatusLabel, type SeasonStatus } from '@/types/enums';
 import type { SeasonSummary } from '@/types/season';
 import { colors, radius, spacing } from '@/theme';
@@ -78,7 +79,7 @@ export default function SeasonsScreen() {
             return (
                 <ErrorState
                     title="Não foi possível carregar as temporadas"
-                    description={seasons.error instanceof ApiError ? seasons.error.message : 'Tente de novo.'}
+                    description={friendlyErrorMessage(seasons.error, 'Tente de novo.')}
                     onRetry={() => seasons.refetch()}
                     retrying={seasons.isRefetching}
                 />
