@@ -14,6 +14,22 @@ export default function TeamsLayout() {
             }}
         >
             <Stack.Screen name="index" options={{ title: 'Times' }} />
+            <Stack.Screen
+                name="team/new"
+                options={{ title: 'Criar time', headerLargeTitleEnabled: false, headerRight: undefined }}
+            />
+            <Stack.Screen
+                name="team/[id]"
+                options={{ title: 'Time', headerLargeTitleEnabled: false, headerRight: undefined }}
+            />
+            <Stack.Screen
+                name="join/index"
+                options={{ title: 'Entrar em um time', headerLargeTitleEnabled: false, headerRight: undefined }}
+            />
+            <Stack.Screen
+                name="join/[token]"
+                options={{ title: 'Convite', headerLargeTitleEnabled: false, headerRight: undefined }}
+            />
         </Stack>
     );
 }
