@@ -12,27 +12,29 @@ interface ManagementCardProps {
 export function ManagementCard({ title, subtitle, href }: ManagementCardProps) {
     return (
         <Link href={href} asChild>
-            <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={subtitle ? `${title}, ${subtitle}` : title}
-                style={({ pressed }) => [
-                    styles.card,
-                    { opacity: pressed ? 0.7 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] },
-                ]}
-            >
-                <View style={styles.texts}>
-                    <ThemedText variant="headline" style={styles.left}>
-                        {title}
-                    </ThemedText>
-                    {subtitle ? (
-                        <ThemedText variant="subhead" style={styles.left}>
-                            {subtitle}
+            <Pressable accessibilityRole="button" accessibilityLabel={subtitle ? `${title}, ${subtitle}` : title}>
+                {({ pressed }) => (
+                    <View
+                        style={[
+                            styles.card,
+                            { opacity: pressed ? 0.7 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] },
+                        ]}
+                    >
+                        <View style={styles.texts}>
+                            <ThemedText variant="headline" style={styles.left}>
+                                {title}
+                            </ThemedText>
+                            {subtitle ? (
+                                <ThemedText variant="subhead" style={styles.left}>
+                                    {subtitle}
+                                </ThemedText>
+                            ) : null}
+                        </View>
+                        <ThemedText variant="title" style={styles.chevron}>
+                            ›
                         </ThemedText>
-                    ) : null}
-                </View>
-                <ThemedText variant="title" style={styles.chevron}>
-                    ›
-                </ThemedText>
+                    </View>
+                )}
             </Pressable>
         </Link>
     );
