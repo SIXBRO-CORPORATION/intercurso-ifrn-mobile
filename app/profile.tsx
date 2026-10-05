@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/providers/ToastProvider';
 import { colors, radius, spacing } from '@/theme';
 import { AuthCancelledError } from '@/types/auth';
+import { GenderLabel } from '@/types/enums';
 
 export default function ProfileScreen() {
     const { user, isAuthenticated, isInitializing, isLoading, loginWithSuap, logout } = useAuth();
@@ -55,6 +56,9 @@ export default function ProfileScreen() {
                 <InfoRow label="Nome" value={user.name} />
                 <InfoRow label="Matrícula" value={String(user.matricula)} />
                 <InfoRow label="Email" value={user.email ?? '-'} />
+                {user.gender ? <InfoRow label="Gênero" value={GenderLabel[user.gender]} /> : null}
+                {user.curso ? <InfoRow label="Curso" value={user.curso} /> : null}
+                {user.campus ? <InfoRow label="Campus" value={user.campus} /> : null}
                 <InfoRow label="Perfil" value={user.role} />
                 <InfoRow label="Atleta" value={user.atleta ? 'Sim' : 'Não'} />
                 <InfoRow label="Ativo" value={user.active ? 'Sim' : 'Não'} />

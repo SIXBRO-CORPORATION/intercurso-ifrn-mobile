@@ -18,7 +18,7 @@ import { friendlyErrorMessage } from '@/utils/api-error-message';
 import { formatCampusDateTime } from '@/utils/campus-time';
 
 const NEXT_STEP: Record<SeasonStatus, string> = {
-    DRAFT: 'As inscrições abrem automaticamente na data de início. Você pode ajustar as datas antes disso.',
+    DRAFT: 'As inscrições abrem na data de início, se não houver outra temporada ativa; senão a abertura é adiada até ela ser finalizada. Você pode ajustar as datas antes disso.',
     REGISTRATION_OPEN: 'Equipes podem ser criadas e submetidas. Aprove as equipes e confirme as doações.',
     REGISTRATION_CLOSED: 'Inscrições encerradas. Crie o chaveamento das modalidades para iniciar a temporada.',
     IN_PROGRESS: 'Temporada em andamento. Finalize quando todas as partidas estiverem encerradas.',

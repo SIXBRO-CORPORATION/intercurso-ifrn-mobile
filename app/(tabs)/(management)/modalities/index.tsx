@@ -6,19 +6,19 @@ import { useAllModalities } from '@/hooks/useModalities';
 import { friendlyErrorMessage } from '@/utils/api-error-message';
 import type { ModalitySummaryResponse } from '@/types/modality-list';
 import { colors, radius, spacing } from '@/theme';
+import { formatGenderRule, formatMembers } from '@/utils/modality-gender';
 
 function ModalityRow({ modality }: { modality: ModalitySummaryResponse }) {
-    const members =
-        modality.min_members === modality.max_members
-            ? `${modality.min_members} por equipe`
-            : `${modality.min_members} a ${modality.max_members} por equipe`;
+    const members = formatMembers(modality);
+    const gender = formatGenderRule(modality);
 
     return (
-        <View style={styles.row} accessible accessibilityLabel={`${modality.name}, ${members}`}>
+        <View style={styles.row} accessible accessibilityLabel={`${modality.name}, ${gender}, ${members}`}>
             <View style={styles.texts}>
                 <ThemedText variant="headline" numberOfLines={1}>
                     {modality.name}
                 </ThemedText>
+                <ThemedText variant="subhead">{gender}</ThemedText>
                 <ThemedText variant="subhead">{members}</ThemedText>
             </View>
         </View>

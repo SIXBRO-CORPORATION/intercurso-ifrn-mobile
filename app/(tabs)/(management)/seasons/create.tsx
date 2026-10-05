@@ -5,7 +5,7 @@ import { Button } from '@/components/button';
 import { FormField } from '@/components/form/form-field';
 import { ThemedText } from '@/components/themed-text';
 import { useAllModalities } from '@/hooks/useModalities';
-import { useCreateSeason } from '@/hooks/useSeasons';
+import { useCreateSeason, useSeasons } from '@/hooks/useSeasons';
 import { friendlyErrorMessage } from '@/utils/api-error-message';
 import type { SeasonCreateRequest } from '@/types/season';
 import { colors, radius, spacing, useBrandColors } from '@/theme';
@@ -23,11 +23,14 @@ export default function CreateSeasonScreen() {
     const brand = useBrandColors();
     const modalities = useAllModalities();
     const createSeason = useCreateSeason();
+    const seasons = useSeasons();
+    const activeSeason = seasons.data?.find((season) => season.active);
 
     const [name, setName] = useState('');
     const [year, setYear] = useState(String(getCampusYear()));
     const [modalityIds, setModalityIds] = useState<string[]>([]);
     const [openImmediately, setOpenImmediately] = useState(false);
+    const openNow = openImmediately && !activeSeason;
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [rulesDocument, setRulesDocument] = useState('');
@@ -49,7 +52,7 @@ export default function CreateSeasonScreen() {
         const end = parseCampusDateInput(endDate, true);
         if (!end) next.endDate = 'Use o formato dd/mm/aaaa.';
 
-        if (!openImmediately) {
+        if (!openNow) {
             const start = parseCampusDateInput(startDate, false);
             if (!start) {
                 next.startDate = 'Use o formato dd/mm/aaaa.';
@@ -75,9 +78,9 @@ export default function CreateSeasonScreen() {
             year: parseYear(year)!,
             modality_ids: modalityIds,
             registration_end_date: parseCampusDateInput(endDate, true)!,
-            open_immediately: openImmediately,
+            open_immediately: openNow,
             rules_document: rulesDocument.trim() || undefined,
-            ...(openImmediately ? {} : { registration_start_date: parseCampusDateInput(startDate, false)! }),
+            ...(openNow ? {} : { registration_start_date: parseCampusDateInput(startDate, false)! }),
         };
 
         try {
@@ -166,10 +169,20 @@ export default function CreateSeasonScreen() {
                 <ThemedText variant="headline" style={styles.switchLabel}>
                     Abrir inscrições agora
                 </ThemedText>
-                <Switch value={openImmediately} onValueChange={setOpenImmediately} />
+                <Switch
+                    value={openNow}
+                    onValueChange={setOpenImmediately}
+                    disabled={!!activeSeason}
+                    accessibilityLabel="Abrir inscrições agora"
+                />
             </View>
+            {activeSeason ? (
+                <ThemedText variant="caption">
+                    “{activeSeason.name}” ainda está ativa. Finalize-a antes de abrir as inscrições de outra temporada.
+                </ThemedText>
+            ) : null}
 
-            {!openImmediately ? (
+            {!openNow ? (
                 <FormField
                     label="Início das inscrições"
                     value={startDate}
@@ -177,6 +190,7 @@ export default function CreateSeasonScreen() {
                     placeholder="dd/mm/aaaa"
                     keyboardType="numbers-and-punctuation"
                     maxLength={10}
+                    hint="Se houver temporada ativa nessa data, a abertura é adiada até ela ser finalizada."
                     error={errors.startDate}
                 />
             ) : null}

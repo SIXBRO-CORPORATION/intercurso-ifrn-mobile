@@ -6,6 +6,21 @@ export const UserRoleLabel: Record<UserRole, string> = {
     USER: 'Usuário',
 };
 
+export type Gender = 'M' | 'F';
+
+export const GenderLabel: Record<Gender, string> = {
+    M: 'Masculino',
+    F: 'Feminino',
+};
+
+export type ModalityGenderMode = 'MALE' | 'FEMALE' | 'MIXED';
+
+export const ModalityGenderModeLabel: Record<ModalityGenderMode, string> = {
+    MALE: 'Masculina',
+    FEMALE: 'Feminina',
+    MIXED: 'Mista',
+};
+
 export type ModalityFormat =
     | 'KNOCKOUT'
     | 'GROUP_STAGE_KNOCKOUT'
