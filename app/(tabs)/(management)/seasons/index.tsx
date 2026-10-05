@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
-import { router } from 'expo-router';
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { Link, router } from 'expo-router';
 import { FilterChips, type FilterChipOption } from '@/components/filter-chips';
 import { EmptyState, ErrorState, LoadingState } from '@/components/states/screen-states';
 import { ThemedText } from '@/components/themed-text';
@@ -33,26 +33,34 @@ function SeasonRow({ season }: { season: SeasonSummary }) {
         : 'Sem prazo de inscrição';
 
     return (
-        <View
-            style={styles.row}
-            accessible
-            accessibilityLabel={`${season.name}, ${season.year}, ${SeasonStatusLabel[season.status]}`}
-        >
-            <View style={styles.texts}>
-                <ThemedText variant="headline" numberOfLines={1}>
-                    {season.name}
-                </ThemedText>
-                <ThemedText variant="subhead">
-                    {season.year} · {registration}
-                </ThemedText>
-            </View>
-            <View style={styles.pill}>
-                <ThemedText variant="caption">
-                    {season.active ? 'Ativa · ' : ''}
-                    {SeasonStatusLabel[season.status]}
-                </ThemedText>
-            </View>
-        </View>
+        <Link href={`/seasons/${season.season_id}`} asChild>
+            <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${season.name}, ${season.year}, ${SeasonStatusLabel[season.status]}. Abrir detalhes`}
+            >
+                {({ pressed }) => (
+                    <View style={[styles.row, { opacity: pressed ? 0.7 : 1 }]}>
+                        <View style={styles.texts}>
+                            <ThemedText variant="headline" numberOfLines={1}>
+                                {season.name}
+                            </ThemedText>
+                            <ThemedText variant="subhead">
+                                {season.year} · {registration}
+                            </ThemedText>
+                        </View>
+                        <View style={styles.pill}>
+                            <ThemedText variant="caption">
+                                {season.active ? 'Ativa · ' : ''}
+                                {SeasonStatusLabel[season.status]}
+                            </ThemedText>
+                        </View>
+                        <ThemedText variant="title" style={styles.chevron}>
+                            ›
+                        </ThemedText>
+                    </View>
+                )}
+            </Pressable>
+        </Link>
     );
 }
 
@@ -157,6 +165,9 @@ const styles = StyleSheet.create({
     texts: {
         flex: 1,
         gap: 2,
+    },
+    chevron: {
+        color: colors.secondaryLabel as string,
     },
     pill: {
         paddingHorizontal: spacing.sm,

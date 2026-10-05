@@ -72,3 +72,27 @@ export function parseCampusDateInput(input: string, endOfDay: boolean): string |
         ? formatIsoAt(year, month - 1, day, '23:59:59', 999)
         : formatIsoAt(year, month - 1, day, '00:00:00', 0);
 }
+
+export function formatCampusDate(isoDate: string): string {
+    const wall = toCampusWallClock(new Date(isoDate));
+    return `${pad(wall.getUTCDate())}/${pad(wall.getUTCMonth() + 1)}/${wall.getUTCFullYear()}`;
+}
+
+export function formatCampusDateTime(isoDate: string): string {
+    return `${formatCampusDate(isoDate)} às ${formatCampusTime(isoDate)}`;
+}
+
+export function isoToPickerDate(isoDate?: string | null): Date {
+    if (!isoDate) return new Date();
+    const wall = toCampusWallClock(new Date(isoDate));
+    return new Date(wall.getUTCFullYear(), wall.getUTCMonth(), wall.getUTCDate(), 12);
+}
+
+export function pickerDateToIso(date: Date, endOfDay: boolean): string {
+    const input = `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
+    return parseCampusDateInput(input, endOfDay)!;
+}
+
+export function formatPickerDate(date: Date): string {
+    return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
+}
