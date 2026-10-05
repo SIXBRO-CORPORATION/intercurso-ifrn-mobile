@@ -5,7 +5,7 @@ import { Button } from '@/components/button';
 import { LoginPrompt } from '@/components/auth/login-prompt';
 import { InfoRow, Section } from '@/components/management/section';
 import { ErrorState, LoadingState } from '@/components/states/screen-states';
-import { MemberRow } from '@/components/teams/member-row';
+import { MemberCard, type MemberAction } from '@/components/teams/member-card';
 import { TeamStatusBadge } from '@/components/teams/team-status-badge';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
@@ -21,7 +21,7 @@ import {
 import { useToast } from '@/providers/ToastProvider';
 import type { TeamStatus } from '@/types/enums';
 import type { TeamDetails, TeamMember } from '@/types/team';
-import { spacing } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 import { friendlyErrorMessage } from '@/utils/api-error-message';
 import { formatCampusDateTime } from '@/utils/campus-time';
 import { formatGenderRule } from '@/utils/modality-gender';
@@ -69,9 +69,12 @@ function InviteSection({ team }: { team: TeamDetails }) {
                         Compartilhe o link ou o código. Quem receber entra pelo app, e o convite é desativado quando o
                         time é submetido.
                     </ThemedText>
-                    <ThemedText variant="code" selectable>
-                        {token}
-                    </ThemedText>
+                    <View style={styles.code}>
+                        <ThemedText variant="caption">CÓDIGO DO CONVITE</ThemedText>
+                        <ThemedText variant="code" selectable>
+                            {token}
+                        </ThemedText>
+                    </View>
                     <Button title="Compartilhar convite" onPress={handleShare} />
                 </>
             ) : (
@@ -268,18 +271,36 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                             Modalidade mista: a cota de gênero é conferida ao submeter.
                         </ThemedText>
                     ) : null}
-                    {team.members.map((member) => {
+                    {team.members.map((member, index) => {
                         const memberIsOwner = member.user_id === team.owner_id;
-                        const manageable = isOwner && isDraft;
+                        const memberIsCaptain = member.user_id === team.captain_id || member.role === 'CAPTAIN';
+                        const actions: MemberAction[] =
+                            isOwner && isDraft
+                                ? [
+                                      ...(memberIsCaptain
+                                          ? []
+                                          : [{ label: 'Definir capitão', onPress: () => confirmCaptain(member) }]),
+                                      ...(memberIsOwner
+                                          ? []
+                                          : [
+                                                {
+                                                    label: 'Remover',
+                                                    destructive: true,
+                                                    onPress: () => confirmRemove(member),
+                                                },
+                                            ]),
+                                  ]
+                                : [];
+
                         return (
-                            <MemberRow
+                            <MemberCard
                                 key={member.user_id}
-                                member={member}
+                                name={member.name}
                                 isOwner={memberIsOwner}
-                                isCaptain={member.user_id === team.captain_id || member.role === 'CAPTAIN'}
-                                showDonation={!isDraft}
-                                onMakeCaptain={manageable ? () => confirmCaptain(member) : undefined}
-                                onRemove={manageable && !memberIsOwner ? () => confirmRemove(member) : undefined}
+                                isCaptain={memberIsCaptain}
+                                donation={isDraft ? undefined : member.donation_status}
+                                actions={actions}
+                                divider={index > 0}
                             />
                         );
                     })}
@@ -354,5 +375,12 @@ const styles = StyleSheet.create({
     },
     actions: {
         gap: spacing.xs,
+    },
+    code: {
+        gap: 2,
+        padding: spacing.md,
+        borderRadius: radius.md,
+        borderCurve: 'continuous',
+        backgroundColor: colors.systemBackground as string,
     },
 });

@@ -58,6 +58,7 @@ export function useSubmitTeam() {
         mutationFn: ({ teamId }: TeamIdVariables) => teamService.submitTeam(teamId),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.teams.all });
+            queryClient.invalidateQueries({ queryKey: queryKeys.seasons.all });
         },
     });
 }
@@ -69,6 +70,7 @@ export function useApproveTeam() {
         mutationFn: ({ teamId }: TeamIdVariables) => teamService.approveTeam(teamId),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.teams.all });
+            queryClient.invalidateQueries({ queryKey: queryKeys.seasons.all });
         },
     });
 }

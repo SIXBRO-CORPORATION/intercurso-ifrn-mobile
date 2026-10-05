@@ -5,6 +5,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useAllModalities } from '@/hooks/useModalities';
 import { useAuth } from '@/hooks/useAuth';
 import { useSeasons } from '@/hooks/useSeasons';
+import { useTeams } from '@/hooks/useTeams';
 import { colors, spacing } from '@/theme';
 
 interface CountableQuery {
@@ -24,6 +25,7 @@ function countLabel(query: CountableQuery, singular: string, plural: string): st
 function ManagementHub() {
     const seasons = useSeasons();
     const modalities = useAllModalities();
+    const pendingTeams = useTeams({ status: 'SUBMITTED' });
 
     return (
         <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
@@ -39,6 +41,11 @@ function ManagementHub() {
                 title="Modalidades"
                 subtitle={countLabel(modalities, 'modalidade', 'modalidades')}
                 href="/modalities"
+            />
+            <ManagementCard
+                title="Times"
+                subtitle={countLabel(pendingTeams, 'time aguardando aprovação', 'times aguardando aprovação')}
+                href="/teams"
             />
         </ScrollView>
     );
