@@ -52,8 +52,8 @@ function registrationBlockedReason(status: string | undefined, hasSeason: boolea
 
 export default function TeamsScreen() {
     const { user, isAuthenticated, isInitializing } = useAuth();
-    const teams = useTeams();
     const activeSeason = useActiveSeason();
+    const teams = useTeams(activeSeason.data ? { season_id: activeSeason.data.season_id } : undefined);
 
     if (isInitializing) {
         return <LoadingState label="Carregando…" />;

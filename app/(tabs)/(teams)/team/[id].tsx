@@ -9,10 +9,11 @@ import { MemberCard, type MemberAction } from '@/components/teams/member-card';
 import { TeamStatusBadge } from '@/components/teams/team-status-badge';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
-import { useModalities } from '@/hooks/useModalities';
 import { useActiveSeason } from '@/hooks/useSeasons';
 import {
+    useDeleteTeam,
     useLeaveTeam,
+    useRegenerateInvite,
     useRemoveTeamMember,
     useSelectCaptain,
     useSubmitTeam,
@@ -21,37 +22,57 @@ import {
 import { useToast } from '@/providers/ToastProvider';
 import type { TeamStatus } from '@/types/enums';
 import type { TeamDetails, TeamMember } from '@/types/team';
-import { colors, radius, spacing } from '@/theme';
+import { colors, radius, spacing, useBrandColors } from '@/theme';
 import { friendlyErrorMessage } from '@/utils/api-error-message';
 import { formatCampusDateTime } from '@/utils/campus-time';
-import { formatGenderRule } from '@/utils/modality-gender';
+import { formatGenderRule, formatMembersRange } from '@/utils/modality-gender';
+import { describeMissingQuota, getGenderQuota } from '@/utils/team-gender-quota';
 import { buildInviteLink, inviteStore } from '@/utils/team-invite';
 
 const STATUS_COPY: Record<TeamStatus, string> = {
-    DRAFT: 'O time está em rascunho. Convide os integrantes e submeta para aprovação quando atingir o mínimo.',
+    DRAFT: 'O time está em rascunho. Convide os integrantes e submeta para aprovação quando atingir os requisitos da modalidade.',
     SUBMITTED: 'Aguardando aprovação do monitor. O time está travado e a organização confirma a doação de cada integrante.',
     APPROVED: 'Time aprovado e liberado para competir.',
-    REJECTED: 'O time foi rejeitado pelo monitor. Fale com a organização para saber os próximos passos.',
+    REJECTED: 'O time foi rejeitado pelo monitor.',
 };
 
 function plural(count: number, one: string, many: string): string {
     return `${count} ${count === 1 ? one : many}`;
 }
 
-function InviteSection({ team }: { team: TeamDetails }) {
-    const [token, setToken] = useState<string | null | undefined>(undefined);
+function RejectionNotice({ team }: { team: TeamDetails }) {
+    const brand = useBrandColors();
+
+    if (team.status !== 'DRAFT' || !team.rejection_reason) return null;
+
+    return (
+        <View style={[styles.notice, { borderColor: brand.accent }]} accessibilityRole="alert">
+            <ThemedText variant="headline">Devolvido para rascunho pelo monitor</ThemedText>
+            <ThemedText variant="subhead">{team.rejection_reason}</ThemedText>
+            {team.rejected_at ? (
+                <ThemedText variant="caption">Em {formatCampusDateTime(team.rejected_at)}</ThemedText>
+            ) : null}
+            <ThemedText variant="caption">Corrija o que foi apontado e submeta novamente.</ThemedText>
+        </View>
+    );
+}
+
+function InviteSection({ team, onRegenerated }: { team: TeamDetails; onRegenerated: (token: string) => void }) {
+    const toast = useToast();
+    const regenerate = useRegenerateInvite();
+    const [storedToken, setStoredToken] = useState<string | null | undefined>(undefined);
 
     useEffect(() => {
         let active = true;
         inviteStore.get(team.team_id).then((value) => {
-            if (active) setToken(value);
+            if (active) setStoredToken(value);
         });
         return () => {
             active = false;
         };
     }, [team.team_id]);
 
-    if (token === undefined) return null;
+    const token = team.invite_token ?? storedToken ?? null;
 
     const handleShare = async () => {
         if (!token) return;
@@ -60,6 +81,29 @@ function InviteSection({ team }: { team: TeamDetails }) {
             message: `Entre no meu time "${team.name}" no Intercurso: ${link}\nCódigo do convite: ${token}`,
         });
     };
+
+    const confirmRegenerate = () =>
+        Alert.alert(
+            'Gerar novo convite?',
+            'O link e o código atuais deixam de funcionar. Quem já entrou no time continua no time.',
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Gerar novo',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            const result = await regenerate.mutateAsync({ teamId: team.team_id });
+                            await inviteStore.save(team.team_id, result.invite_token);
+                            onRegenerated(result.invite_token);
+                            toast.success('Novo convite gerado.');
+                        } catch (error) {
+                            toast.error(friendlyErrorMessage(error, 'Não foi possível gerar um novo convite.'));
+                        }
+                    },
+                },
+            ]
+        );
 
     return (
         <Section title="Convite">
@@ -76,11 +120,24 @@ function InviteSection({ team }: { team: TeamDetails }) {
                         </ThemedText>
                     </View>
                     <Button title="Compartilhar convite" onPress={handleShare} />
+                    <Button
+                        title="Gerar novo convite"
+                        variant="ghost"
+                        loading={regenerate.isPending}
+                        onPress={confirmRegenerate}
+                    />
                 </>
             ) : (
-                <ThemedText variant="subhead">
-                    O link de convite só fica disponível no aparelho em que o time foi criado.
-                </ThemedText>
+                <>
+                    <ThemedText variant="subhead">
+                        O código deste convite não está disponível neste aparelho. Gere um novo para compartilhar.
+                    </ThemedText>
+                    <Button
+                        title="Gerar novo convite"
+                        loading={regenerate.isPending}
+                        onPress={confirmRegenerate}
+                    />
+                </>
             )}
         </Section>
     );
@@ -91,11 +148,11 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
     const toast = useToast();
     const details = useTeamDetails(teamId);
     const activeSeason = useActiveSeason();
-    const modalities = useModalities(details.data?.season_id ?? undefined);
     const submitTeam = useSubmitTeam();
     const selectCaptain = useSelectCaptain();
     const removeMember = useRemoveTeamMember();
     const leaveTeam = useLeaveTeam();
+    const deleteTeam = useDeleteTeam();
 
     const leaveScreen = useCallback(() => {
         if (router.canGoBack()) router.back();
@@ -122,23 +179,28 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
     const isOwner = !!me && team.owner_id === me;
     const isMember = !!me && team.members.some((member) => member.user_id === me);
     const isDraft = team.status === 'DRAFT';
-    const modality = modalities.data?.find((item) => item.modality_id === team.modality_id);
     const memberCount = team.members.length;
     const registrationOpen =
         activeSeason.data?.status === 'REGISTRATION_OPEN' && activeSeason.data.season_id === team.season_id;
 
-    const min = modality?.min_members;
-    const max = modality?.max_members;
+    const min = team.min_members ?? undefined;
+    const max = team.max_members ?? undefined;
     const missing = min !== undefined ? Math.max(0, min - memberCount) : 0;
+    const quota = getGenderQuota(team, team.members);
+    const quotaMessage = quota && !quota.satisfied ? describeMissingQuota(quota) : null;
 
     const captainName = team.captain_name ?? 'Não definido';
-    const membersLabel = min !== undefined && max !== undefined ? `${memberCount} (mín. ${min}, máx. ${max})` : String(memberCount);
+    const membersRange = formatMembersRange(min, max);
+    const membersLabel = membersRange ? `${memberCount} (${membersRange})` : String(memberCount);
+    const genderRule = team.gender_mode ? formatGenderRule(team) : null;
 
     let submitBlockedReason: string | null = null;
     if (!registrationOpen) {
         submitBlockedReason = 'Período de inscrições encerrado. Não é mais possível submeter times.';
     } else if (missing > 0) {
         submitBlockedReason = `Faltam ${plural(missing, 'integrante', 'integrantes')} para o mínimo de ${min}.`;
+    } else if (quotaMessage) {
+        submitBlockedReason = quotaMessage;
     }
 
     const run = async (action: () => Promise<unknown>, success: string, fallback: string) => {
@@ -227,6 +289,30 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
             },
         ]);
 
+    const confirmDelete = () =>
+        Alert.alert(
+            'Excluir time?',
+            `"${team.name}" será excluído. Os integrantes saem do time e o convite deixa de funcionar. Essa ação não pode ser desfeita.`,
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Excluir',
+                    style: 'destructive',
+                    onPress: async () => {
+                        const ok = await run(
+                            () => deleteTeam.mutateAsync({ teamId: team.team_id }),
+                            'Time excluído.',
+                            'Não foi possível excluir o time.'
+                        );
+                        if (ok) {
+                            await inviteStore.remove(team.team_id);
+                            leaveScreen();
+                        }
+                    },
+                },
+            ]
+        );
+
     return (
         <>
             <Stack.Screen options={{ title: team.name }} />
@@ -249,13 +335,17 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                     </ThemedText>
                     <ThemedText variant="subhead">
                         {team.modality_name ?? 'Modalidade'}
-                        {modality ? ` · ${formatGenderRule(modality)}` : ''}
+                        {genderRule ? ` · ${genderRule}` : ''}
                     </ThemedText>
                     <TeamStatusBadge status={team.status} />
                     <ThemedText variant="subhead">{STATUS_COPY[team.status]}</ThemedText>
                 </View>
 
-                {isOwner && isDraft && team.token_active ? <InviteSection team={team} /> : null}
+                <RejectionNotice team={team} />
+
+                {isOwner && isDraft ? (
+                    <InviteSection team={team} onRegenerated={() => details.refetch()} />
+                ) : null}
 
                 <Section title="Membros">
                     <InfoRow label="Total" value={membersLabel} />
@@ -263,12 +353,14 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                         <ThemedText variant="caption">
                             {missing > 0
                                 ? `Faltam ${plural(missing, 'integrante', 'integrantes')} para poder submeter.`
-                                : 'O time já tem o mínimo para submissão.'}
+                                : 'O time já tem o mínimo de integrantes para submissão.'}
                         </ThemedText>
                     ) : null}
-                    {isDraft && modality?.gender_mode === 'MIXED' ? (
+                    {isDraft && quota ? (
                         <ThemedText variant="caption">
-                            Modalidade mista: a cota de gênero é conferida ao submeter.
+                            {quota.satisfied
+                                ? `Cota de gênero atendida (${quota.male} homens e ${quota.female} mulheres).`
+                                : quotaMessage}
                         </ThemedText>
                     ) : null}
                     {team.members.map((member, index) => {
@@ -318,9 +410,6 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                         {team.approved_at ? (
                             <InfoRow label="Aprovado em" value={formatCampusDateTime(team.approved_at)} />
                         ) : null}
-                        {team.rejected_at ? (
-                            <InfoRow label="Rejeitado em" value={formatCampusDateTime(team.rejected_at)} />
-                        ) : null}
                     </Section>
                 ) : null}
 
@@ -332,6 +421,12 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                             disabled={submitBlockedReason !== null}
                             loading={submitTeam.isPending}
                             onPress={confirmSubmit}
+                        />
+                        <Button
+                            title="Excluir time"
+                            variant="destructive"
+                            loading={deleteTeam.isPending}
+                            onPress={confirmDelete}
                         />
                     </View>
                 ) : null}
@@ -372,6 +467,14 @@ const styles = StyleSheet.create({
     },
     hero: {
         gap: spacing.xs,
+    },
+    notice: {
+        gap: spacing.xs,
+        padding: spacing.md,
+        borderRadius: radius.md,
+        borderCurve: 'continuous',
+        borderWidth: StyleSheet.hairlineWidth * 4,
+        backgroundColor: colors.secondarySystemBackground as string,
     },
     actions: {
         gap: spacing.xs,

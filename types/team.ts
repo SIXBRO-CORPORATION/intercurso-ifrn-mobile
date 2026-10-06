@@ -1,13 +1,19 @@
-import type { DonationStatus, TeamMemberRole, TeamStatus } from './enums';
+import type { DonationStatus, Gender, ModalityGenderMode, TeamMemberRole, TeamStatus } from './enums';
 
 export interface TeamListFilters {
     status?: TeamStatus;
     season_id?: string;
 }
 
+export interface TeamPhotoFile {
+    uri: string;
+    name: string;
+    type: string;
+}
+
 export interface TeamRegisterRequest {
     name: string;
-    photo?: string | null;
+    photo?: TeamPhotoFile | null;
     modality_id: string;
 }
 
@@ -43,9 +49,18 @@ export interface TeamMember {
     matricula: string;
     role: TeamMemberRole;
     donation_status: DonationStatus;
+    gender?: Gender | null;
 }
 
-export interface TeamDetails {
+export interface TeamModalityRules {
+    min_members?: number | null;
+    max_members?: number | null;
+    gender_mode?: ModalityGenderMode | null;
+    min_male_members?: number | null;
+    min_female_members?: number | null;
+}
+
+export interface TeamDetails extends TeamModalityRules {
     team_id: string;
     name: string;
     season_id?: string | null;
@@ -58,22 +73,23 @@ export interface TeamDetails {
     captain_id?: string | null;
     captain_name?: string | null;
     token_active: boolean;
+    invite_token?: string | null;
     submmited_at?: string | null;
     approved_at?: string | null;
     rejected_at?: string | null;
+    rejection_reason?: string | null;
     members: TeamMember[];
     donations_confirmed: number;
     donations_total: number;
 }
 
-export interface TeamInvitePreview {
+export interface TeamInvitePreview extends TeamModalityRules {
     team_id: string;
     name: string;
     modality_id: string;
     modality_name?: string | null;
     photo?: string | null;
     members_count: number;
-    max_members?: number | null;
     captain_name?: string | null;
     owner_name?: string | null;
 }
@@ -127,4 +143,26 @@ export interface TeamRemoveMemberResponse {
 export interface TeamLeaveResponse {
     team_id: string;
     user_id: string;
+}
+
+export interface TeamRejectRequest {
+    reason: string;
+}
+
+export interface TeamRejectResponse {
+    team_id: string;
+    name: string;
+    status: TeamStatus;
+    rejection_reason: string | null;
+    rejected_at: string | null;
+}
+
+export interface TeamDeleteResponse {
+    team_id: string;
+}
+
+export interface TeamRegenerateInviteResponse {
+    team_id: string;
+    invite_token: string;
+    token_active: boolean;
 }

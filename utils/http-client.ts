@@ -1,6 +1,7 @@
 import { fetch } from 'expo/fetch';
 import { tokenManager } from './storage';
 import { ApiError, type ApiResponse } from '@/types/api';
+import { validationMessage } from './api-error-message';
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? '';
 
@@ -15,6 +16,12 @@ if (!API_BASE_URL) {
 interface RequestConfig extends RequestInit {
     skipAuth?: boolean;
     skipToast?: boolean;
+}
+
+function serializeBody(body: unknown): BodyInit | undefined {
+    if (body === undefined || body === null) return undefined;
+    if (body instanceof FormData) return body;
+    return JSON.stringify(body);
 }
 
 let toastCallback: ((message: string, type: 'success' | 'error') => void) | null = null;
@@ -91,7 +98,8 @@ class HttpClient {
 
         const requestHeaders = new Headers(headers as HeadersInit);
 
-        if (!requestHeaders.has('Content-Type')) {
+        const isFormData = restConfig.body instanceof FormData;
+        if (!isFormData && !requestHeaders.has('Content-Type')) {
             requestHeaders.set('Content-Type', 'application/json');
         }
 
@@ -116,7 +124,10 @@ class HttpClient {
             const data: ApiResponse<T> = await response.json();
 
             if (!response.ok) {
-                const errorMessage = data.error || 'Ocorreu um erro inesperado';
+                const errorMessage =
+                    (data.code === 'VALIDATION_ERROR' && validationMessage(data)) ||
+                    data.error ||
+                    'Ocorreu um erro inesperado';
 
                 if (!skipToast && toastCallback) {
                     toastCallback(errorMessage, 'error');
@@ -157,7 +168,7 @@ class HttpClient {
         return this.request<T>(endpoint, {
             ...config,
             method: 'POST',
-            body: body ? JSON.stringify(body) : undefined,
+            body: serializeBody(body),
         });
     }
 

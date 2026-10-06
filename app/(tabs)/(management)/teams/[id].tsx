@@ -1,4 +1,5 @@
-import { Alert, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, RefreshControl, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/button';
 import { InfoRow, Section } from '@/components/management/section';
@@ -7,17 +8,21 @@ import { ErrorState, LoadingState } from '@/components/states/screen-states';
 import { MemberCard, type MemberAction } from '@/components/teams/member-card';
 import { TeamStatusBadge } from '@/components/teams/team-status-badge';
 import { ThemedText } from '@/components/themed-text';
-import { useApproveTeam, useConfirmDonation, useRemoveTeamMember, useTeamDetails } from '@/hooks/useTeams';
+import { useApproveTeam, useConfirmDonation, useRejectTeam, useTeamDetails } from '@/hooks/useTeams';
 import { useToast } from '@/providers/ToastProvider';
 import type { TeamStatus } from '@/types/enums';
 import type { TeamMember } from '@/types/team';
-import { spacing } from '@/theme';
+import { colors, radius, spacing, useBrandColors } from '@/theme';
 import { friendlyErrorMessage } from '@/utils/api-error-message';
 import { formatCampusDateTime } from '@/utils/campus-time';
+import { formatGenderRule, formatMembersRange } from '@/utils/modality-gender';
+import { describeMissingQuota, getGenderQuota } from '@/utils/team-gender-quota';
+
+const REJECTION_REASON_MAX = 500;
 
 const STATUS_COPY: Record<TeamStatus, string> = {
     DRAFT: 'Em rascunho: o dono ainda está montando o time. Ainda não há o que aprovar.',
-    SUBMITTED: 'Aguardando aprovação. Confirme a doação de cada integrante e depois aprove o time.',
+    SUBMITTED: 'Aguardando aprovação. Confirme a doação de cada integrante e depois aprove ou rejeite o time.',
     APPROVED: 'Time aprovado e liberado para competir.',
     REJECTED: 'Time rejeitado.',
 };
@@ -26,12 +31,62 @@ function plural(count: number, one: string, many: string): string {
     return `${count} ${count === 1 ? one : many}`;
 }
 
+function RejectForm({
+    teamName,
+    loading,
+    onConfirm,
+    onCancel,
+}: {
+    teamName: string;
+    loading: boolean;
+    onConfirm: (reason: string) => void;
+    onCancel: () => void;
+}) {
+    const brand = useBrandColors();
+    const [reason, setReason] = useState('');
+    const trimmed = reason.trim();
+
+    const ask = () =>
+        Alert.alert(
+            'Rejeitar time?',
+            `"${teamName}" volta para rascunho. O dono poderá corrigir e submeter novamente, e verá o motivo informado.`,
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                { text: 'Rejeitar', style: 'destructive', onPress: () => onConfirm(trimmed) },
+            ]
+        );
+
+    return (
+        <View style={styles.rejectForm}>
+            <ThemedText variant="headline">Motivo da rejeição</ThemedText>
+            <ThemedText variant="caption">
+                Explique o que o dono precisa corrigir. O motivo fica visível para o dono do time.
+            </ThemedText>
+            <TextInput
+                value={reason}
+                onChangeText={(value) => setReason(value.slice(0, REJECTION_REASON_MAX))}
+                multiline
+                placeholder="Ex.: doação de um integrante não foi comprovada"
+                placeholderTextColor={colors.secondaryLabel as string}
+                accessibilityLabel="Motivo da rejeição"
+                style={[styles.input, { color: colors.label as string, borderColor: brand.accent }]}
+            />
+            <ThemedText variant="caption">
+                {trimmed.length}/{REJECTION_REASON_MAX}
+            </ThemedText>
+            <Button title="Confirmar rejeição" variant="destructive" disabled={!trimmed} loading={loading} onPress={ask} />
+            <Button title="Cancelar" variant="ghost" onPress={onCancel} />
+        </View>
+    );
+}
+
 function TeamManagementContent({ teamId }: { teamId: string }) {
     const toast = useToast();
     const details = useTeamDetails(teamId);
     const confirmDonation = useConfirmDonation();
     const approveTeam = useApproveTeam();
-    const removeMember = useRemoveTeamMember();
+    const rejectTeam = useRejectTeam();
+    const [rejecting, setRejecting] = useState(false);
 
     if (details.isPending) {
         return <LoadingState label="Carregando time…" />;
@@ -51,19 +106,29 @@ function TeamManagementContent({ teamId }: { teamId: string }) {
     const team = details.data;
     const pending = team.members.filter((member) => member.donation_status === 'PENDING_DONATION');
     const canConfirmDonations = team.status === 'SUBMITTED' || team.status === 'APPROVED';
-    const canApprove = team.status === 'SUBMITTED' && pending.length === 0 && team.members.length > 0;
+    const quota = getGenderQuota(team, team.members);
+    const quotaMessage = quota && !quota.satisfied ? describeMissingQuota(quota) : null;
+    const canApprove =
+        team.status === 'SUBMITTED' && pending.length === 0 && team.members.length > 0 && quota?.satisfied !== false;
 
     let approveHint: string | null = null;
     if (team.status === 'SUBMITTED' && pending.length > 0) {
         approveHint = `Faltam ${plural(pending.length, 'doação', 'doações')} para poder aprovar.`;
+    } else if (team.status === 'SUBMITTED' && quotaMessage) {
+        approveHint = `${quotaMessage} Não é possível aprovar até que a cota seja atendida.`;
     }
+
+    const membersRange = formatMembersRange(team.min_members, team.max_members);
+    const genderRule = team.gender_mode ? formatGenderRule(team) : null;
 
     const run = async (action: () => Promise<unknown>, success: string, fallback: string) => {
         try {
             await action();
             toast.success(success);
+            return true;
         } catch (error) {
             toast.error(friendlyErrorMessage(error, fallback));
+            return false;
         }
     };
 
@@ -97,24 +162,14 @@ function TeamManagementContent({ teamId }: { teamId: string }) {
             },
         ]);
 
-    const askRemove = (member: TeamMember) =>
-        Alert.alert(
-            'Remover do time?',
-            `${member.name} será removido(a) de "${team.name}". Como monitor, você pode fazer isso em qualquer status.`,
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Remover',
-                    style: 'destructive',
-                    onPress: () =>
-                        run(
-                            () => removeMember.mutateAsync({ teamId: team.team_id, userId: member.user_id }),
-                            `${member.name} foi removido(a).`,
-                            'Não foi possível remover o integrante.'
-                        ),
-                },
-            ]
+    const handleReject = async (reason: string) => {
+        const ok = await run(
+            () => rejectTeam.mutateAsync({ teamId: team.team_id, reason }),
+            'Time rejeitado e devolvido para rascunho.',
+            'Não foi possível rejeitar o time.'
         );
+        if (ok) setRejecting(false);
+    };
 
     return (
         <>
@@ -130,36 +185,40 @@ function TeamManagementContent({ teamId }: { teamId: string }) {
                     </ThemedText>
                     <ThemedText variant="subhead">
                         {team.modality_name ?? 'Modalidade'}
+                        {genderRule ? ` · ${genderRule}` : ''}
                         {team.owner_name ? ` · Dono: ${team.owner_name}` : ''}
                     </ThemedText>
                     <TeamStatusBadge status={team.status} />
                     <ThemedText variant="subhead">{STATUS_COPY[team.status]}</ThemedText>
                 </View>
 
-                <Section title="Doações">
-                    <InfoRow label="Confirmadas" value={`${team.donations_confirmed} de ${team.donations_total}`} />
-                    {team.submmited_at ? (
-                        <InfoRow label="Submetido em" value={formatCampusDateTime(team.submmited_at)} />
-                    ) : null}
-                    {team.approved_at ? (
-                        <InfoRow label="Aprovado em" value={formatCampusDateTime(team.approved_at)} />
-                    ) : null}
-                    {team.rejected_at ? (
-                        <InfoRow label="Rejeitado em" value={formatCampusDateTime(team.rejected_at)} />
-                    ) : null}
-                </Section>
+                {team.status === 'DRAFT' && team.rejection_reason ? (
+                    <Section title="Última rejeição">
+                        <ThemedText variant="subhead">{team.rejection_reason}</ThemedText>
+                        {team.rejected_at ? (
+                            <ThemedText variant="caption">Em {formatCampusDateTime(team.rejected_at)}</ThemedText>
+                        ) : null}
+                    </Section>
+                ) : null}
 
                 <Section title="Integrantes">
+                    <InfoRow
+                        label="Total"
+                        value={membersRange ? `${team.members.length} (${membersRange})` : String(team.members.length)}
+                    />
+                    {quota ? (
+                        <ThemedText variant="caption">
+                            {quota.satisfied
+                                ? `Cota de gênero atendida (${quota.male} homens e ${quota.female} mulheres).`
+                                : quotaMessage}
+                        </ThemedText>
+                    ) : null}
                     {team.members.map((member, index) => {
                         const isOwner = member.user_id === team.owner_id;
-                        const actions: MemberAction[] = [
-                            ...(canConfirmDonations && member.donation_status === 'PENDING_DONATION'
+                        const actions: MemberAction[] =
+                            canConfirmDonations && member.donation_status === 'PENDING_DONATION'
                                 ? [{ label: 'Confirmar doação', onPress: () => askConfirmDonation(member) }]
-                                : []),
-                            ...(isOwner
-                                ? []
-                                : [{ label: 'Remover', destructive: true, onPress: () => askRemove(member) }]),
-                        ];
+                                : [];
 
                         return (
                             <MemberCard
@@ -176,16 +235,36 @@ function TeamManagementContent({ teamId }: { teamId: string }) {
                     })}
                 </Section>
 
+                <Section title="Doações">
+                    <InfoRow label="Confirmadas" value={`${team.donations_confirmed} de ${team.donations_total}`} />
+                    {team.submmited_at ? (
+                        <InfoRow label="Submetido em" value={formatCampusDateTime(team.submmited_at)} />
+                    ) : null}
+                    {team.approved_at ? (
+                        <InfoRow label="Aprovado em" value={formatCampusDateTime(team.approved_at)} />
+                    ) : null}
+                </Section>
+
                 {team.status === 'SUBMITTED' ? (
-                    <View style={styles.actions}>
-                        {approveHint ? <ThemedText variant="caption">{approveHint}</ThemedText> : null}
-                        <Button
-                            title="Aprovar time"
-                            disabled={!canApprove}
-                            loading={approveTeam.isPending}
-                            onPress={askApprove}
+                    rejecting ? (
+                        <RejectForm
+                            teamName={team.name}
+                            loading={rejectTeam.isPending}
+                            onConfirm={handleReject}
+                            onCancel={() => setRejecting(false)}
                         />
-                    </View>
+                    ) : (
+                        <View style={styles.actions}>
+                            {approveHint ? <ThemedText variant="caption">{approveHint}</ThemedText> : null}
+                            <Button
+                                title="Aprovar time"
+                                disabled={!canApprove}
+                                loading={approveTeam.isPending}
+                                onPress={askApprove}
+                            />
+                            <Button title="Rejeitar time" variant="destructive" onPress={() => setRejecting(true)} />
+                        </View>
+                    )
                 ) : null}
             </ScrollView>
         </>
@@ -213,5 +292,17 @@ const styles = StyleSheet.create({
     },
     actions: {
         gap: spacing.xs,
+    },
+    rejectForm: {
+        gap: spacing.xs,
+    },
+    input: {
+        minHeight: 96,
+        padding: spacing.sm,
+        borderWidth: StyleSheet.hairlineWidth * 2,
+        borderRadius: radius.md,
+        borderCurve: 'continuous',
+        textAlignVertical: 'top',
+        backgroundColor: colors.systemBackground as string,
     },
 });

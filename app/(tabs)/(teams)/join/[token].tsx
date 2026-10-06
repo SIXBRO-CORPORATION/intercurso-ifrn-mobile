@@ -12,12 +12,13 @@ import { useToast } from '@/providers/ToastProvider';
 import { ApiError } from '@/types/api';
 import { radius, spacing, useBrandColors } from '@/theme';
 import { friendlyErrorMessage } from '@/utils/api-error-message';
+import { formatGenderRule, formatMembersRange } from '@/utils/modality-gender';
 
 export default function JoinTeamScreen() {
     const { token } = useLocalSearchParams<{ token: string }>();
     const brand = useBrandColors();
     const toast = useToast();
-    const { isAuthenticated, isInitializing } = useAuth();
+    const { user, isAuthenticated, isInitializing } = useAuth();
     const preview = useTeamInviteInfo(isAuthenticated ? token : '');
     const join = useJoinTeamViaInvite();
     const [joinError, setJoinError] = useState<string | null>(null);
@@ -47,7 +48,17 @@ export default function JoinTeamScreen() {
     }
 
     const team = preview.data;
-    const capacity = team.max_members ? `${team.members_count}/${team.max_members}` : String(team.members_count);
+    const membersRange = formatMembersRange(team.min_members, team.max_members);
+    const capacity = membersRange ? `${team.members_count} (${membersRange})` : String(team.members_count);
+    const isFull = team.max_members != null && team.members_count >= team.max_members;
+
+    const requiredGender = team.gender_mode === 'MALE' ? 'M' : team.gender_mode === 'FEMALE' ? 'F' : null;
+    const genderMismatch = requiredGender !== null && !!user?.gender && user.gender !== requiredGender;
+    const joinBlockedReason = isFull
+        ? 'Este time já atingiu o limite máximo de membros.'
+        : genderMismatch
+          ? `Esta modalidade é exclusiva para o gênero ${team.gender_mode === 'MALE' ? 'masculino' : 'feminino'}.`
+          : null;
 
     const handleJoin = async () => {
         if (join.isPending) return;
@@ -75,6 +86,8 @@ export default function JoinTeamScreen() {
             </View>
 
             <Section title="Sobre o time">
+                {team.modality_name ? <InfoRow label="Modalidade" value={team.modality_name} /> : null}
+                {team.gender_mode ? <InfoRow label="Regra de gênero" value={formatGenderRule(team)} /> : null}
                 <InfoRow label="Membros" value={capacity} />
                 <InfoRow label="Dono" value={team.owner_name ?? '—'} />
                 <InfoRow label="Capitão" value={team.captain_name ?? 'Não definido'} />
@@ -86,7 +99,17 @@ export default function JoinTeamScreen() {
                 </ThemedText>
             ) : null}
 
-            <Button title="Entrar no time" onPress={handleJoin} loading={join.isPending} />
+            {joinBlockedReason ? (
+                <ThemedText variant="caption" accessibilityRole="alert" style={{ color: brand.primary }}>
+                    {joinBlockedReason}
+                </ThemedText>
+            ) : null}
+            <Button
+                title="Entrar no time"
+                onPress={handleJoin}
+                loading={join.isPending}
+                disabled={joinBlockedReason !== null}
+            />
             <Button title="Cancelar" variant="ghost" onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
         </ScrollView>
     );

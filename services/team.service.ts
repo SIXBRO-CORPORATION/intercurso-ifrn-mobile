@@ -1,6 +1,10 @@
 import { httpClient } from '@/utils/http-client';
 import type {
     TeamApproveResponse,
+    TeamDeleteResponse,
+    TeamRegenerateInviteResponse,
+    TeamRejectRequest,
+    TeamRejectResponse,
     TeamConfirmDonationResponse,
     TeamDetails,
     TeamInvitePreview,
@@ -26,7 +30,14 @@ function unwrap<T>(data: T | undefined, message: string): T {
 
 class TeamService {
     async createTeam(request: TeamRegisterRequest): Promise<TeamRegisterResponse> {
-        const response = await httpClient.post<TeamRegisterResponse>(`${BASE_PATH}/`, request);
+        const form = new FormData();
+        form.append('name', request.name);
+        form.append('modality_id', request.modality_id);
+        if (request.photo) {
+            form.append('photo', request.photo as unknown as Blob);
+        }
+
+        const response = await httpClient.post<TeamRegisterResponse>(`${BASE_PATH}/`, form);
 
         return unwrap(response.data, 'O backend não retornou os dados do time criado');
     }
@@ -65,6 +76,26 @@ class TeamService {
         const response = await httpClient.patch<TeamApproveResponse>(`${BASE_PATH}/${teamId}/approve`);
 
         return unwrap(response.data, 'O backend não retornou os dados do time aprovado');
+    }
+
+    async rejectTeam(teamId: string, request: TeamRejectRequest): Promise<TeamRejectResponse> {
+        const response = await httpClient.patch<TeamRejectResponse>(`${BASE_PATH}/${teamId}/reject`, request);
+
+        return unwrap(response.data, 'O backend não retornou os dados da rejeição do time');
+    }
+
+    async deleteTeam(teamId: string): Promise<TeamDeleteResponse> {
+        const response = await httpClient.delete<TeamDeleteResponse>(`${BASE_PATH}/${teamId}`);
+
+        return unwrap(response.data, 'O backend não retornou os dados da exclusão do time');
+    }
+
+    async regenerateInvite(teamId: string): Promise<TeamRegenerateInviteResponse> {
+        const response = await httpClient.post<TeamRegenerateInviteResponse>(
+            `${BASE_PATH}/${teamId}/invite/regenerate`
+        );
+
+        return unwrap(response.data, 'O backend não retornou o novo convite');
     }
 
     async confirmDonation(teamId: string, userId: string): Promise<TeamConfirmDonationResponse> {

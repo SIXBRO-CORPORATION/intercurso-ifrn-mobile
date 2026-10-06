@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { teamService } from '@/services/team.service';
 import { queryKeys } from '@/utils/query-keys';
 import { ApiError } from '@/types/api';
-import type { TeamListFilters, TeamRegisterRequest } from '@/types/team';
+import type { TeamListFilters, TeamRegisterRequest, TeamRejectRequest } from '@/types/team';
 
 function isClientError(error: unknown): boolean {
     return error instanceof ApiError && error.status >= 400 && error.status < 500;
@@ -131,6 +131,42 @@ export function useLeaveTeam() {
 
     return useMutation({
         mutationFn: ({ teamId }: TeamIdVariables) => teamService.leaveTeam(teamId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.teams.all });
+        },
+    });
+}
+
+export function useRejectTeam() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ teamId, reason }: TeamIdVariables & { reason: string }) =>
+            teamService.rejectTeam(teamId, { reason } satisfies TeamRejectRequest),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.teams.all });
+            queryClient.invalidateQueries({ queryKey: queryKeys.seasons.all });
+        },
+    });
+}
+
+export function useDeleteTeam() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ teamId }: TeamIdVariables) => teamService.deleteTeam(teamId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.teams.all });
+            queryClient.invalidateQueries({ queryKey: queryKeys.seasons.all });
+        },
+    });
+}
+
+export function useRegenerateInvite() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ teamId }: TeamIdVariables) => teamService.regenerateInvite(teamId),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.teams.all });
         },
