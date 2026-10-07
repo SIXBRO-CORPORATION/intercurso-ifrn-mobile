@@ -24,6 +24,36 @@ function serializeBody(body: unknown): BodyInit | undefined {
     return JSON.stringify(body);
 }
 
+interface MinimalResponse {
+    ok: boolean;
+    status: number;
+    json: () => Promise<any>;
+}
+
+function sendFormData(
+    url: string,
+    method: string,
+    headers: Headers,
+    body: FormData
+): Promise<MinimalResponse> {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open(method, url);
+        headers.forEach((value, key) => {
+            xhr.setRequestHeader(key, value);
+        });
+        xhr.onload = () =>
+            resolve({
+                ok: xhr.status >= 200 && xhr.status < 300,
+                status: xhr.status,
+                json: async () => JSON.parse(xhr.responseText),
+            });
+        xhr.onerror = () => reject(new TypeError('Network request failed'));
+        xhr.ontimeout = () => reject(new TypeError('Network request timed out'));
+        xhr.send(body as unknown as XMLHttpRequestBodyInit);
+    });
+}
+
 let toastCallback: ((message: string, type: 'success' | 'error') => void) | null = null;
 
 export const setToastCallback = (callback: (message: string, type: 'success' | 'error') => void) => {
@@ -108,10 +138,12 @@ class HttpClient {
         }
 
         try {
-            const response = await fetch(url, {
-                ...restConfig,
-                headers: requestHeaders,
-            });
+            const response = isFormData
+                ? await sendFormData(url, restConfig.method ?? 'POST', requestHeaders, restConfig.body as FormData)
+                : await fetch(url, {
+                      ...restConfig,
+                      headers: requestHeaders,
+                  });
 
             if (response.status === 401 && !skipAuth) {
                 const newToken = await this.getOrCreateRefreshPromise();
