@@ -14,6 +14,10 @@ export default function GamesLayout() {
             }}
         >
             <Stack.Screen name="index" options={{ title: 'Jogos' }} />
+            <Stack.Screen
+                name="match/[matchId]"
+                options={{ title: 'Partida', headerLargeTitleEnabled: false, headerRight: undefined }}
+            />
         </Stack>
     );
 }

@@ -1,4 +1,5 @@
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Link } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { formatCampusTime, formatMatchClock, formatCampusShortDate } from '@/utils/campus-time';
 import { colors, radius, shadows, spacing, typography, useBrandColors } from '@/theme';
@@ -79,37 +80,45 @@ export function MatchCard({ match }: MatchCardProps) {
         .join(' · ');
 
     return (
-        <View
-            style={styles.card}
-            accessible
-            accessibilityLabel={`${match.modality_name ?? 'Partida'}: ${team1Name} contra ${team2Name}`}
-        >
-            <View style={styles.header}>
-                <ThemedText variant="caption" numberOfLines={1} style={styles.summary}>
-                    {summary || 'Partida'}
-                </ThemedText>
-                <StatusBadge
-                    status={match.status}
-                    clockSeconds={match.clock_seconds}
-                    period={match.current_period}
-                    scheduledDate={match.scheduled_date}
-                />
-            </View>
+        <Link href={`/match/${match.match_id}`} asChild>
+            <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${match.modality_name ?? 'Partida'}: ${team1Name} contra ${team2Name}. Abrir partida`}
+            >
+                {({ pressed }) => (
+                    <View style={[styles.card, { opacity: pressed ? 0.7 : 1 }]}>
+                        <View style={styles.header}>
+                            <ThemedText variant="caption" numberOfLines={1} style={styles.summary}>
+                                {summary || 'Partida'}
+                            </ThemedText>
+                            <StatusBadge
+                                status={match.status}
+                                clockSeconds={match.clock_seconds}
+                                period={match.current_period}
+                                scheduledDate={match.scheduled_date}
+                            />
+                        </View>
 
-            <View style={styles.row}>
-                <TeamSlot team={match.team1} align="left" />
-                <View style={styles.scoreBox}>
-                    {showScore ? (
-                        <ThemedText variant="score" accessibilityLabel={`${match.team1?.score ?? 0} a ${match.team2?.score ?? 0}`}>
-                            {match.team1?.score ?? 0} × {match.team2?.score ?? 0}
-                        </ThemedText>
-                    ) : (
-                        <ThemedText variant="subhead">× </ThemedText>
-                    )}
-                </View>
-                <TeamSlot team={match.team2} align="right" />
-            </View>
-        </View>
+                        <View style={styles.row}>
+                            <TeamSlot team={match.team1} align="left" />
+                            <View style={styles.scoreBox}>
+                                {showScore ? (
+                                    <ThemedText
+                                        variant="score"
+                                        accessibilityLabel={`${match.team1?.score ?? 0} a ${match.team2?.score ?? 0}`}
+                                    >
+                                        {match.team1?.score ?? 0} × {match.team2?.score ?? 0}
+                                    </ThemedText>
+                                ) : (
+                                    <ThemedText variant="subhead">× </ThemedText>
+                                )}
+                            </View>
+                            <TeamSlot team={match.team2} align="right" />
+                        </View>
+                    </View>
+                )}
+            </Pressable>
+        </Link>
     );
 }
 
