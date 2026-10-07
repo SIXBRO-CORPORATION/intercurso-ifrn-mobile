@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import { Alert, RefreshControl, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/button';
@@ -27,7 +27,7 @@ import { friendlyErrorMessage } from '@/utils/api-error-message';
 import { formatCampusDateTime } from '@/utils/campus-time';
 import { formatGenderRule, formatMembersRange } from '@/utils/modality-gender';
 import { describeMissingQuota, getGenderQuota } from '@/utils/team-gender-quota';
-import { buildInviteLink, inviteStore } from '@/utils/team-invite';
+import { buildInviteLink } from '@/utils/team-invite';
 
 const STATUS_COPY: Record<TeamStatus, string> = {
     DRAFT: 'O time está em rascunho. Convide os integrantes e submeta para aprovação quando atingir os requisitos da modalidade.',
@@ -60,19 +60,8 @@ function RejectionNotice({ team }: { team: TeamDetails }) {
 function InviteSection({ team, onRegenerated }: { team: TeamDetails; onRegenerated: (token: string) => void }) {
     const toast = useToast();
     const regenerate = useRegenerateInvite();
-    const [storedToken, setStoredToken] = useState<string | null | undefined>(undefined);
 
-    useEffect(() => {
-        let active = true;
-        inviteStore.get(team.team_id).then((value) => {
-            if (active) setStoredToken(value);
-        });
-        return () => {
-            active = false;
-        };
-    }, [team.team_id]);
-
-    const token = team.invite_token ?? storedToken ?? null;
+    const token = team.invite_token ?? null;
 
     const handleShare = async () => {
         if (!token) return;
@@ -94,7 +83,6 @@ function InviteSection({ team, onRegenerated }: { team: TeamDetails; onRegenerat
                     onPress: async () => {
                         try {
                             const result = await regenerate.mutateAsync({ teamId: team.team_id });
-                            await inviteStore.save(team.team_id, result.invite_token);
                             onRegenerated(result.invite_token);
                             toast.success('Novo convite gerado.');
                         } catch (error) {
@@ -232,12 +220,11 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                 {
                     text: 'Submeter',
                     onPress: async () => {
-                        const ok = await run(
+                        await run(
                             () => submitTeam.mutateAsync({ teamId: team.team_id }),
                             'Time submetido para aprovação.',
                             'Não foi possível submeter o time.'
                         );
-                        if (ok) inviteStore.remove(team.team_id);
                     },
                 },
             ]
@@ -305,7 +292,6 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                             'Não foi possível excluir o time.'
                         );
                         if (ok) {
-                            await inviteStore.remove(team.team_id);
                             leaveScreen();
                         }
                     },

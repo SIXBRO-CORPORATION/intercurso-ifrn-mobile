@@ -28,6 +28,13 @@
       "expo-web-browser",
       "expo-secure-store",
       "./plugins/withCmakeObjectPathMax.js",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O app acessa sua galeria para você escolher a foto do time.",
+          "cameraPermission": "O app acessa a câmera para você tirar a foto do time."
+        }
+      ],
       "expo-splash-screen",
       "expo-status-bar"
     ]

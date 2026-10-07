@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { Button } from '@/components/button';
 import { LoginPrompt } from '@/components/auth/login-prompt';
@@ -12,14 +13,43 @@ import { useActiveSeason } from '@/hooks/useSeasons';
 import { useCreateTeam } from '@/hooks/useTeams';
 import { useToast } from '@/providers/ToastProvider';
 import { ApiError } from '@/types/api';
+import type { TeamPhotoFile } from '@/types/team';
 import { GenderLabel, type Gender } from '@/types/enums';
 import type { ModalitySummaryResponse } from '@/types/modality-list';
 import { colors, radius, spacing, useBrandColors } from '@/theme';
 import { friendlyErrorMessage } from '@/utils/api-error-message';
 import { formatGenderRule, formatMembers } from '@/utils/modality-gender';
-import { inviteStore } from '@/utils/team-invite';
 
 const GENDER_BY_MODE: Record<'MALE' | 'FEMALE', Gender> = { MALE: 'M', FEMALE: 'F' };
+
+const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
+const PHOTO_MIME_BY_EXTENSION: Record<string, string> = {
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    webp: 'image/webp',
+};
+const ACCEPTED_PHOTO_MIME = ['image/png', 'image/jpeg', 'image/webp'];
+
+function extensionOf(value: string): string | null {
+    const match = value.toLowerCase().match(/\.([a-z0-9]+)(?:[?#]|$)/);
+    return match ? match[1] : null;
+}
+
+function toTeamPhoto(asset: ImagePicker.ImagePickerAsset): { photo?: TeamPhotoFile; error?: string } {
+    const extension = extensionOf(asset.fileName ?? '') ?? extensionOf(asset.uri);
+    const type = asset.mimeType ?? (extension ? PHOTO_MIME_BY_EXTENSION[extension] : undefined);
+
+    if (!type || !ACCEPTED_PHOTO_MIME.includes(type)) {
+        return { error: 'Escolha uma foto em PNG, JPG ou WEBP.' };
+    }
+    if (asset.fileSize != null && asset.fileSize > PHOTO_MAX_BYTES) {
+        return { error: 'A foto precisa ter até 5 MB.' };
+    }
+
+    const ext = type === 'image/jpeg' ? 'jpg' : type.replace('image/', '');
+    return { photo: { uri: asset.uri, name: `team-photo.${ext}`, type } };
+}
 
 function unavailableReason(modality: ModalitySummaryResponse, gender: Gender | null | undefined): string | null {
     if (modality.gender_mode === 'MIXED') return null;
@@ -41,8 +71,37 @@ export default function CreateTeamScreen() {
 
     const [name, setName] = useState('');
     const [modalityId, setModalityId] = useState<string | null>(null);
-    const [errors, setErrors] = useState<{ name?: string; modality?: string }>({});
+    const [photo, setPhoto] = useState<TeamPhotoFile | null>(null);
+    const [errors, setErrors] = useState<{ name?: string; modality?: string; photo?: string }>({});
     const [submitError, setSubmitError] = useState<string | null>(null);
+
+    const pickPhoto = async () => {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+            Alert.alert(
+                'Acesso às fotos',
+                'Permita o acesso à galeria nas configurações do aparelho para escolher a foto do time.'
+            );
+            return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+        });
+        if (result.canceled || result.assets.length === 0) return;
+
+        const converted = toTeamPhoto(result.assets[0]);
+        if (converted.error) {
+            setErrors((current) => ({ ...current, photo: converted.error }));
+            return;
+        }
+
+        setErrors((current) => ({ ...current, photo: undefined }));
+        setPhoto(converted.photo!);
+    };
 
     if (isInitializing || activeSeason.isPending) {
         return <LoadingState label="Carregando…" />;
@@ -53,7 +112,7 @@ export default function CreateTeamScreen() {
     }
 
     if (activeSeason.isError && !season) {
-        const noSeason = activeSeason.error instanceof ApiError && activeSeason.error.status < 500 && activeSeason.error.status > 0;
+        const noSeason = activeSeason.error instanceof ApiError && activeSeason.error.status === 404;
         if (!noSeason) {
             return (
                 <ErrorState
@@ -102,10 +161,11 @@ export default function CreateTeamScreen() {
         setSubmitError(null);
 
         try {
-            const created = await createTeam.mutateAsync({ name: trimmed, modality_id: modalityId! });
-            if (created.invite_token) {
-                await inviteStore.save(created.team_id, created.invite_token);
-            }
+            const created = await createTeam.mutateAsync({
+                name: trimmed,
+                modality_id: modalityId!,
+                photo,
+            });
             toast.success('Time criado. Convide os integrantes pelo link de convite.');
             router.replace(`/team/${created.team_id}`);
         } catch (error) {
@@ -178,6 +238,37 @@ export default function CreateTeamScreen() {
                 Você será o dono do time e poderá convidar os integrantes por link depois de criá-lo.
             </ThemedText>
 
+            <View style={styles.field}>
+                <ThemedText variant="caption">Foto do time (opcional)</ThemedText>
+                <View style={styles.photoRow}>
+                    <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={photo ? 'Trocar foto do time' : 'Escolher foto do time'}
+                        onPress={pickPhoto}
+                        style={({ pressed }) => [styles.photo, { opacity: pressed ? 0.7 : 1 }]}
+                    >
+                        {photo ? (
+                            <Image source={{ uri: photo.uri }} style={styles.photoImage} accessibilityIgnoresInvertColors />
+                        ) : (
+                            <ThemedText variant="caption">Escolher</ThemedText>
+                        )}
+                    </Pressable>
+                    {photo ? (
+                        <View style={styles.photoActions}>
+                            <Button title="Trocar foto" variant="secondary" size="sm" onPress={pickPhoto} />
+                            <Button title="Remover" variant="ghost" size="sm" onPress={() => setPhoto(null)} />
+                        </View>
+                    ) : null}
+                </View>
+                {errors.photo ? (
+                    <ThemedText variant="caption" accessibilityRole="alert" style={{ color: brand.primary }}>
+                        {errors.photo}
+                    </ThemedText>
+                ) : (
+                    <ThemedText variant="caption">PNG, JPG ou WEBP até 5 MB.</ThemedText>
+                )}
+            </View>
+
             <FormField
                 label="Nome do time"
                 value={name}
@@ -214,6 +305,29 @@ const styles = StyleSheet.create({
         gap: spacing.md,
     },
     field: {
+        gap: spacing.xs,
+    },
+    photoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
+    },
+    photo: {
+        width: 96,
+        height: 96,
+        borderRadius: radius.lg,
+        borderCurve: 'continuous',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+        backgroundColor: colors.secondarySystemBackground as string,
+    },
+    photoImage: {
+        width: '100%',
+        height: '100%',
+    },
+    photoActions: {
+        flex: 1,
         gap: spacing.xs,
     },
     options: {
