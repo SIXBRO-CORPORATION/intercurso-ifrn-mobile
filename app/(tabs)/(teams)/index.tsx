@@ -4,6 +4,7 @@ import { Button } from '@/components/button';
 import { LoginPrompt } from '@/components/auth/login-prompt';
 import { EmptyState, ErrorState, LoadingState } from '@/components/states/screen-states';
 import { TeamStatusBadge } from '@/components/teams/team-status-badge';
+import { TeamAvatar } from '@/components/teams/team-avatar';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveSeason } from '@/hooks/useSeasons';
@@ -26,6 +27,7 @@ function TeamRow({ team, isOwner }: { team: TeamSummary; isOwner: boolean }) {
             >
                 {({ pressed }) => (
                     <View style={[styles.row, { opacity: pressed ? 0.7 : 1 }]}>
+                        <TeamAvatar name={team.name} photo={team.photo} />
                         <View style={styles.texts}>
                             <ThemedText variant="headline" numberOfLines={1}>
                                 {team.name}

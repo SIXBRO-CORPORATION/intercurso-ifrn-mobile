@@ -7,6 +7,7 @@ import { InfoRow, Section } from '@/components/management/section';
 import { ErrorState, LoadingState } from '@/components/states/screen-states';
 import { MemberCard, type MemberAction } from '@/components/teams/member-card';
 import { TeamStatusBadge } from '@/components/teams/team-status-badge';
+import { TeamAvatar } from '@/components/teams/team-avatar';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveSeason } from '@/hooks/useSeasons';
@@ -316,6 +317,7 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                 }
             >
                 <View style={styles.hero}>
+                    <TeamAvatar name={team.name} photo={team.photo} size={96} />
                     <ThemedText variant="title" selectable>
                         {team.name}
                     </ThemedText>

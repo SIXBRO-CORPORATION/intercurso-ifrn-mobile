@@ -34,6 +34,7 @@ export interface TeamSummary {
     season_id?: string | null;
     modality_id: string;
     modality_name?: string | null;
+    photo?: string | null;
     status: TeamStatus;
     owner_id?: string | null;
     owner_name?: string | null;

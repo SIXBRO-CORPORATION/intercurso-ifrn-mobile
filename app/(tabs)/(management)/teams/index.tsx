@@ -5,6 +5,7 @@ import { FilterChips, type FilterChipOption } from '@/components/filter-chips';
 import { ManagementGuard } from '@/components/management/management-guard';
 import { EmptyState, ErrorState, LoadingState } from '@/components/states/screen-states';
 import { Pill } from '@/components/teams/pill';
+import { TeamAvatar } from '@/components/teams/team-avatar';
 import { ThemedText } from '@/components/themed-text';
 import { useActiveSeason, useSeasons } from '@/hooks/useSeasons';
 import { useTeams } from '@/hooks/useTeams';
@@ -39,6 +40,7 @@ function TeamRow({ team }: { team: TeamSummary }) {
             >
                 {({ pressed }) => (
                     <View style={[styles.row, { opacity: pressed ? 0.7 : 1 }]}>
+                        <TeamAvatar name={team.name} photo={team.photo} />
                         <View style={styles.texts}>
                             <ThemedText variant="headline" numberOfLines={1}>
                                 {team.name}

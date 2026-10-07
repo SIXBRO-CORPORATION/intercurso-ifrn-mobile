@@ -7,6 +7,7 @@ import { ManagementGuard } from '@/components/management/management-guard';
 import { ErrorState, LoadingState } from '@/components/states/screen-states';
 import { MemberCard, type MemberAction } from '@/components/teams/member-card';
 import { TeamStatusBadge } from '@/components/teams/team-status-badge';
+import { TeamAvatar } from '@/components/teams/team-avatar';
 import { ThemedText } from '@/components/themed-text';
 import { useApproveTeam, useConfirmDonation, useRejectTeam, useTeamDetails } from '@/hooks/useTeams';
 import { useToast } from '@/providers/ToastProvider';
@@ -180,6 +181,7 @@ function TeamManagementContent({ teamId }: { teamId: string }) {
                 refreshControl={<RefreshControl refreshing={details.isRefetching} onRefresh={() => details.refetch()} />}
             >
                 <View style={styles.hero}>
+                    <TeamAvatar name={team.name} photo={team.photo} size={96} />
                     <ThemedText variant="title" selectable>
                         {team.name}
                     </ThemedText>
