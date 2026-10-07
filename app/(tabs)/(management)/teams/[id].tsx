@@ -228,7 +228,7 @@ function TeamManagementContent({ teamId }: { teamId: string }) {
                                 name={member.name}
                                 subtitle={`Matrícula ${member.matricula}`}
                                 isOwner={isOwner}
-                                isCaptain={member.user_id === team.captain_id || member.role === 'CAPTAIN'}
+                                isCaptain={member.user_id === team.captain_id}
                                 donation={team.status === 'DRAFT' ? undefined : member.donation_status}
                                 actions={actions}
                                 divider={index > 0}

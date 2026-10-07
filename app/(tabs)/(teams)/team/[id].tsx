@@ -353,7 +353,7 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                     ) : null}
                     {team.members.map((member, index) => {
                         const memberIsOwner = member.user_id === team.owner_id;
-                        const memberIsCaptain = member.user_id === team.captain_id || member.role === 'CAPTAIN';
+                        const memberIsCaptain = member.user_id === team.captain_id;
                         const actions: MemberAction[] =
                             isOwner && isDraft
                                 ? [

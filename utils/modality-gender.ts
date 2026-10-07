@@ -9,15 +9,14 @@ interface GenderRuleSource {
     min_female_members?: number | null;
 }
 
-export function formatMembers(modality: MembersRange): string {
-    return modality.min_members === modality.max_members
-        ? `${modality.min_members} por equipe`
-        : `${modality.min_members} a ${modality.max_members} por equipe`;
-}
-
+/** Faixa de integrantes ("3 por equipe" ou "3 a 5 por equipe"). Null quando os limites ainda não chegaram. */
 export function formatMembersRange(min?: number | null, max?: number | null): string | null {
     if (min == null || max == null) return null;
     return min === max ? `${min} por equipe` : `${min} a ${max} por equipe`;
+}
+
+export function formatMembers(modality: MembersRange): string {
+    return formatMembersRange(modality.min_members, modality.max_members) ?? '';
 }
 
 function plural(count: number, one: string, many: string): string {
