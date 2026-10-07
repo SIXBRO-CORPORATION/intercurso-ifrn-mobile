@@ -1,7 +1,7 @@
 import { Alert, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/button';
-import { InfoRow, Section } from '@/components/management/section';
+import { InfoRow, LinkRow, Section } from '@/components/management/section';
 import { ManagementGuard } from '@/components/management/management-guard';
 import { SeasonStatusBadge } from '@/components/management/season-status-badge';
 import { ErrorState, LoadingState } from '@/components/states/screen-states';
@@ -208,7 +208,7 @@ function SeasonDetailsContent({ seasonId }: { seasonId: string }) {
                         <ThemedText variant="subhead">Nenhuma modalidade vinculada.</ThemedText>
                     ) : (
                         season.modality_ids.map((id) => (
-                            <InfoRow
+                            <LinkRow
                                 key={id}
                                 label={modalityNames.get(id) ?? 'Modalidade'}
                                 value={
@@ -218,6 +218,7 @@ function SeasonDetailsContent({ seasonId }: { seasonId: string }) {
                                           ? 'Indisponível'
                                           : bracketLabel(bracketByModality.get(id))
                                 }
+                                onPress={() => router.push(`/seasons/${season.season_id}/bracket/${id}` as never)}
                             />
                         ))
                     )}

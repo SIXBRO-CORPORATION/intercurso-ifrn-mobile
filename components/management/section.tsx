@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { colors, radius, shadows, spacing } from '@/theme';
 
@@ -22,6 +22,27 @@ export function InfoRow({ label, value }: { label: string; value: string }) {
                 {value}
             </ThemedText>
         </View>
+    );
+}
+
+export function LinkRow({ label, value, onPress }: { label: string; value: string; onPress: () => void }) {
+    return (
+        <Pressable
+            onPress={onPress}
+            accessibilityRole="button"
+            accessibilityLabel={`${label}: ${value}`}
+            style={({ pressed }) => [styles.row, { opacity: pressed ? 0.6 : 1 }]}
+        >
+            <ThemedText variant="subhead">{label}</ThemedText>
+            <View style={styles.linkValue}>
+                <ThemedText variant="body" style={styles.value} numberOfLines={1}>
+                    {value}
+                </ThemedText>
+                <ThemedText variant="body" style={styles.chevron}>
+                    ›
+                </ThemedText>
+            </View>
+        </Pressable>
     );
 }
 
@@ -50,5 +71,14 @@ const styles = StyleSheet.create({
     value: {
         flexShrink: 1,
         textAlign: 'right',
+    },
+    linkValue: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        flexShrink: 1,
+    },
+    chevron: {
+        color: colors.secondaryLabel as string,
     },
 });
