@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { MatchPublicResponse } from '@/types/match';
 
 export function teamName(match: MatchPublicResponse, teamId?: string | null): string | undefined {
@@ -23,21 +23,37 @@ export function expelledPlayerIds(match: MatchPublicResponse): Set<string> {
     return ids;
 }
 
-export function useLiveClock(seconds: number, running: boolean): number {
-    const anchorRef = useRef({ seconds, timestamp: Date.now() });
-    const [, forceTick] = useState(0);
+interface ClockAnchor {
+    seconds: number;
+    running: boolean;
+    syncedAt: number;
+}
 
-    useEffect(() => {
-        anchorRef.current = { seconds, timestamp: Date.now() };
-        forceTick((tick) => tick + 1);
-    }, [seconds, running]);
+
+const clockAnchors = new Map<string, ClockAnchor>();
+
+function syncClockAnchor(matchId: string, seconds: number, running: boolean): ClockAnchor {
+    const current = clockAnchors.get(matchId);
+    
+    if (!current || current.seconds !== seconds || current.running !== running) {
+        const next: ClockAnchor = { seconds, running, syncedAt: Date.now() };
+        clockAnchors.set(matchId, next);
+        return next;
+    }
+
+    return current;
+}
+
+export function useLiveClock(matchId: string, seconds: number, running: boolean): number {
+    const anchor = syncClockAnchor(matchId, seconds, running);
+    const [, forceTick] = useState(0);
 
     useEffect(() => {
         if (!running) return;
         const interval = setInterval(() => forceTick((tick) => tick + 1), 1000);
         return () => clearInterval(interval);
-    }, [running]);
+    }, [running, matchId]);
 
-    if (!running) return anchorRef.current.seconds;
-    return anchorRef.current.seconds + Math.floor((Date.now() - anchorRef.current.timestamp) / 1000);
+    if (!anchor.running) return anchor.seconds;
+    return anchor.seconds + Math.floor((Date.now() - anchor.syncedAt) / 1000);
 }

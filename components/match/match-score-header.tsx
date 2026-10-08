@@ -9,7 +9,11 @@ import { teamName, useLiveClock } from './match-helpers';
 
 function StatusLine({ match }: { match: MatchPublicResponse }) {
     const brand = useBrandColors();
-    const liveSeconds = useLiveClock(match.clock_seconds, match.clock_running && match.status === 'IN_PROGRESS');
+    const liveSeconds = useLiveClock(
+        match.match_id,
+        match.clock_seconds,
+        match.clock_running && match.status === 'IN_PROGRESS'
+    );
 
     if (match.status === 'IN_PROGRESS') {
         return (
