@@ -29,31 +29,37 @@ interface ClockAnchor {
     syncedAt: number;
 }
 
-
 const clockAnchors = new Map<string, ClockAnchor>();
 
-function syncClockAnchor(matchId: string, seconds: number, running: boolean): ClockAnchor {
+function computeClockAnchor(matchId: string, seconds: number, running: boolean): ClockAnchor {
     const current = clockAnchors.get(matchId);
-    
-    if (!current || current.seconds !== seconds || current.running !== running) {
-        const next: ClockAnchor = { seconds, running, syncedAt: Date.now() };
-        clockAnchors.set(matchId, next);
-        return next;
+
+    if (current && current.seconds === seconds && current.running === running) {
+        return current;
     }
 
-    return current;
+    const next: ClockAnchor = { seconds, running, syncedAt: Date.now() };
+    clockAnchors.set(matchId, next);
+    return next;
 }
 
 export function useLiveClock(matchId: string, seconds: number, running: boolean): number {
-    const anchor = syncClockAnchor(matchId, seconds, running);
-    const [, forceTick] = useState(0);
+
+    const [anchor, setAnchor] = useState<ClockAnchor>(() => computeClockAnchor(matchId, seconds, running));
 
     useEffect(() => {
-        if (!running) return;
-        const interval = setInterval(() => forceTick((tick) => tick + 1), 1000);
+        setAnchor(computeClockAnchor(matchId, seconds, running));
+    }, [matchId, seconds, running]);
+
+    const [now, setNow] = useState(() => Date.now());
+
+    useEffect(() => {
+        if (!anchor.running) return;
+        setNow(Date.now());
+        const interval = setInterval(() => setNow(Date.now()), 1000);
         return () => clearInterval(interval);
-    }, [running, matchId]);
+    }, [anchor]);
 
     if (!anchor.running) return anchor.seconds;
-    return anchor.seconds + Math.floor((Date.now() - anchor.syncedAt) / 1000);
+    return anchor.seconds + Math.max(0, Math.floor((now - anchor.syncedAt) / 1000));
 }
