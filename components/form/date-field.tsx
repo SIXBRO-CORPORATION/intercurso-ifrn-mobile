@@ -3,7 +3,7 @@ import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import DateTimePicker from '@expo/ui/community/datetime-picker';
 import { ThemedText } from '@/components/themed-text';
 import { colors, radius, spacing, useBrandColors } from '@/theme';
-import { formatPickerDate } from '@/utils/campus-time';
+import { formatPickerDate, formatPickerDateTime } from '@/utils/campus-time';
 
 interface DateFieldProps {
     label: string;
@@ -12,11 +12,13 @@ interface DateFieldProps {
     minimumDate?: Date;
     error?: string;
     hint?: string;
+    mode?: 'date' | 'datetime';
 }
 
-export function DateField({ label, value, onChange, minimumDate, error, hint }: DateFieldProps) {
+export function DateField({ label, value, onChange, minimumDate, error, hint, mode = 'date' }: DateFieldProps) {
     const brand = useBrandColors();
     const [androidOpen, setAndroidOpen] = useState(false);
+    const formatValue = mode === 'datetime' ? formatPickerDateTime : formatPickerDate;
 
     return (
         <View style={styles.wrap}>
@@ -24,7 +26,7 @@ export function DateField({ label, value, onChange, minimumDate, error, hint }: 
             <View style={styles.control}>
                 {Platform.OS === 'ios' ? (
                     <DateTimePicker
-                        mode="date"
+                        mode={mode}
                         display="compact"
                         value={value}
                         minimumDate={minimumDate}
@@ -36,15 +38,15 @@ export function DateField({ label, value, onChange, minimumDate, error, hint }: 
                     <>
                         <Pressable
                             accessibilityRole="button"
-                            accessibilityLabel={`${label}: ${formatPickerDate(value)}. Alterar data`}
+                            accessibilityLabel={`${label}: ${formatValue(value)}. Alterar data`}
                             onPress={() => setAndroidOpen(true)}
                             style={({ pressed }) => [styles.androidButton, { opacity: pressed ? 0.7 : 1 }]}
                         >
-                            <ThemedText variant="body">{formatPickerDate(value)}</ThemedText>
+                            <ThemedText variant="body">{formatValue(value)}</ThemedText>
                         </Pressable>
                         {androidOpen ? (
                             <DateTimePicker
-                                mode="date"
+                                mode={mode}
                                 value={value}
                                 minimumDate={minimumDate}
                                 accentColor={brand.primary}

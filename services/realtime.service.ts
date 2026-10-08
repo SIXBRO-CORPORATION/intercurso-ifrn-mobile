@@ -12,10 +12,12 @@ function unwrap<T>(data: T | undefined, message: string): T {
 
 class RealtimeService {
     async issueTicket(channelType: LiveChannelType, channelId: string): Promise<LiveTicketResponse> {
-        const response = await httpClient.post<LiveTicketResponse>(`${BASE_PATH}/ticket`, {
-            channel_type: channelType,
-            channel_id: channelId,
-        });
+        const response = await httpClient.post<LiveTicketResponse>(
+            `${BASE_PATH}/ticket`,
+            { channel_type: channelType, channel_id: channelId },
+
+            { skipToast: true }
+        );
 
         return unwrap(response.data, 'O backend não retornou o ticket de conexão em tempo real');
     }

@@ -15,7 +15,7 @@ function toCampusWallClock(date: Date): Date {
     return new Date(date.getTime() + CAMPUS_OFFSET_MINUTES * 60_000);
 }
 
-function formatIsoAtCampus(year: number, month: number, day: number, time: string, ms: number): string {
+export function formatIsoAtCampus(year: number, month: number, day: number, time: string, ms: number): string {
     return `${year}-${pad(month + 1)}-${pad(day)}T${time}.${pad(ms, 3)}${CAMPUS_OFFSET_ISO}`;
 }
 
@@ -95,4 +95,30 @@ export function pickerDateToIso(date: Date, endOfDay: boolean): string {
 
 export function formatPickerDate(date: Date): string {
     return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
+}
+
+export function formatPickerDateTime(date: Date): string {
+    return `${formatPickerDate(date)} às ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+export function isoToPickerDateTime(isoDate?: string | null): Date {
+    if (!isoDate) return new Date();
+    const wall = toCampusWallClock(new Date(isoDate));
+    return new Date(
+        wall.getUTCFullYear(),
+        wall.getUTCMonth(),
+        wall.getUTCDate(),
+        wall.getUTCHours(),
+        wall.getUTCMinutes()
+    );
+}
+
+export function pickerDateTimeToIso(date: Date): string {
+    return formatIsoAtCampus(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+        `${pad(date.getHours())}:${pad(date.getMinutes())}:00`,
+        0
+    );
 }

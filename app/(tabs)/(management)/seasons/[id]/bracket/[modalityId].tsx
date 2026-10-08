@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { Link, router, Stack, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/button';
 import { ManagementGuard } from '@/components/management/management-guard';
 import { InfoRow, Section } from '@/components/management/section';
@@ -11,7 +11,6 @@ import {
     useBracketPreview,
     useBracketsBySeason,
     useCreateBracket,
-    useDeleteMatch,
     useResortBracket,
 } from '@/hooks/useBrackets';
 import { useAllModalities } from '@/hooks/useModalities';
@@ -63,7 +62,6 @@ function BracketContent({ seasonId, modalityId }: { seasonId: string; modalityId
     const modalities = useAllModalities();
     const createBracket = useCreateBracket();
     const resortBracket = useResortBracket();
-    const deleteMatch = useDeleteMatch();
     const [format, setFormat] = useState<ModalityFormat>('KNOCKOUT');
 
     const bracket = brackets.data?.find((item) => item.modality_id === modalityId);
@@ -154,23 +152,6 @@ function BracketContent({ seasonId, modalityId }: { seasonId: string; modalityId
             },
         ]);
 
-    const confirmDeleteMatch = (match: BracketMatchResponse) =>
-        Alert.alert('Remover partida?', `${matchTitle(match)} será removida do chaveamento.`, [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-                text: 'Remover',
-                style: 'destructive',
-                onPress: async () => {
-                    try {
-                        await deleteMatch.mutateAsync(match.match_id);
-                        toast.success('Partida removida.');
-                    } catch (error) {
-                        toast.error(friendlyErrorMessage(error, 'Não foi possível remover a partida.'));
-                    }
-                },
-            },
-        ]);
-
     const refreshing = season.isRefetching || brackets.isRefetching || details.isRefetching;
     const refresh = () => {
         season.refetch();
@@ -253,11 +234,7 @@ function BracketContent({ seasonId, modalityId }: { seasonId: string; modalityId
                                 </ThemedText>
                             ) : details.data && details.data.matches.length > 0 ? (
                                 details.data.matches.map((match) => (
-                                    <MatchRow
-                                        key={match.match_id}
-                                        match={match}
-                                        onDelete={() => confirmDeleteMatch(match)}
-                                    />
+                                    <MatchRow key={match.match_id} seasonId={seasonId} match={match} />
                                 ))
                             ) : (
                                 <ThemedText variant="subhead">Nenhuma partida gerada.</ThemedText>
@@ -270,15 +247,29 @@ function BracketContent({ seasonId, modalityId }: { seasonId: string; modalityId
     );
 }
 
-function MatchRow({ match, onDelete }: { match: BracketMatchResponse; onDelete: () => void }) {
-    const canDelete = match.status === 'SCHEDULED';
+function MatchRow({ seasonId, match }: { seasonId: string; match: BracketMatchResponse }) {
     return (
-        <View style={styles.match}>
-            {match.group_name ? <ThemedText variant="caption">{match.group_name}</ThemedText> : null}
-            <ThemedText variant="headline">{matchTitle(match)}</ThemedText>
-            <ThemedText variant="caption">{MATCH_STATUS_LABEL[match.status]}</ThemedText>
-            {canDelete ? <Button title="Remover partida" variant="ghost" size="sm" onPress={onDelete} /> : null}
-        </View>
+        <Link href={`/seasons/${seasonId}/bracket/match/${match.match_id}`} asChild>
+            <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${matchTitle(match)}, ${MATCH_STATUS_LABEL[match.status]}. Gerenciar partida`}
+            >
+                {({ pressed }) => (
+                    <View style={[styles.match, { opacity: pressed ? 0.7 : 1 }]}>
+                        {match.group_name ? <ThemedText variant="caption">{match.group_name}</ThemedText> : null}
+                        <View style={styles.matchHeader}>
+                            <ThemedText variant="headline" style={styles.matchTitle} numberOfLines={1}>
+                                {matchTitle(match)}
+                            </ThemedText>
+                            <ThemedText variant="title" style={styles.chevron}>
+                                ›
+                            </ThemedText>
+                        </View>
+                        <ThemedText variant="caption">{MATCH_STATUS_LABEL[match.status]}</ThemedText>
+                    </View>
+                )}
+            </Pressable>
+        </Link>
     );
 }
 
@@ -314,5 +305,16 @@ const styles = StyleSheet.create({
         borderRadius: radius.md,
         borderCurve: 'continuous',
         backgroundColor: colors.secondarySystemBackground as string,
+    },
+    matchHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+    },
+    matchTitle: {
+        flex: 1,
+    },
+    chevron: {
+        color: colors.secondaryLabel as string,
     },
 });

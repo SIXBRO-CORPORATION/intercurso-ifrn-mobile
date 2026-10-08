@@ -1,17 +1,17 @@
 import { RefreshControl, ScrollView, StyleSheet } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { InfoRow, Section } from '@/components/management/section';
+import { ManagementGuard } from '@/components/management/management-guard';
 import { MatchScoreHeader } from '@/components/match/match-score-header';
 import { MatchTimeline } from '@/components/match/match-timeline';
+import { MonitorPanel } from '@/components/match/monitor-panel';
 import { ErrorState, LoadingState } from '@/components/states/screen-states';
 import { ThemedText } from '@/components/themed-text';
 import { useMatchDetails } from '@/hooks/useMatches';
 import { useMatchLive } from '@/hooks/useRealtime';
-import { MatchCategoryLabel, MatchStatusLabel, MatchTypeLabel } from '@/types/enums';
 import { colors, spacing } from '@/theme';
 import { friendlyErrorMessage } from '@/utils/api-error-message';
 
-function MatchDetailsContent({ matchId }: { matchId: string }) {
+function ManageMatchContent({ matchId }: { matchId: string }) {
     const details = useMatchDetails(matchId);
     const live = useMatchLive(matchId);
     const match = details.data;
@@ -38,7 +38,7 @@ function MatchDetailsContent({ matchId }: { matchId: string }) {
 
     return (
         <>
-            <Stack.Screen options={{ title: match.modality_name ?? 'Partida' }} />
+            <Stack.Screen options={{ title: 'Gerenciar partida' }} />
             <ScrollView
                 contentInsetAdjustmentBehavior="automatic"
                 contentContainerStyle={styles.content}
@@ -52,24 +52,7 @@ function MatchDetailsContent({ matchId }: { matchId: string }) {
                     </ThemedText>
                 ) : null}
 
-                <Section title="Detalhes">
-                    <InfoRow label="Modalidade" value={match.modality_name ?? '—'} />
-                    <InfoRow label="Fase" value={MatchTypeLabel[match.match_type]} />
-                    <InfoRow label="Categoria" value={MatchCategoryLabel[match.match_category]} />
-                    <InfoRow label="Status" value={MatchStatusLabel[match.status]} />
-                </Section>
-
-                {match.sets.length > 0 ? (
-                    <Section title="Sets">
-                        {match.sets.map((set) => (
-                            <InfoRow
-                                key={set.set_number}
-                                label={`Set ${set.set_number}`}
-                                value={`${set.team1_points} × ${set.team2_points}`}
-                            />
-                        ))}
-                    </Section>
-                ) : null}
+                <MonitorPanel match={match} />
 
                 <MatchTimeline match={match} />
             </ScrollView>
@@ -77,10 +60,14 @@ function MatchDetailsContent({ matchId }: { matchId: string }) {
     );
 }
 
-export default function MatchDetailsScreen() {
+export default function ManageMatchScreen() {
     const { matchId } = useLocalSearchParams<{ matchId: string }>();
 
-    return <MatchDetailsContent matchId={matchId} />;
+    return (
+        <ManagementGuard>
+            <ManageMatchContent matchId={matchId} />
+        </ManagementGuard>
+    );
 }
 
 const styles = StyleSheet.create({

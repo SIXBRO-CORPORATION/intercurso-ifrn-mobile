@@ -45,6 +45,10 @@ export default function SeasonsLayout() {
                 name="[id]/bracket/[modalityId]"
                 options={{ title: 'Chaveamento', headerLargeTitleEnabled: false, headerRight: undefined }}
             />
+            <Stack.Screen
+                name="[id]/bracket/match/[matchId]"
+                options={{ title: 'Gerenciar partida', headerLargeTitleEnabled: false, headerRight: undefined }}
+            />
             <Stack.Screen name="[id]/edit-dates" options={{ ...sheet, title: 'Datas de inscrição' }} />
             <Stack.Screen name="[id]/reopen" options={{ ...sheet, title: 'Reabrir inscrições' }} />
             <Stack.Screen name="[id]/finish" options={{ ...sheet, title: 'Finalizar temporada' }} />
