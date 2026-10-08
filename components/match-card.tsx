@@ -1,7 +1,6 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Link } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
-import { useLiveClock } from '@/components/match/match-helpers';
 import { formatCampusTime, formatMatchClock, formatCampusShortDate } from '@/utils/campus-time';
 import { colors, radius, shadows, spacing, typography, useBrandColors } from '@/theme';
 import type { MatchListItemResponse } from '@/types/match-list';
@@ -32,21 +31,19 @@ function TeamSlot({ team, align }: { team: MatchTeamResponse | null | undefined;
     );
 }
 
-function StatusBadge({ status, clockSeconds, clockRunning, period, scheduledDate }: {
+function StatusBadge({ status, clockSeconds, period, scheduledDate }: {
     status: MatchStatus;
     clockSeconds: number;
-    clockRunning: boolean;
     period: number;
     scheduledDate?: string | null;
 }) {
     const brand = useBrandColors();
-    const liveSeconds = useLiveClock(clockSeconds, status === 'IN_PROGRESS' && clockRunning);
 
     if (status === 'IN_PROGRESS') {
         return (
             <View style={[styles.badge, { backgroundColor: brand.live }]} accessibilityLabel="Ao vivo">
                 <ThemedText variant="caption" style={styles.badgeText}>
-                    AO VIVO · {period}º · {formatMatchClock(liveSeconds)}
+                    AO VIVO · {period}º · {formatMatchClock(clockSeconds)}
                 </ThemedText>
             </View>
         );
@@ -97,7 +94,6 @@ export function MatchCard({ match }: MatchCardProps) {
                             <StatusBadge
                                 status={match.status}
                                 clockSeconds={match.clock_seconds}
-                                clockRunning={match.clock_running}
                                 period={match.current_period}
                                 scheduledDate={match.scheduled_date}
                             />
