@@ -7,12 +7,13 @@ import { colors, radius, shadows, spacing, useBrandColors } from '@/theme';
 import { formatCampusDateTime, formatMatchClock } from '@/utils/campus-time';
 import { teamName, useLiveClock } from './match-helpers';
 
-function StatusLine({ match }: { match: MatchPublicResponse }) {
+function StatusLine({ match, dataUpdatedAt }: { match: MatchPublicResponse; dataUpdatedAt: number }) {
     const brand = useBrandColors();
     const liveSeconds = useLiveClock(
         match.match_id,
         match.clock_seconds,
-        match.clock_running && match.status === 'IN_PROGRESS'
+        match.clock_running && match.status === 'IN_PROGRESS',
+        dataUpdatedAt
     );
 
     if (match.status === 'IN_PROGRESS') {
@@ -41,13 +42,19 @@ function StatusLine({ match }: { match: MatchPublicResponse }) {
     );
 }
 
-export function MatchScoreHeader({ match }: { match: MatchPublicResponse }) {
+export function MatchScoreHeader({
+    match,
+    dataUpdatedAt,
+}: {
+    match: MatchPublicResponse;
+    dataUpdatedAt: number;
+}) {
     const showScore = match.status !== 'SCHEDULED';
     const winner = match.status === 'FINISHED' ? teamName(match, match.winner_id) : undefined;
 
     return (
         <View style={styles.scoreCard}>
-            <StatusLine match={match} />
+            <StatusLine match={match} dataUpdatedAt={dataUpdatedAt} />
 
             <View style={styles.teamsRow}>
                 <View style={styles.teamColumn}>

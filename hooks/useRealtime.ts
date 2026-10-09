@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { realtimeService } from '@/services/realtime.service';
 import { matchService } from '@/services/match.service';
@@ -125,8 +126,26 @@ export function useMatchLive(matchId: string | undefined) {
 
         connect();
 
+        let appState = AppState.currentState;
+        const handleAppStateChange = (nextState: AppStateStatus) => {
+            const cameToForeground = /inactive|background/.test(appState) && nextState === 'active';
+            appState = nextState;
+            if (!cameToForeground || !mounted) return;
+
+            attempt = 0;
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+                reconnectTimeout = null;
+            }
+            closeConnection?.();
+            closeConnection = null;
+            connect();
+        };
+        const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
+
         return () => {
             mounted = false;
+            appStateSubscription.remove();
             if (reconnectTimeout) {
                 clearTimeout(reconnectTimeout);
             }
@@ -215,8 +234,26 @@ export function useSeasonLive(seasonId: string | undefined) {
 
         connect();
 
+        let appState = AppState.currentState;
+        const handleAppStateChange = (nextState: AppStateStatus) => {
+            const cameToForeground = /inactive|background/.test(appState) && nextState === 'active';
+            appState = nextState;
+            if (!cameToForeground || !mounted) return;
+
+            attempt = 0;
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+                reconnectTimeout = null;
+            }
+            closeConnection?.();
+            closeConnection = null;
+            connect();
+        };
+        const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
+
         return () => {
             mounted = false;
+            appStateSubscription.remove();
             if (reconnectTimeout) {
                 clearTimeout(reconnectTimeout);
             }

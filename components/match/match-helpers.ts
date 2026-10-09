@@ -31,25 +31,36 @@ interface ClockAnchor {
 
 const clockAnchors = new Map<string, ClockAnchor>();
 
-function computeClockAnchor(matchId: string, seconds: number, running: boolean): ClockAnchor {
+function computeClockAnchor(
+    matchId: string,
+    seconds: number,
+    running: boolean,
+    asOf: number
+): ClockAnchor {
     const current = clockAnchors.get(matchId);
 
     if (current && current.seconds === seconds && current.running === running) {
         return current;
     }
 
-    const next: ClockAnchor = { seconds, running, syncedAt: Date.now() };
+    if (current && asOf < current.syncedAt) {
+        return current;
+    }
+
+    const next: ClockAnchor = { seconds, running, syncedAt: asOf };
     clockAnchors.set(matchId, next);
     return next;
 }
 
-export function useLiveClock(matchId: string, seconds: number, running: boolean): number {
+export function useLiveClock(matchId: string, seconds: number, running: boolean, asOf: number): number {
 
-    const [anchor, setAnchor] = useState<ClockAnchor>(() => computeClockAnchor(matchId, seconds, running));
+    const [anchor, setAnchor] = useState<ClockAnchor>(() =>
+        computeClockAnchor(matchId, seconds, running, asOf)
+    );
 
     useEffect(() => {
-        setAnchor(computeClockAnchor(matchId, seconds, running));
-    }, [matchId, seconds, running]);
+        setAnchor(computeClockAnchor(matchId, seconds, running, asOf));
+    }, [matchId, seconds, running, asOf]);
 
     const [now, setNow] = useState(() => Date.now());
 

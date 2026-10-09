@@ -44,7 +44,7 @@ function MatchDetailsContent({ matchId }: { matchId: string }) {
                 contentContainerStyle={styles.content}
                 refreshControl={<RefreshControl refreshing={details.isRefetching} onRefresh={refresh} />}
             >
-                <MatchScoreHeader match={match} />
+                <MatchScoreHeader match={match} dataUpdatedAt={details.dataUpdatedAt} />
 
                 {showReconnectHint ? (
                     <ThemedText variant="caption" style={styles.liveHint}>

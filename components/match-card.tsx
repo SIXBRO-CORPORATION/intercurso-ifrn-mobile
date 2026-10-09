@@ -10,6 +10,7 @@ import type { MatchStatus } from '@/types/enums';
 
 interface MatchCardProps {
     match: MatchListItemResponse;
+    dataUpdatedAt: number;
 }
 
 function TeamSlot({ team, align }: { team: MatchTeamResponse | null | undefined; align: 'left' | 'right' }) {
@@ -32,16 +33,22 @@ function TeamSlot({ team, align }: { team: MatchTeamResponse | null | undefined;
     );
 }
 
-function StatusBadge({ matchId, status, clockSeconds, clockRunning, period, scheduledDate }: {
+function StatusBadge({ matchId, status, clockSeconds, clockRunning, period, scheduledDate, dataUpdatedAt }: {
     matchId: string;
     status: MatchStatus;
     clockSeconds: number;
     clockRunning: boolean;
     period: number;
     scheduledDate?: string | null;
+    dataUpdatedAt: number;
 }) {
     const brand = useBrandColors();
-    const liveSeconds = useLiveClock(matchId, clockSeconds, status === 'IN_PROGRESS' && clockRunning);
+    const liveSeconds = useLiveClock(
+        matchId,
+        clockSeconds,
+        status === 'IN_PROGRESS' && clockRunning,
+        dataUpdatedAt
+    );
 
     if (status === 'IN_PROGRESS') {
         return (
@@ -70,7 +77,7 @@ function StatusBadge({ matchId, status, clockSeconds, clockRunning, period, sche
     );
 }
 
-export function MatchCard({ match }: MatchCardProps) {
+export function MatchCard({ match, dataUpdatedAt }: MatchCardProps) {
     const showScore = match.status !== 'SCHEDULED';
     const team1Name = match.team1?.name ?? 'A definir';
     const team2Name = match.team2?.name ?? 'A definir';
@@ -102,6 +109,7 @@ export function MatchCard({ match }: MatchCardProps) {
                                 clockRunning={match.clock_running}
                                 period={match.current_period}
                                 scheduledDate={match.scheduled_date}
+                                dataUpdatedAt={dataUpdatedAt}
                             />
                         </View>
 

@@ -183,7 +183,7 @@ export default function GamesScreen() {
         <FlatList
             data={matches}
             keyExtractor={(item) => item.match_id}
-            renderItem={({ item }) => <MatchCard match={item} />}
+            renderItem={({ item }) => <MatchCard match={item} dataUpdatedAt={list.dataUpdatedAt} />}
             contentInsetAdjustmentBehavior="automatic"
             contentContainerStyle={[styles.content, matches.length === 0 && styles.contentFill]}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
