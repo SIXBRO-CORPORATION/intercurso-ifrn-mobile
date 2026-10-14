@@ -1,6 +1,6 @@
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
-import { colors, onTint, radius, spacing, useBrandColors } from '@/theme';
+import { colors, fontFamily, radius, spacing } from '@/theme';
 
 export interface FilterChipOption<T extends string> {
     value: T;
@@ -15,8 +15,6 @@ interface FilterChipsProps<T extends string> {
 }
 
 export function FilterChips<T extends string>({ options, selected, onSelect, accessibilityLabel }: FilterChipsProps<T>) {
-    const brand = useBrandColors();
-
     return (
         <ScrollView
             horizontal
@@ -35,12 +33,12 @@ export function FilterChips<T extends string>({ options, selected, onSelect, acc
                         style={({ pressed }) => [
                             styles.chip,
                             {
-                                backgroundColor: isSelected ? brand.primary : (colors.secondarySystemBackground as string),
+                                backgroundColor: isSelected ? colors.primary : colors.field,
                                 opacity: pressed ? 0.7 : 1,
                             },
                         ]}
                     >
-                        <ThemedText variant="subhead" style={{ color: isSelected ? onTint : undefined, fontWeight: isSelected ? '600' : '400' }}>
+                        <ThemedText variant="label" style={isSelected ? styles.labelSelected : styles.label}>
                             {option.label}
                         </ThemedText>
                     </Pressable>
@@ -58,7 +56,14 @@ const styles = StyleSheet.create({
     chip: {
         minHeight: 36,
         paddingHorizontal: spacing.md,
-        borderRadius: radius.full,
+        borderRadius: radius.pill,
         justifyContent: 'center',
+    },
+    label: {
+        color: colors.ink,
+    },
+    labelSelected: {
+        color: colors.surface,
+        fontFamily: fontFamily.bold,
     },
 });

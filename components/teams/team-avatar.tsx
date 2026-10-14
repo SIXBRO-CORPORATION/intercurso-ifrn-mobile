@@ -1,6 +1,17 @@
 import { Image, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
-import { radius, useBrandColors } from '@/theme';
+import { colors, radius } from '@/theme';
+
+interface Tone {
+    background: string;
+    foreground: string;
+}
+
+const PALETTE: Tone[] = [
+    { background: colors.primarySoft, foreground: colors.primaryDark },
+    { background: colors.dangerSoft, foreground: colors.danger },
+    { background: colors.warningSoft, foreground: colors.warningText },
+];
 
 function initialsOf(name: string): string {
     const letters = name
@@ -12,8 +23,15 @@ function initialsOf(name: string): string {
     return letters || '?';
 }
 
+function toneOf(name: string): Tone {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = (hash * 31 + name.charCodeAt(i)) | 0;
+    }
+    return PALETTE[Math.abs(hash) % PALETTE.length];
+}
+
 export function TeamAvatar({ name, photo, size = 48 }: { name: string; photo?: string | null; size?: number }) {
-    const brand = useBrandColors();
     const box = { width: size, height: size, borderRadius: radius.md };
 
     if (photo) {
@@ -27,9 +45,11 @@ export function TeamAvatar({ name, photo, size = 48 }: { name: string; photo?: s
         );
     }
 
+    const tone = toneOf(name);
+
     return (
-        <View accessible={false} style={[styles.base, box, { backgroundColor: brand.primary }]}>
-            <ThemedText variant="headline" style={styles.initials}>
+        <View accessible={false} style={[styles.base, box, { backgroundColor: tone.background }]}>
+            <ThemedText variant="section" style={{ color: tone.foreground }}>
                 {initialsOf(name)}
             </ThemedText>
         </View>
@@ -42,8 +62,5 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         overflow: 'hidden',
         borderCurve: 'continuous',
-    },
-    initials: {
-        color: '#FFFFFF',
     },
 });

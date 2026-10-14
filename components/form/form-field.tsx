@@ -12,7 +12,8 @@ interface FormFieldProps extends TextInputProps {
 export function FormField({ label, error, hint, style, multiline, onFocus, onBlur, ...inputProps }: FormFieldProps) {
     const [focused, setFocused] = useState(false);
 
-    const borderColor = error ? colors.danger : focused ? colors.primary : colors.border;
+    const borderColor = error ? colors.danger : colors.primary;
+    const borderWidth = error || focused ? 2 : 0;
 
     return (
         <View style={styles.wrap}>
@@ -34,7 +35,7 @@ export function FormField({ label, error, hint, style, multiline, onFocus, onBlu
                 style={[
                     styles.input,
                     textStyles.body,
-                    { borderColor, borderWidth: focused || error ? 1.5 : 1 },
+                    { borderColor, borderWidth },
                     multiline && styles.multiline,
                     style,
                 ]}

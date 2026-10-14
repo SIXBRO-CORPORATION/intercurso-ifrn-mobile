@@ -1,22 +1,32 @@
 import { StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { SeasonStatusLabel, type SeasonStatus } from '@/types/enums';
-import { colors, onTint, radius, spacing, useBrandColors } from '@/theme';
+import { colors, fontFamily, radius, spacing } from '@/theme';
 
-const HIGHLIGHTED: SeasonStatus[] = ['REGISTRATION_OPEN', 'IN_PROGRESS'];
+interface StatusStyle {
+    background: string;
+    foreground: string;
+}
+
+const statusStyles: Record<SeasonStatus, StatusStyle> = {
+    DRAFT: { background: colors.field, foreground: colors.textSecondary },
+    REGISTRATION_OPEN: { background: colors.primarySoft, foreground: colors.primaryDark },
+    REGISTRATION_CLOSED: { background: colors.warningSoft, foreground: colors.warningText },
+    IN_PROGRESS: { background: colors.primary, foreground: colors.surface },
+    FINISHED: { background: colors.field, foreground: colors.ink },
+};
 
 export function SeasonStatusBadge({ status }: { status: SeasonStatus }) {
-    const brand = useBrandColors();
-    const highlighted = HIGHLIGHTED.includes(status);
+    const { background, foreground } = statusStyles[status];
 
     return (
         <View
-            style={[styles.pill, { backgroundColor: highlighted ? brand.primary : (colors.separator as string) }]}
+            style={[styles.pill, { backgroundColor: background }]}
             accessible
             accessibilityLabel={`Status: ${SeasonStatusLabel[status]}`}
         >
-            <ThemedText variant="code" style={highlighted ? { color: onTint } : undefined}>
-                {SeasonStatusLabel[status].toUpperCase()}
+            <ThemedText variant="caption" style={[styles.label, { color: foreground }]}>
+                {SeasonStatusLabel[status]}
             </ThemedText>
         </View>
     );
@@ -26,7 +36,11 @@ const styles = StyleSheet.create({
     pill: {
         alignSelf: 'flex-start',
         paddingHorizontal: spacing.sm,
-        paddingVertical: spacing.xs,
-        borderRadius: radius.full,
+        paddingVertical: spacing.xxs,
+        borderRadius: radius.pill,
+        borderCurve: 'continuous',
+    },
+    label: {
+        fontFamily: fontFamily.bold,
     },
 });

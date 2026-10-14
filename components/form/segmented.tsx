@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { ThemedText } from '@/components/themed-text';
-import { colors, motion, radius, spacing } from '@/theme';
+import { colors, fontFamily, motion, radius, spacing } from '@/theme';
 
 const TRACK_PADDING = spacing.xxs;
 
@@ -91,6 +91,7 @@ const styles = StyleSheet.create({
     },
     labelSelected: {
         color: colors.surface,
+        fontFamily: fontFamily.bold,
     },
     disabled: {
         opacity: 0.5,

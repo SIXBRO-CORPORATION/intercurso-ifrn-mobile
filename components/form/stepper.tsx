@@ -34,7 +34,7 @@ export function Stepper({
                 accessibilityLabel={`Diminuir ${accessibilityLabel}`}
                 disabled={!canDecrease}
                 onPress={() => onChange(Math.max(min, value - step))}
-                style={[styles.button, !canDecrease && styles.buttonDisabled]}
+                style={[styles.minusButton, !canDecrease && styles.minusButtonDisabled]}
             >
                 <Icon name="minus" size={18} color={canDecrease ? colors.ink : colors.textMuted} />
             </Pressable>
@@ -48,9 +48,9 @@ export function Stepper({
                 accessibilityLabel={`Aumentar ${accessibilityLabel}`}
                 disabled={!canIncrease}
                 onPress={() => onChange(Math.min(max, value + step))}
-                style={[styles.button, !canIncrease && styles.buttonDisabled]}
+                style={[styles.plusButton, !canIncrease && styles.plusButtonDisabled]}
             >
-                <Icon name="plus" size={18} color={canIncrease ? colors.ink : colors.textMuted} />
+                <Icon name="plus" size={18} color={canIncrease ? colors.surface : colors.textMuted} />
             </Pressable>
         </View>
     );
@@ -62,17 +62,32 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: spacing.md,
     },
-    button: {
+    minusButton: {
         width: BUTTON_SIZE,
         height: BUTTON_SIZE,
         borderRadius: BUTTON_SIZE / 2,
         borderCurve: 'continuous',
-        backgroundColor: colors.field,
+        borderWidth: 1,
+        borderColor: colors.border,
+        backgroundColor: colors.surface,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    buttonDisabled: {
-        opacity: 0.5,
+    minusButtonDisabled: {
+        backgroundColor: colors.field,
+        borderColor: colors.field,
+    },
+    plusButton: {
+        width: BUTTON_SIZE,
+        height: BUTTON_SIZE,
+        borderRadius: BUTTON_SIZE / 2,
+        borderCurve: 'continuous',
+        backgroundColor: colors.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    plusButtonDisabled: {
+        backgroundColor: colors.field,
     },
     value: {
         minWidth: 28,

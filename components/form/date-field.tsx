@@ -18,12 +18,13 @@ interface DateFieldProps {
 export function DateField({ label, value, onChange, minimumDate, error, hint, mode = 'date' }: DateFieldProps) {
     const [androidOpen, setAndroidOpen] = useState(false);
     const formatValue = mode === 'datetime' ? formatPickerDateTime : formatPickerDate;
-    const borderColor = error ? colors.danger : androidOpen ? colors.primary : colors.border;
+    const borderColor = error ? colors.danger : colors.primary;
+    const borderWidth = error || androidOpen ? 2 : 0;
 
     return (
         <View style={styles.wrap}>
             <ThemedText variant="caption">{label}</ThemedText>
-            <View style={[styles.control, { borderColor, borderWidth: androidOpen || error ? 1.5 : 1 }]}>
+            <View style={[styles.control, { borderColor, borderWidth }]}>
                 {Platform.OS === 'ios' ? (
                     <DateTimePicker
                         mode={mode}

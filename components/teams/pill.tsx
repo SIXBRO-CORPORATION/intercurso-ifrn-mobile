@@ -1,25 +1,29 @@
 import { StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
-import { colors, onTint, radius, spacing, useBrandColors } from '@/theme';
+import { colors, fontFamily, radius, spacing } from '@/theme';
 
-export type PillTone = 'filled' | 'neutral' | 'outline';
+export type PillTone = 'filled' | 'neutral' | 'outline' | 'dark';
+
+interface ToneStyle {
+    background: string;
+    foreground: string;
+    borderColor?: string;
+    borderWidth?: number;
+}
+
+const tones: Record<PillTone, ToneStyle> = {
+    filled: { background: colors.primary, foreground: colors.surface },
+    neutral: { background: colors.field, foreground: colors.textSecondary },
+    outline: { background: 'transparent', foreground: colors.primary, borderColor: colors.primary, borderWidth: 1 },
+    dark: { background: colors.ink, foreground: colors.surface },
+};
 
 export function Pill({ label, tone = 'neutral' }: { label: string; tone?: PillTone }) {
-    const brand = useBrandColors();
-
-    const backgroundColor =
-        tone === 'filled' ? brand.primary : tone === 'neutral' ? (colors.separator as string) : 'transparent';
-    const color = tone === 'filled' ? onTint : tone === 'outline' ? brand.primary : undefined;
+    const { background, foreground, borderColor, borderWidth } = tones[tone];
 
     return (
-        <View
-            style={[
-                styles.pill,
-                { backgroundColor },
-                tone === 'outline' && { borderWidth: 1, borderColor: brand.primary },
-            ]}
-        >
-            <ThemedText variant="code" style={color ? { color } : undefined}>
+        <View style={[styles.pill, { backgroundColor: background, borderColor, borderWidth }]}>
+            <ThemedText variant="caption" style={[styles.label, { color: foreground }]}>
                 {label}
             </ThemedText>
         </View>
@@ -28,8 +32,13 @@ export function Pill({ label, tone = 'neutral' }: { label: string; tone?: PillTo
 
 const styles = StyleSheet.create({
     pill: {
+        alignSelf: 'flex-start',
         paddingHorizontal: spacing.sm,
-        paddingVertical: 2,
-        borderRadius: radius.full,
+        paddingVertical: spacing.xxs,
+        borderRadius: radius.pill,
+        borderCurve: 'continuous',
+    },
+    label: {
+        fontFamily: fontFamily.bold,
     },
 });
