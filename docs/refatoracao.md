@@ -336,7 +336,7 @@ Os 6 pontos abaixo não correspondiam 1:1 ao que já existia no código. Foram r
 
 - [x] 0 — `theme/*`
 - [x] 1 — `package.json`, `babel.config.js`, `components/icon.tsx`
-- [ ] 2 — `components/themed-text.tsx`, `components/button.tsx`
+- [x] 2 — `components/themed-text.tsx`, `components/button.tsx`
 - [ ] 3 — `components/form/*`
 - [ ] 4 — `components/filter-chips.tsx`, `components/teams/pill.tsx`, `team-status-badge.tsx`, `team-avatar.tsx`, `management/season-status-badge.tsx`
 - [ ] 5 — `components/match-card.tsx`, `components/management/management-card.tsx`, `components/list-row.tsx`
