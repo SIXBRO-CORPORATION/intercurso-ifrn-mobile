@@ -10,9 +10,8 @@ import { useReactQueryDevTools } from '@dev-plugins/react-query';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { ToastProvider } from '@/providers/ToastProvider';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { useColorScheme } from 'react-native';
 import { queryClient } from '@/QueryClient';
-import { darkNav, fonts, lightNav } from '@/theme';
+import { fonts, navigationTheme } from '@/theme';
 
 export {
     ErrorBoundary,
@@ -51,11 +50,9 @@ function RootLayoutNav() {
     useReactNavigationDevTools(navigationRef);
     useReactQueryDevTools(queryClient);
 
-    const colorScheme = useColorScheme();
-
     return (
         <SafeAreaProvider>
-            <ThemeProvider value={colorScheme === 'dark' ? darkNav : lightNav}>
+            <ThemeProvider value={navigationTheme}>
                 <QueryProvider>
                     <ToastProvider>
                         <AuthProvider>

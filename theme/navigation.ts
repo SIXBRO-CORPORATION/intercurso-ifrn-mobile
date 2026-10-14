@@ -1,20 +1,15 @@
-import { DarkTheme, DefaultTheme } from 'expo-router/react-navigation';
-import { brandPalette } from './colors';
+import { DefaultTheme } from 'expo-router/react-navigation';
+import { colors } from './colors';
 
-export const lightNav = {
+export const navigationTheme = {
     ...DefaultTheme,
     colors: {
         ...DefaultTheme.colors,
-        primary: brandPalette.light.primary,
-        notification: brandPalette.light.live,
-    },
-};
-
-export const darkNav = {
-    ...DarkTheme,
-    colors: {
-        ...DarkTheme.colors,
-        primary: brandPalette.dark.primary,
-        notification: brandPalette.dark.live,
+        primary: colors.primary,
+        background: colors.background,
+        card: colors.surface,
+        text: colors.ink,
+        border: colors.border,
+        notification: colors.danger,
     },
 };
