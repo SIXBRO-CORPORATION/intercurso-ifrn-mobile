@@ -334,8 +334,8 @@ Os 6 pontos abaixo não correspondiam 1:1 ao que já existia no código. Foram r
 
 ## Resumo de arquivos por fase (checklist rápido)
 
-- [ ] 0 — `theme/*`
-- [ ] 1 — `package.json`, `babel.config.js`, `components/icon.tsx`
+- [x] 0 — `theme/*`
+- [x] 1 — `package.json`, `babel.config.js`, `components/icon.tsx`
 - [ ] 2 — `components/themed-text.tsx`, `components/button.tsx`
 - [ ] 3 — `components/form/*`
 - [ ] 4 — `components/filter-chips.tsx`, `components/teams/pill.tsx`, `team-status-badge.tsx`, `team-avatar.tsx`, `management/season-status-badge.tsx`
