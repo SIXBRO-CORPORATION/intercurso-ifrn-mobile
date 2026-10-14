@@ -1,94 +1,67 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Link } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '@/components/themed-text';
 import { useLiveClock } from '@/components/match/match-helpers';
 import { formatCampusTime, formatMatchClock, formatCampusShortDate } from '@/utils/campus-time';
-import { colors, radius, shadows, spacing, typography, useBrandColors } from '@/theme';
+import { colors, radius, shadows, spacing } from '@/theme';
 import type { MatchListItemResponse } from '@/types/match-list';
 import type { MatchTeamResponse } from '@/types/match';
-import type { MatchStatus } from '@/types/enums';
 
 interface MatchCardProps {
     match: MatchListItemResponse;
     dataUpdatedAt: number;
 }
 
-function TeamSlot({ team, align }: { team: MatchTeamResponse | null | undefined; align: 'left' | 'right' }) {
-    if (!team) {
-        return (
-            <View style={[styles.team, align === 'right' && styles.teamRight]}>
-                <ThemedText variant="headline" style={styles.pending}>
-                    A definir
-                </ThemedText>
-            </View>
-        );
-    }
-
-    return (
-        <View style={[styles.team, align === 'right' && styles.teamRight]}>
-            <ThemedText variant="headline" numberOfLines={2} style={align === 'right' ? styles.right : undefined}>
-                {team.name}
-            </ThemedText>
-        </View>
-    );
+function initialsOf(name: string): string {
+    const letters = name
+        .trim()
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((word) => word.charAt(0).toUpperCase())
+        .join('');
+    return letters || '?';
 }
 
-function StatusBadge({ matchId, status, clockSeconds, clockRunning, period, scheduledDate, dataUpdatedAt }: {
-    matchId: string;
-    status: MatchStatus;
-    clockSeconds: number;
-    clockRunning: boolean;
-    period: number;
-    scheduledDate?: string | null;
-    dataUpdatedAt: number;
-}) {
-    const brand = useBrandColors();
-    const liveSeconds = useLiveClock(
-        matchId,
-        clockSeconds,
-        status === 'IN_PROGRESS' && clockRunning,
-        dataUpdatedAt
-    );
-
-    if (status === 'IN_PROGRESS') {
-        return (
-            <View style={[styles.badge, { backgroundColor: brand.live }]} accessibilityLabel="Ao vivo">
-                <ThemedText variant="caption" style={styles.badgeText}>
-                    AO VIVO · {period}º · {formatMatchClock(liveSeconds)}
-                </ThemedText>
-            </View>
-        );
-    }
-
-    if (status === 'FINISHED') {
-        return (
-            <View style={[styles.badge, styles.badgeMuted]}>
-                <ThemedText variant="caption">Encerrada</ThemedText>
-            </View>
-        );
-    }
+function TeamColumn({ team, align }: { team: MatchTeamResponse | null | undefined; align: 'left' | 'right' }) {
+    const name = team?.name ?? 'A definir';
 
     return (
-        <View style={[styles.badge, styles.badgeMuted]}>
-            <ThemedText variant="caption">
-                {scheduledDate ? `${formatCampusShortDate(scheduledDate)} · ${formatCampusTime(scheduledDate)}` : 'Sem data'}
+        <View style={[styles.teamColumn, align === 'right' && styles.teamColumnRight]}>
+            <View style={styles.teamAvatar}>
+                <ThemedText variant="section" style={styles.teamAvatarText}>
+                    {team ? initialsOf(name) : '?'}
+                </ThemedText>
+            </View>
+            <ThemedText variant="bodyLg" numberOfLines={1} style={styles.teamName}>
+                {name}
             </ThemedText>
         </View>
     );
 }
 
 export function MatchCard({ match, dataUpdatedAt }: MatchCardProps) {
+    const isLive = match.status === 'IN_PROGRESS';
+    const isFinished = match.status === 'FINISHED';
     const showScore = match.status !== 'SCHEDULED';
+
+    const liveSeconds = useLiveClock(
+        match.match_id,
+        match.clock_seconds,
+        isLive && match.clock_running,
+        dataUpdatedAt
+    );
+
     const team1Name = match.team1?.name ?? 'A definir';
     const team2Name = match.team2?.name ?? 'A definir';
 
-    const summary = [
-        match.modality_name,
-        match.group_name,
-        match.status === 'IN_PROGRESS' ? 'Em andamento' : undefined,
-    ]
-        .filter(Boolean)
-        .join(' · ');
+    const topRight = isLive
+        ? `${match.current_period}º tempo`
+        : isFinished
+          ? 'Encerrada'
+          : match.scheduled_date
+            ? `${formatCampusShortDate(match.scheduled_date)} · ${formatCampusTime(match.scheduled_date)}`
+            : 'Sem data';
 
     return (
         <Link href={`/match/${match.match_id}`} asChild>
@@ -97,39 +70,63 @@ export function MatchCard({ match, dataUpdatedAt }: MatchCardProps) {
                 accessibilityLabel={`${match.modality_name ?? 'Partida'}: ${team1Name} contra ${team2Name}. Abrir partida`}
             >
                 {({ pressed }) => (
-                    <View style={[styles.card, { opacity: pressed ? 0.7 : 1 }]}>
+                    <LinearGradient
+                        colors={colors.gradientPrimary}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={[styles.card, { opacity: pressed ? 0.85 : 1 }]}
+                    >
                         <View style={styles.header}>
-                            <ThemedText variant="caption" numberOfLines={1} style={styles.summary}>
-                                {summary || 'Partida'}
+                            {isLive ? (
+                                <View style={styles.livePill}>
+                                    <View style={styles.liveDot} />
+                                    <ThemedText variant="overline" style={styles.liveText}>
+                                        AO VIVO
+                                    </ThemedText>
+                                </View>
+                            ) : (
+                                <ThemedText variant="caption" numberOfLines={1} style={styles.headerMuted}>
+                                    {match.modality_name ?? 'Partida'}
+                                </ThemedText>
+                            )}
+                            <ThemedText variant="body" style={styles.headerStrong}>
+                                {topRight}
                             </ThemedText>
-                            <StatusBadge
-                                matchId={match.match_id}
-                                status={match.status}
-                                clockSeconds={match.clock_seconds}
-                                clockRunning={match.clock_running}
-                                period={match.current_period}
-                                scheduledDate={match.scheduled_date}
-                                dataUpdatedAt={dataUpdatedAt}
-                            />
                         </View>
 
-                        <View style={styles.row}>
-                            <TeamSlot team={match.team1} align="left" />
-                            <View style={styles.scoreBox}>
+                        <View style={styles.matchRow}>
+                            <TeamColumn team={match.team1} align="left" />
+                            <View style={styles.scoreColumn}>
                                 {showScore ? (
                                     <ThemedText
-                                        variant="score"
+                                        variant="timer"
+                                        style={styles.score}
                                         accessibilityLabel={`${match.team1?.score ?? 0} a ${match.team2?.score ?? 0}`}
                                     >
-                                        {match.team1?.score ?? 0} × {match.team2?.score ?? 0}
+                                        {match.team1?.score ?? 0}
                                     </ThemedText>
-                                ) : (
-                                    <ThemedText variant="subhead">× </ThemedText>
-                                )}
+                                ) : null}
+                                <View style={styles.scoreDash} />
+                                {showScore ? (
+                                    <ThemedText variant="timer" style={styles.score}>
+                                        {match.team2?.score ?? 0}
+                                    </ThemedText>
+                                ) : null}
                             </View>
-                            <TeamSlot team={match.team2} align="right" />
+                            <TeamColumn team={match.team2} align="right" />
                         </View>
-                    </View>
+
+                        {isLive ? (
+                            <View style={styles.clockRow}>
+                                <View style={styles.clockPill}>
+                                    <View style={styles.liveDot} />
+                                    <ThemedText variant="overline" style={styles.liveText}>
+                                        {formatMatchClock(liveSeconds)}
+                                    </ThemedText>
+                                </View>
+                            </View>
+                        ) : null}
+                    </LinearGradient>
                 )}
             </Pressable>
         </Link>
@@ -138,11 +135,10 @@ export function MatchCard({ match, dataUpdatedAt }: MatchCardProps) {
 
 const styles = StyleSheet.create({
     card: {
-        backgroundColor: colors.secondarySystemBackground as string,
-        borderRadius: radius.lg,
+        borderRadius: radius.xl,
         borderCurve: 'continuous',
-        padding: spacing.md,
-        gap: spacing.sm,
+        padding: spacing.lg,
+        gap: spacing.md,
         boxShadow: shadows.card,
     },
     header: {
@@ -151,42 +147,87 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         gap: spacing.sm,
     },
-    summary: {
+    headerMuted: {
         flexShrink: 1,
+        color: 'rgba(255,255,255,0.85)',
     },
-    badge: {
-        paddingHorizontal: spacing.sm,
-        paddingVertical: 2,
-        borderRadius: radius.full,
+    headerStrong: {
+        color: colors.surface,
     },
-    badgeMuted: {
-        backgroundColor: colors.separator as string,
-    },
-    badgeText: {
-        color: '#FFFFFF',
-        fontVariant: ['tabular-nums'],
-    },
-    row: {
+    livePill: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: spacing.sm,
+        gap: spacing.xxs,
+        paddingHorizontal: spacing.sm,
+        paddingVertical: spacing.xxs,
+        borderRadius: radius.pill,
+        backgroundColor: 'rgba(255,255,255,0.22)',
     },
-    team: {
+    liveDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: colors.surface,
+    },
+    liveText: {
+        color: colors.surface,
+    },
+    matchRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+    },
+    teamColumn: {
         flex: 1,
-    },
-    teamRight: {
-        alignItems: 'flex-end',
-    },
-    right: {
-        textAlign: 'right',
-    },
-    pending: {
-        color: colors.secondaryLabel as string,
-        fontFamily: typography.subhead.fontFamily,
-        fontStyle: 'italic',
-    },
-    scoreBox: {
-        minWidth: 72,
         alignItems: 'center',
+        gap: spacing.xs,
+    },
+    teamColumnRight: {
+        alignItems: 'center',
+    },
+    teamAvatar: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.22)',
+    },
+    teamAvatarText: {
+        color: colors.surface,
+    },
+    teamName: {
+        color: colors.surface,
+        textAlign: 'center',
+    },
+    scoreColumn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: spacing.xs,
+        minWidth: 96,
+        paddingTop: spacing.sm,
+    },
+    score: {
+        color: colors.surface,
+        fontSize: 56,
+        lineHeight: 60,
+    },
+    scoreDash: {
+        width: 24,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: 'rgba(255,255,255,0.35)',
+    },
+    clockRow: {
+        alignItems: 'center',
+    },
+    clockPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xxs,
+        paddingHorizontal: spacing.sm,
+        paddingVertical: spacing.xxs,
+        borderRadius: radius.pill,
+        backgroundColor: 'rgba(255,255,255,0.22)',
     },
 });
