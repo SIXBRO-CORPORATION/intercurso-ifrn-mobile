@@ -1,11 +1,22 @@
 import { Text, type TextProps } from 'react-native';
-import { typography, type TypographyVariant } from '@/theme';
+import { textStyles, type TextStyleVariant } from '@/theme';
+
+const legacyVariantAlias = {
+    headline: 'section',
+    subhead: 'body',
+    score: 'timer',
+    code: 'overline',
+} as const satisfies Record<string, TextStyleVariant>;
+
+type LegacyVariant = keyof typeof legacyVariantAlias;
 
 interface ThemedTextProps extends TextProps {
-    variant?: TypographyVariant;
+    variant?: TextStyleVariant | LegacyVariant;
 }
 
-
 export function ThemedText({ variant = 'body', style, ...props }: ThemedTextProps) {
-    return <Text {...props} style={[typography[variant], style]} />;
+    const resolvedVariant: TextStyleVariant =
+        variant in legacyVariantAlias ? legacyVariantAlias[variant as LegacyVariant] : (variant as TextStyleVariant);
+
+    return <Text {...props} style={[textStyles[resolvedVariant], style]} />;
 }
