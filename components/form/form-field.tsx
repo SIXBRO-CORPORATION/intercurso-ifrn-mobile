@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
-import { colors, radius, spacing, typography, useBrandColors } from '@/theme';
+import { colors, radius, spacing, textStyles } from '@/theme';
 
 interface FormFieldProps extends TextInputProps {
     label: string;
@@ -8,8 +9,10 @@ interface FormFieldProps extends TextInputProps {
     hint?: string;
 }
 
-export function FormField({ label, error, hint, style, multiline, ...inputProps }: FormFieldProps) {
-    const brand = useBrandColors();
+export function FormField({ label, error, hint, style, multiline, onFocus, onBlur, ...inputProps }: FormFieldProps) {
+    const [focused, setFocused] = useState(false);
+
+    const borderColor = error ? colors.danger : focused ? colors.primary : colors.border;
 
     return (
         <View style={styles.wrap}>
@@ -17,17 +20,27 @@ export function FormField({ label, error, hint, style, multiline, ...inputProps 
             <TextInput
                 {...inputProps}
                 accessibilityLabel={label}
+                accessibilityState={{ invalid: !!error }}
                 multiline={multiline}
-                placeholderTextColor={colors.secondaryLabel as string}
+                placeholderTextColor={colors.textMuted}
+                onFocus={(event) => {
+                    setFocused(true);
+                    onFocus?.(event);
+                }}
+                onBlur={(event) => {
+                    setFocused(false);
+                    onBlur?.(event);
+                }}
                 style={[
                     styles.input,
-                    { color: colors.label as string },
+                    textStyles.body,
+                    { borderColor, borderWidth: focused || error ? 1.5 : 1 },
                     multiline && styles.multiline,
                     style,
                 ]}
             />
             {error ? (
-                <ThemedText variant="caption" accessibilityRole="alert" style={{ color: brand.primary }}>
+                <ThemedText variant="caption" accessibilityRole="alert" style={styles.errorText}>
                     {error}
                 </ThemedText>
             ) : hint ? (
@@ -42,17 +55,18 @@ const styles = StyleSheet.create({
         gap: spacing.xs,
     },
     input: {
-        minHeight: 44,
+        minHeight: 48,
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.sm,
         borderRadius: radius.md,
         borderCurve: 'continuous',
-        backgroundColor: colors.secondarySystemBackground as string,
-        fontFamily: typography.body.fontFamily,
-        fontSize: 17,
+        backgroundColor: colors.field,
     },
     multiline: {
         minHeight: 120,
         textAlignVertical: 'top',
+    },
+    errorText: {
+        color: colors.danger,
     },
 });
