@@ -1,13 +1,20 @@
 import { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Button } from '@/components/button';
+import { Icon, type IconName } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/providers/ToastProvider';
-import { spacing } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 import { AuthCancelledError } from '@/types/auth';
 
-export function LoginPrompt({ message }: { message: string }) {
+interface LoginPromptProps {
+    message: string;
+    title?: string;
+    icon?: IconName;
+}
+
+export function LoginPrompt({ message, title = 'Entre para participar', icon = 'users' }: LoginPromptProps) {
     const { isLoading, loginWithSuap } = useAuth();
     const toast = useToast();
 
@@ -23,10 +30,26 @@ export function LoginPrompt({ message }: { message: string }) {
 
     return (
         <View style={styles.center}>
-            <ThemedText variant="subhead" style={styles.text}>
+            <View style={styles.iconRing}>
+                <View style={styles.iconRingInner}>
+                    <Icon name={icon} size={40} color={colors.primary} />
+                </View>
+                <View style={styles.lockBadge}>
+                    <Icon name="lock" size={16} color={colors.surface} />
+                </View>
+            </View>
+
+            <ThemedText variant="title" style={styles.title}>
+                {title}
+            </ThemedText>
+            <ThemedText variant="body" style={styles.description}>
                 {message}
             </ThemedText>
-            <Button title="Entrar com SUAP" loading={isLoading} onPress={handleLogin} style={styles.button} />
+
+            <View style={styles.actions}>
+                <Button title="Entrar com SUAP" icon="lock" loading={isLoading} onPress={handleLogin} />
+                <Button title="Continuar como visitante" variant="outline" disabled />
+            </View>
         </View>
     );
 }
@@ -37,12 +60,49 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         padding: spacing.lg,
-        gap: spacing.md,
+        gap: spacing.sm,
     },
-    text: {
+    iconRing: {
+        width: 180,
+        height: 180,
+        borderRadius: 90,
+        backgroundColor: colors.primarySoft,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: spacing.md,
+    },
+    iconRingInner: {
+        width: 110,
+        height: 110,
+        borderRadius: 55,
+        backgroundColor: colors.background,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    lockBadge: {
+        position: 'absolute',
+        top: -2,
+        right: 12,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: colors.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 3,
+        borderColor: colors.background,
+    },
+    title: {
         textAlign: 'center',
     },
-    button: {
-        minWidth: 200,
+    description: {
+        textAlign: 'center',
+        color: colors.textSecondary,
+        marginBottom: spacing.md,
+    },
+    actions: {
+        width: '100%',
+        gap: spacing.sm,
+        marginTop: spacing.sm,
     },
 });

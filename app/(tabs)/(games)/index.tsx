@@ -1,39 +1,26 @@
-import { useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { Image, RefreshControl, SectionList, StyleSheet, View } from 'react-native';
+import { router, Stack } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/button';
 import { FilterChips, type FilterChipOption } from '@/components/filter-chips';
+import { Icon } from '@/components/icon';
 import { MatchCard } from '@/components/match-card';
+import { FinishedTrailing, LiveTrailing, MatchListRow, ScheduledTrailing } from '@/components/list-row';
 import { EmptyState, ErrorState, LoadingState } from '@/components/states/screen-states';
 import { ThemedText } from '@/components/themed-text';
+import { useAuth } from '@/hooks/useAuth';
 import { useActiveSeason } from '@/hooks/useSeasons';
 import { useModalities } from '@/hooks/useModalities';
 import { useMatchList } from '@/hooks/useMatches';
 import { useSeasonLive } from '@/hooks/useRealtime';
-import { getCampusDayRange, type RelativeDay } from '@/utils/campus-time';
+import { useToast } from '@/providers/ToastProvider';
+import { formatCampusDate, formatCampusTime, formatMatchClock, getCampusDayRange } from '@/utils/campus-time';
 import { ApiError } from '@/types/api';
-import { spacing } from '@/theme';
-import type { MatchStatus } from '@/types/enums';
+import { AuthCancelledError } from '@/types/auth';
+import { colors, radius, shadows, spacing } from '@/theme';
 import type { MatchListFilters, MatchListItemResponse } from '@/types/match-list';
-
-type DateFilter = 'all' | RelativeDay;
-type StatusFilter = 'ALL' | MatchStatus;
-
-const DATE_OPTIONS: FilterChipOption<DateFilter>[] = [
-    { value: 'all', label: 'Todos' },
-    { value: 'yesterday', label: 'Ontem' },
-    { value: 'today', label: 'Hoje' },
-    { value: 'tomorrow', label: 'Amanhã' },
-];
-
-const STATUS_OPTIONS: FilterChipOption<StatusFilter>[] = [
-    { value: 'ALL', label: 'Todos' },
-    { value: 'IN_PROGRESS', label: 'Ao vivo' },
-    { value: 'SCHEDULED', label: 'Agendadas' },
-    { value: 'FINISHED', label: 'Encerradas' },
-];
-
-const DEFAULT_DATE_FILTER: DateFilter = 'today';
-const DEFAULT_STATUS_FILTER: StatusFilter = 'ALL';
 
 const NO_ACTIVE_SEASON_STATUS = 400;
 
@@ -41,10 +28,167 @@ function errorMessage(error: unknown, fallback: string): string {
     return error instanceof ApiError ? error.message : fallback;
 }
 
+function WelcomeHero({ onContinueAsVisitor }: { onContinueAsVisitor: () => void }) {
+    const insets = useSafeAreaInsets();
+    const { isLoading, loginWithSuap } = useAuth();
+    const toast = useToast();
+
+    const handleLogin = useCallback(async () => {
+        try {
+            await loginWithSuap();
+        } catch (error) {
+            if (error instanceof AuthCancelledError) return;
+
+            toast.error(error instanceof Error ? error.message : 'Não foi possível concluir o login com o SUAP');
+        }
+    }, [loginWithSuap, toast]);
+
+    return (
+        <View style={styles.welcomeRoot}>
+            <LinearGradient
+                colors={colors.gradientPrimary}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.welcomeHero, { paddingTop: insets.top + spacing.xxl }]}
+            >
+                <Image
+                    source={require('../../../assets/logo-intercurso-branca.png')}
+                    style={styles.welcomeLogo}
+                    resizeMode="contain"
+                    accessibilityIgnoresInvertColors
+                />
+                <ThemedText variant="bodyLg" style={styles.welcomeTagline}>
+                    Seu campeonato, num só app.
+                </ThemedText>
+            </LinearGradient>
+
+            <View style={styles.welcomeSheet}>
+                <ThemedText variant="title">Bem-vindo(a)!</ThemedText>
+                <ThemedText variant="body" style={styles.welcomeDescription}>
+                    Acompanhe os jogos ao vivo sem conta. Entre com o SUAP para criar ou participar de uma equipe.
+                </ThemedText>
+
+                <View style={styles.welcomeActions}>
+                    <Button title="Entrar com SUAP" icon="lock" loading={isLoading} onPress={handleLogin} />
+                    <Button title="Continuar como visitante" variant="outline" onPress={onContinueAsVisitor} />
+                </View>
+
+                <ThemedText variant="caption" style={styles.welcomeFooter}>
+                    IFRN · CAMPUS PAU DOS FERROS
+                </ThemedText>
+            </View>
+        </View>
+    );
+}
+
+type GameSection = {
+    key: string;
+    kind: 'live' | 'day' | 'finished';
+    title: string;
+    trailing?: string;
+    data: MatchListItemResponse[];
+};
+
+function pad(value: number): string {
+    return String(value).padStart(2, '0');
+}
+
+function dayOrderKey(ddmmyyyy: string): number {
+    const [day, month, year] = ddmmyyyy.split('/').map(Number);
+    return year * 10000 + month * 100 + day;
+}
+
+function formatDayHeader(ddmmyyyy: string): string {
+    const [day, month, year] = ddmmyyyy.split('/').map(Number);
+    const date = new Date(year, month - 1, day);
+    const weekday = date.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+    const monthShort = date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+    const capitalized = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+    return `${capitalized}, ${pad(day)} ${monthShort}`;
+}
+
+function buildSections(matches: MatchListItemResponse[]): GameSection[] {
+    const now = new Date();
+    const todayStr = formatCampusDate(now.toISOString());
+    const tomorrowStr = formatCampusDate(getCampusDayRange('tomorrow', now).dateFrom);
+
+    const sections: GameSection[] = [];
+
+    const live = matches.filter((match) => match.status === 'IN_PROGRESS');
+    if (live.length > 0) {
+        sections.push({
+            key: 'live',
+            kind: 'live',
+            title: 'Ao vivo',
+            trailing: `${live.length} jogo${live.length === 1 ? '' : 's'}`,
+            data: live,
+        });
+    }
+
+    const scheduled = matches.filter((match) => match.status === 'SCHEDULED' && match.scheduled_date);
+    const buckets = new Map<string, { order: number; data: MatchListItemResponse[] }>();
+    for (const match of scheduled) {
+        const dateStr = formatCampusDate(match.scheduled_date as string);
+        if (!buckets.has(dateStr)) {
+            buckets.set(dateStr, { order: dayOrderKey(dateStr), data: [] });
+        }
+        buckets.get(dateStr)!.data.push(match);
+    }
+
+    Array.from(buckets.entries())
+        .sort(([, a], [, b]) => a.order - b.order)
+        .forEach(([dateStr, bucket]) => {
+            const dateLabel = formatDayHeader(dateStr);
+            const isToday = dateStr === todayStr;
+            const isTomorrow = dateStr === tomorrowStr;
+
+            sections.push({
+                key: `day-${bucket.order}`,
+                kind: 'day',
+                title: isToday ? 'Hoje' : isTomorrow ? 'Amanhã' : dateLabel,
+                trailing: isToday || isTomorrow ? dateLabel : undefined,
+                data: bucket.data.sort((a, b) => (a.scheduled_date ?? '').localeCompare(b.scheduled_date ?? '')),
+            });
+        });
+
+    const finished = matches
+        .filter((match) => match.status === 'FINISHED')
+        .sort((a, b) => (b.scheduled_date ?? '').localeCompare(a.scheduled_date ?? ''));
+    if (finished.length > 0) {
+        sections.push({ key: 'finished', kind: 'finished', title: 'Encerradas', data: finished });
+    }
+
+    return sections;
+}
+
+function matchRowProps(match: MatchListItemResponse) {
+    const showScore = match.status !== 'SCHEDULED';
+    const team1 = { name: match.team1?.name ?? 'A definir', score: showScore ? match.team1?.score : undefined };
+    const team2 = { name: match.team2?.name ?? 'A definir', score: showScore ? match.team2?.score : undefined };
+
+    let trailing = null;
+    if (match.status === 'IN_PROGRESS') {
+        trailing = <LiveTrailing minute={formatMatchClock(match.clock_seconds)} />;
+    } else if (match.status === 'FINISHED') {
+        trailing = <FinishedTrailing />;
+    } else {
+        trailing = (
+            <ScheduledTrailing
+                time={match.scheduled_date ? formatCampusTime(match.scheduled_date) : '--:--'}
+                modality={match.modality_name ?? undefined}
+            />
+        );
+    }
+
+    return { team1, team2, trailing };
+}
+
+
 export default function GamesScreen() {
+    const [visitorDismissed, setVisitorDismissed] = useState(false);
     const [modalityFilter, setModalityFilter] = useState<string>('all');
-    const [dateFilter, setDateFilter] = useState<DateFilter>(DEFAULT_DATE_FILTER);
-    const [statusFilter, setStatusFilter] = useState<StatusFilter>(DEFAULT_STATUS_FILTER);
+
+    const { isAuthenticated, isInitializing } = useAuth();
 
     const season = useActiveSeason();
     const seasonId = season.data?.season_id;
@@ -57,34 +201,36 @@ export default function GamesScreen() {
         if (!seasonId) return undefined;
 
         const filters: MatchListFilters = { seasonId };
-
         if (modalityFilter !== 'all') filters.modalityId = modalityFilter;
-        if (statusFilter !== 'ALL') filters.status = statusFilter;
-        if (dateFilter !== 'all') {
-            const range = getCampusDayRange(dateFilter);
-            filters.dateFrom = range.dateFrom;
-            filters.dateTo = range.dateTo;
-        }
 
         return filters;
-    }, [seasonId, modalityFilter, dateFilter, statusFilter]);
+    }, [seasonId, modalityFilter]);
 
     const list = useMatchList(listFilters ?? { seasonId: '' }, !!listFilters);
 
     const matches: MatchListItemResponse[] = list.data?.pages.flatMap((page) => page.items) ?? [];
-    const hasActiveFilters =
-        modalityFilter !== 'all' || dateFilter !== DEFAULT_DATE_FILTER || statusFilter !== DEFAULT_STATUS_FILTER;
+    const sections = useMemo(() => buildSections(matches), [matches]);
+    const hasActiveFilters = modalityFilter !== 'all';
 
-    const clearFilters = () => {
-        setModalityFilter('all');
-        setDateFilter(DEFAULT_DATE_FILTER);
-        setStatusFilter(DEFAULT_STATUS_FILTER);
-    };
+    const clearFilters = () => setModalityFilter('all');
 
     const modalityOptions: FilterChipOption<string>[] = [
         { value: 'all', label: 'Todas' },
         ...(modalities.data ?? []).map((m) => ({ value: m.modality_id, label: m.name })),
     ];
+
+    if (isInitializing) {
+        return null;
+    }
+
+    if (!isAuthenticated && !visitorDismissed) {
+        return (
+            <>
+                <Stack.Screen options={{ headerShown: false }} />
+                <WelcomeHero onContinueAsVisitor={() => setVisitorDismissed(true)} />
+            </>
+        );
+    }
 
     if (season.isPending) {
         return <LoadingState label="Carregando temporada…" />;
@@ -129,8 +275,8 @@ export default function GamesScreen() {
         if (hasActiveFilters) {
             return (
                 <EmptyState
-                    title="Nenhum jogo com esses filtros"
-                    description="Tente outra data, status ou modalidade."
+                    title="Nenhum jogo com essa modalidade"
+                    description="Tente outra modalidade."
                     actionLabel="Limpar filtros"
                     onAction={clearFilters}
                 />
@@ -145,7 +291,7 @@ export default function GamesScreen() {
         );
     };
 
-    const renderModalityHeader = () => {
+    const renderModalityRow = () => {
         if (modalities.isPending) {
             return <ThemedText variant="caption">Carregando modalidades…</ThemedText>;
         }
@@ -156,8 +302,8 @@ export default function GamesScreen() {
                     <ThemedText variant="caption">Não foi possível carregar as modalidades.</ThemedText>
                     <Button
                         title="Tentar de novo"
-                        variant="ghost"
-                        size="sm"
+                        variant="neutral"
+                        size="compact"
                         onPress={() => modalities.refetch()}
                         loading={modalities.isRefetching}
                     />
@@ -180,36 +326,63 @@ export default function GamesScreen() {
     };
 
     return (
-        <FlatList
-            data={matches}
+        <SectionList<MatchListItemResponse, GameSection>
+            sections={sections}
             keyExtractor={(item) => item.match_id}
-            renderItem={({ item }) => <MatchCard match={item} dataUpdatedAt={list.dataUpdatedAt} />}
+            stickySectionHeadersEnabled={false}
+            renderSectionHeader={({ section }) => (
+                <View style={styles.sectionHeader}>
+                    <View style={styles.sectionHeaderLeft}>
+                        {section.kind === 'live' ? <View style={styles.liveDot} /> : null}
+                        <ThemedText variant="heading">{section.title}</ThemedText>
+                    </View>
+                    {section.trailing ? (
+                        <ThemedText variant="body" style={styles.sectionTrailing}>
+                            {section.trailing}
+                        </ThemedText>
+                    ) : null}
+                </View>
+            )}
+            renderItem={({ item, index, section }) => {
+                if (section.kind === 'live' && index === 0) {
+                    return <MatchCard match={item} dataUpdatedAt={list.dataUpdatedAt} />;
+                }
+
+                const { team1, team2, trailing } = matchRowProps(item);
+                return (
+                    <MatchListRow
+                        team1={team1}
+                        team2={team2}
+                        trailing={trailing}
+                        onPress={() => router.push(`/match/${item.match_id}`)}
+                    />
+                );
+            }}
             contentInsetAdjustmentBehavior="automatic"
-            contentContainerStyle={[styles.content, matches.length === 0 && styles.contentFill]}
+            contentContainerStyle={[styles.content, sections.length === 0 && styles.contentFill]}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
+            SectionSeparatorComponent={() => <View style={styles.sectionSeparator} />}
             ListHeaderComponent={
                 <View style={styles.header}>
-                    <ThemedText variant="subhead">
-                        {season.data.name} · {season.data.year}
-                    </ThemedText>
-                    {renderModalityHeader()}
-                    <FilterChips accessibilityLabel="Filtrar por data" options={DATE_OPTIONS} selected={dateFilter} onSelect={setDateFilter} />
-                    <FilterChips accessibilityLabel="Filtrar por status" options={STATUS_OPTIONS} selected={statusFilter} onSelect={setStatusFilter} />
+                    <View style={styles.headerTop}>
+                        <ThemedText variant="body" style={styles.seasonLabel}>
+                            {season.data.name} · {season.data.year}
+                        </ThemedText>
+                        <View style={styles.bellButton}>
+                            <Icon name="bell" size={20} color={colors.ink} />
+                        </View>
+                    </View>
+                    {renderModalityRow()}
                     {list.isError && matches.length > 0 ? (
                         <View style={styles.inlineError}>
                             <ThemedText variant="caption">Não foi possível atualizar. Mostrando os dados salvos.</ThemedText>
-                            <Button title="Tentar de novo" variant="ghost" size="sm" onPress={() => list.refetch()} />
+                            <Button title="Tentar de novo" variant="neutral" size="compact" onPress={() => list.refetch()} />
                         </View>
-                    ) : null}
-                    {list.isSuccess && matches.length > 0 ? (
-                        <ThemedText variant="caption" style={styles.total}>
-                            {list.data.pages[0].total} jogo(s)
-                        </ThemedText>
                     ) : null}
                 </View>
             }
             ListEmptyComponent={renderListEmpty}
-            ListFooterComponent={list.isFetchingNextPage ? <ActivityIndicator style={styles.footer} /> : null}
+            ListFooterComponent={list.isFetchingNextPage ? <LoadingState label="Carregando mais jogos…" /> : null}
             onEndReached={() => {
                 if (list.hasNextPage && !list.isFetchingNextPage) {
                     list.fetchNextPage();
@@ -231,6 +404,48 @@ export default function GamesScreen() {
 }
 
 const styles = StyleSheet.create({
+    welcomeRoot: {
+        flex: 1,
+        backgroundColor: colors.primary,
+    },
+    welcomeHero: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: spacing.lg,
+        paddingHorizontal: spacing.xl,
+        paddingBottom: spacing.xxl,
+    },
+    welcomeLogo: {
+        width: 200,
+        height: 200,
+    },
+    welcomeTagline: {
+        color: colors.surface,
+        textAlign: 'center',
+    },
+    welcomeSheet: {
+        backgroundColor: colors.surface,
+        borderTopLeftRadius: radius.hero,
+        borderTopRightRadius: radius.hero,
+        boxShadow: shadows.sheet,
+        padding: spacing.xl,
+        paddingBottom: spacing.xxl,
+        gap: spacing.sm,
+    },
+    welcomeDescription: {
+        color: colors.textSecondary,
+    },
+    welcomeActions: {
+        gap: spacing.sm,
+        marginTop: spacing.md,
+    },
+    welcomeFooter: {
+        textAlign: 'center',
+        color: colors.textMuted,
+        marginTop: spacing.md,
+    },
+
     content: {
         paddingBottom: spacing.xl,
     },
@@ -242,19 +457,55 @@ const styles = StyleSheet.create({
         paddingTop: spacing.sm,
         paddingBottom: spacing.md,
     },
+    headerTop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: spacing.md,
+    },
+    seasonLabel: {
+        color: colors.textSecondary,
+    },
+    bellButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.field,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: spacing.md,
+        paddingTop: spacing.md,
+        paddingBottom: spacing.xs,
+    },
+    sectionHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+    },
+    sectionTrailing: {
+        color: colors.textSecondary,
+    },
+    liveDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: colors.danger,
+    },
     separator: {
         height: spacing.sm,
+    },
+    sectionSeparator: {
+        height: 0,
     },
     inlineError: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: spacing.md,
-    },
-    total: {
-        paddingHorizontal: spacing.md,
-    },
-    footer: {
-        paddingVertical: spacing.md,
     },
 });

@@ -1,7 +1,8 @@
 import { forwardRef, useCallback, useMemo, type ReactNode } from 'react';
 import { StyleSheet } from 'react-native';
-import BottomSheetModalLib, {
+import {
     BottomSheetBackdrop,
+    BottomSheetModal,
     BottomSheetView,
     type BottomSheetBackdropProps,
     type BottomSheetModal as BottomSheetModalRef,
@@ -38,7 +39,7 @@ export const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(
         );
 
         return (
-            <BottomSheetModalLib
+            <BottomSheetModal
                 ref={ref}
                 snapPoints={points}
                 onDismiss={onDismiss}
@@ -60,7 +61,7 @@ export const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(
                     ) : null}
                     {children}
                 </BottomSheetView>
-            </BottomSheetModalLib>
+            </BottomSheetModal>
         );
     }
 );
