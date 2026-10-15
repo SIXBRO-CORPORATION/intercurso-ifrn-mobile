@@ -23,6 +23,86 @@ export function expelledPlayerIds(match: MatchPublicResponse): Set<string> {
     return ids;
 }
 
+
+export interface PenaltyShootoutKick {
+    result: 'GOAL' | 'MISS';
+    playerName?: string;
+}
+
+export interface PenaltyShootoutSummary {
+    team1: PenaltyShootoutKick[];
+    team2: PenaltyShootoutKick[];
+}
+
+export function penaltyShootoutKicks(match: MatchPublicResponse): PenaltyShootoutSummary {
+    const team1: PenaltyShootoutKick[] = [];
+    const team2: PenaltyShootoutKick[] = [];
+
+    for (const event of match.timeline) {
+        if (event.event_type !== 'PENALTY_GOAL' && event.event_type !== 'PENALTY_MISS') continue;
+
+        const kick: PenaltyShootoutKick = {
+            result: event.event_type === 'PENALTY_GOAL' ? 'GOAL' : 'MISS',
+            playerName: playerName(match, event.player_id),
+        };
+
+        if (event.team_id === match.team1.team_id) {
+            team1.push(kick);
+        } else if (event.team_id === match.team2.team_id) {
+            team2.push(kick);
+        }
+    }
+
+    return { team1, team2 };
+}
+
+export interface TopScorer {
+    playerId: string;
+    name: string;
+    teamName?: string;
+    goals: number;
+}
+
+export function topScorers(match: MatchPublicResponse): TopScorer[] {
+    const byPlayer = new Map<string, TopScorer>();
+
+    for (const event of match.timeline) {
+        if (event.event_type !== 'GOAL' || !event.player_id) continue;
+
+        const existing = byPlayer.get(event.player_id);
+        if (existing) {
+            existing.goals += 1;
+            continue;
+        }
+
+        byPlayer.set(event.player_id, {
+            playerId: event.player_id,
+            name: playerName(match, event.player_id) ?? 'Jogador',
+            teamName: teamName(match, event.team_id),
+            goals: 1,
+        });
+    }
+
+    return [...byPlayer.values()].sort((a, b) => b.goals - a.goals);
+}
+
+export interface MatchCardCounts {
+    yellow: number;
+    red: number;
+}
+
+export function matchCardCounts(match: MatchPublicResponse): MatchCardCounts {
+    let yellow = 0;
+    let red = 0;
+
+    for (const event of match.timeline) {
+        if (event.event_type === 'CARD_YELLOW') yellow += 1;
+        if (event.event_type === 'CARD_RED') red += 1;
+    }
+
+    return { yellow, red };
+}
+
 interface ClockAnchor {
     seconds: number;
     running: boolean;
