@@ -7,6 +7,8 @@ interface AuthContextData {
     isAuthenticated: boolean;
     isLoading: boolean;
     isInitializing: boolean;
+    hasEnteredAsVisitor: boolean;
+    continueAsVisitor: () => void;
     loginWithSuap: () => Promise<void>;
     logout: () => Promise<void>;
     refetch: () => Promise<void>;
@@ -18,6 +20,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isInitializing, setIsInitializing] = useState(true);
+    const [hasEnteredAsVisitor, setHasEnteredAsVisitor] = useState(false);
+
+    const continueAsVisitor = useCallback(() => {
+        setHasEnteredAsVisitor(true);
+    }, []);
 
     const fetchUser = useCallback(async () => {
         if (!(await authService.isAuthenticated())) {
@@ -73,6 +80,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 isAuthenticated: !!user,
                 isLoading,
                 isInitializing,
+                hasEnteredAsVisitor,
+                continueAsVisitor,
                 loginWithSuap,
                 logout,
                 refetch,

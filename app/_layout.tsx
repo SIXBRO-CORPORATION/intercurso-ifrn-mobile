@@ -47,6 +47,22 @@ function SplashGate() {
     return null;
 }
 
+function RootNavigator() {
+    const { isInitializing, isAuthenticated, hasEnteredAsVisitor } = useAuth();
+
+    if (isInitializing) {
+        return null;
+    }
+
+    const showWelcome = !isAuthenticated && !hasEnteredAsVisitor;
+
+    return (
+        <Stack screenOptions={{ headerShown: false }}>
+            {showWelcome ? <Stack.Screen name="welcome" /> : <Stack.Screen name="(tabs)" />}
+        </Stack>
+    );
+}
+
 function RootLayoutNav() {
     const navigationRef = useNavigationContainerRef();
     useReactNavigationDevTools(navigationRef);
@@ -61,9 +77,7 @@ function RootLayoutNav() {
                             <ToastProvider>
                                 <AuthProvider>
                                     <SplashGate />
-                                    <Stack screenOptions={{ headerShown: false }}>
-                                        <Stack.Screen name="(tabs)" />
-                                    </Stack>
+                                    <RootNavigator />
                                 </AuthProvider>
                             </ToastProvider>
                         </BottomSheetModalProvider>

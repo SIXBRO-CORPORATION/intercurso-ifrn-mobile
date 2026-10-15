@@ -1,8 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
-import { Image, RefreshControl, SectionList, StyleSheet, View } from 'react-native';
-import { router, Stack } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useMemo, useState } from 'react';
+import { RefreshControl, SectionList, StyleSheet, View } from 'react-native';
+import { router } from 'expo-router';
 import { Button } from '@/components/button';
 import { FilterChips, type FilterChipOption } from '@/components/filter-chips';
 import { Icon } from '@/components/icon';
@@ -10,75 +8,19 @@ import { MatchCard } from '@/components/match-card';
 import { FinishedTrailing, LiveTrailing, MatchListRow, ScheduledTrailing } from '@/components/list-row';
 import { EmptyState, ErrorState, LoadingState } from '@/components/states/screen-states';
 import { ThemedText } from '@/components/themed-text';
-import { useAuth } from '@/hooks/useAuth';
 import { useActiveSeason } from '@/hooks/useSeasons';
 import { useModalities } from '@/hooks/useModalities';
 import { useMatchList } from '@/hooks/useMatches';
 import { useSeasonLive } from '@/hooks/useRealtime';
-import { useToast } from '@/providers/ToastProvider';
 import { formatCampusDate, formatCampusTime, formatMatchClock, getCampusDayRange } from '@/utils/campus-time';
 import { ApiError } from '@/types/api';
-import { AuthCancelledError } from '@/types/auth';
-import { colors, radius, shadows, spacing } from '@/theme';
+import { colors, spacing } from '@/theme';
 import type { MatchListFilters, MatchListItemResponse } from '@/types/match-list';
 
 const NO_ACTIVE_SEASON_STATUS = 400;
 
 function errorMessage(error: unknown, fallback: string): string {
     return error instanceof ApiError ? error.message : fallback;
-}
-
-function WelcomeHero({ onContinueAsVisitor }: { onContinueAsVisitor: () => void }) {
-    const insets = useSafeAreaInsets();
-    const { isLoading, loginWithSuap } = useAuth();
-    const toast = useToast();
-
-    const handleLogin = useCallback(async () => {
-        try {
-            await loginWithSuap();
-        } catch (error) {
-            if (error instanceof AuthCancelledError) return;
-
-            toast.error(error instanceof Error ? error.message : 'Não foi possível concluir o login com o SUAP');
-        }
-    }, [loginWithSuap, toast]);
-
-    return (
-        <View style={styles.welcomeRoot}>
-            <LinearGradient
-                colors={colors.gradientPrimary}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[styles.welcomeHero, { paddingTop: insets.top + spacing.xxl }]}
-            >
-                <Image
-                    source={require('../../../assets/logo-intercurso-branca.png')}
-                    style={styles.welcomeLogo}
-                    resizeMode="contain"
-                    accessibilityIgnoresInvertColors
-                />
-                <ThemedText variant="bodyLg" style={styles.welcomeTagline}>
-                    Seu campeonato, num só app.
-                </ThemedText>
-            </LinearGradient>
-
-            <View style={styles.welcomeSheet}>
-                <ThemedText variant="title">Bem-vindo(a)!</ThemedText>
-                <ThemedText variant="body" style={styles.welcomeDescription}>
-                    Acompanhe os jogos ao vivo sem conta. Entre com o SUAP para criar ou participar de uma equipe.
-                </ThemedText>
-
-                <View style={styles.welcomeActions}>
-                    <Button title="Entrar com SUAP" icon="lock" loading={isLoading} onPress={handleLogin} />
-                    <Button title="Continuar como visitante" variant="outline" onPress={onContinueAsVisitor} />
-                </View>
-
-                <ThemedText variant="caption" style={styles.welcomeFooter}>
-                    IFRN · CAMPUS PAU DOS FERROS
-                </ThemedText>
-            </View>
-        </View>
-    );
 }
 
 type GameSection = {
@@ -183,12 +125,8 @@ function matchRowProps(match: MatchListItemResponse) {
     return { team1, team2, trailing };
 }
 
-
 export default function GamesScreen() {
-    const [visitorDismissed, setVisitorDismissed] = useState(false);
     const [modalityFilter, setModalityFilter] = useState<string>('all');
-
-    const { isAuthenticated, isInitializing } = useAuth();
 
     const season = useActiveSeason();
     const seasonId = season.data?.season_id;
@@ -218,19 +156,6 @@ export default function GamesScreen() {
         { value: 'all', label: 'Todas' },
         ...(modalities.data ?? []).map((m) => ({ value: m.modality_id, label: m.name })),
     ];
-
-    if (isInitializing) {
-        return null;
-    }
-
-    if (!isAuthenticated && !visitorDismissed) {
-        return (
-            <>
-                <Stack.Screen options={{ headerShown: false }} />
-                <WelcomeHero onContinueAsVisitor={() => setVisitorDismissed(true)} />
-            </>
-        );
-    }
 
     if (season.isPending) {
         return <LoadingState label="Carregando temporada…" />;
@@ -404,48 +329,6 @@ export default function GamesScreen() {
 }
 
 const styles = StyleSheet.create({
-    welcomeRoot: {
-        flex: 1,
-        backgroundColor: colors.primary,
-    },
-    welcomeHero: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: spacing.lg,
-        paddingHorizontal: spacing.xl,
-        paddingBottom: spacing.xxl,
-    },
-    welcomeLogo: {
-        width: 200,
-        height: 200,
-    },
-    welcomeTagline: {
-        color: colors.surface,
-        textAlign: 'center',
-    },
-    welcomeSheet: {
-        backgroundColor: colors.surface,
-        borderTopLeftRadius: radius.hero,
-        borderTopRightRadius: radius.hero,
-        boxShadow: shadows.sheet,
-        padding: spacing.xl,
-        paddingBottom: spacing.xxl,
-        gap: spacing.sm,
-    },
-    welcomeDescription: {
-        color: colors.textSecondary,
-    },
-    welcomeActions: {
-        gap: spacing.sm,
-        marginTop: spacing.md,
-    },
-    welcomeFooter: {
-        textAlign: 'center',
-        color: colors.textMuted,
-        marginTop: spacing.md,
-    },
-
     content: {
         paddingBottom: spacing.xl,
     },
