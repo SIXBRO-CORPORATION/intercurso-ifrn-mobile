@@ -343,7 +343,7 @@ Os 6 pontos abaixo não correspondiam 1:1 ao que já existia no código. Foram r
 - [x] 6 — `components/states/screen-states.tsx`, `components/screen-placeholder.tsx`, `components/overlays/*`, `providers/ToastProvider.tsx`
 - [x] 7 — `app/(tabs)/_layout.tsx` e layouts de grupo, `app/_layout.tsx`
 - [x] 8 — `components/auth/login-prompt.tsx`, `app/(tabs)/(games)/index.tsx`
-- [ ] 9 — `app/(tabs)/(games)/match/[matchId].tsx`, `components/match/match-score-header.tsx`, `match-timeline.tsx`
+- [x] 9 — `app/(tabs)/(games)/match/[matchId].tsx`, `components/match/match-score-header.tsx`, `match-timeline.tsx`
 - [ ] 10 — `app/(tabs)/(teams)/index.tsx`, `team/new.tsx`
 - [ ] 11 — `app/(tabs)/(teams)/join/*`, `team/[id].tsx`, `components/teams/member-card.tsx`
 - [ ] 12 — nova rota "Chaves" (aluno)
