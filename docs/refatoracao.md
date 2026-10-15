@@ -340,7 +340,7 @@ Os 6 pontos abaixo não correspondiam 1:1 ao que já existia no código. Foram r
 - [x] 3 — `components/form/*`
 - [x] 4 — `components/filter-chips.tsx`, `components/teams/pill.tsx`, `team-status-badge.tsx`, `team-avatar.tsx`, `management/season-status-badge.tsx`
 - [x] 5 — `components/match-card.tsx`, `components/management/management-card.tsx`, `components/list-row.tsx`
-- [ ] 6 — `components/states/screen-states.tsx`, `components/screen-placeholder.tsx`, `components/overlays/*`, `providers/ToastProvider.tsx`
+- [x] 6 — `components/states/screen-states.tsx`, `components/screen-placeholder.tsx`, `components/overlays/*`, `providers/ToastProvider.tsx`
 - [ ] 7 — `app/(tabs)/_layout.tsx` e layouts de grupo, `app/_layout.tsx`
 - [ ] 8 — `components/auth/login-prompt.tsx`, `app/(tabs)/(games)/index.tsx`
 - [ ] 9 — `app/(tabs)/(games)/match/[matchId].tsx`, `components/match/match-score-header.tsx`, `match-timeline.tsx`

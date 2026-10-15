@@ -3,6 +3,8 @@ import { Stack } from 'expo-router/stack';
 import { ThemeProvider } from 'expo-router/react-navigation';
 import { useEffect } from 'react';
 import { useFonts } from 'expo-font';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { QueryProvider } from '@/providers/QueryProvider';
 import * as SplashScreen from 'expo-splash-screen';
 import { useReactNavigationDevTools } from '@dev-plugins/react-navigation';
@@ -51,28 +53,32 @@ function RootLayoutNav() {
     useReactQueryDevTools(queryClient);
 
     return (
-        <SafeAreaProvider>
-            <ThemeProvider value={navigationTheme}>
-                <QueryProvider>
-                    <ToastProvider>
-                        <AuthProvider>
-                            <SplashGate />
-                            <Stack screenOptions={{ headerShown: false }}>
-                                <Stack.Screen name="(tabs)" />
-                                <Stack.Screen
-                                    name="profile"
-                                    options={{
-                                        headerShown: true,
-                                        title: 'Perfil',
-                                        headerBackButtonDisplayMode: 'minimal',
-                                    }}
-                                />
-                            </Stack>
-                        </AuthProvider>
-                    </ToastProvider>
-                </QueryProvider>
-            </ThemeProvider>
-        </SafeAreaProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <SafeAreaProvider>
+                <ThemeProvider value={navigationTheme}>
+                    <QueryProvider>
+                        <BottomSheetModalProvider>
+                            <ToastProvider>
+                                <AuthProvider>
+                                    <SplashGate />
+                                    <Stack screenOptions={{ headerShown: false }}>
+                                        <Stack.Screen name="(tabs)" />
+                                        <Stack.Screen
+                                            name="profile"
+                                            options={{
+                                                headerShown: true,
+                                                title: 'Perfil',
+                                                headerBackButtonDisplayMode: 'minimal',
+                                            }}
+                                        />
+                                    </Stack>
+                                </AuthProvider>
+                            </ToastProvider>
+                        </BottomSheetModalProvider>
+                    </QueryProvider>
+                </ThemeProvider>
+            </SafeAreaProvider>
+        </GestureHandlerRootView>
     );
 }
 

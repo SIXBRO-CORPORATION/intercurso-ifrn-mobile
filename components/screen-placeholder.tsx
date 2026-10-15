@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
-import { spacing } from '@/theme';
+import { colors, spacing } from '@/theme';
 
 interface ScreenPlaceholderProps {
     title: string;
@@ -13,7 +13,7 @@ export function ScreenPlaceholder({ title, description }: ScreenPlaceholderProps
             <ThemedText variant="title" style={styles.centered}>
                 {title}
             </ThemedText>
-            <ThemedText variant="subhead" style={styles.centered}>
+            <ThemedText variant="body" style={[styles.centered, styles.description]}>
                 {description}
             </ThemedText>
         </ScrollView>
@@ -25,10 +25,14 @@ const styles = StyleSheet.create({
         flexGrow: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        padding: spacing.lg,
+        padding: spacing.xl,
         gap: spacing.sm,
     },
     centered: {
         textAlign: 'center',
+    },
+    description: {
+        color: colors.textSecondary,
+        maxWidth: 280,
     },
 });

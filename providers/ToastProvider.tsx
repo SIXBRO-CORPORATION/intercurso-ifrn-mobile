@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useCallback, useEffect } from 'react';
 import Toast from 'react-native-toast-message';
+import { toastConfig } from '@/components/overlays/toast';
 import { setToastCallback } from '@/utils/http-client';
 
 type ToastType = 'success' | 'error' | 'info';
@@ -56,7 +57,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     return (
         <ToastContext.Provider value={{ showToast, success, error, info }}>
             {children}
-            <Toast />
+            <Toast config={toastConfig} />
         </ToastContext.Provider>
     );
 }
