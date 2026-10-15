@@ -1,5 +1,4 @@
 import { Stack } from 'expo-router/stack';
-import { AvatarMenu } from '@/components/avatar-menu';
 import { colors, fontFamily } from '@/theme';
 
 export default function GamesLayout() {
@@ -8,16 +7,15 @@ export default function GamesLayout() {
             screenOptions={{
                 headerLargeTitleEnabled: true,
                 headerShadowVisible: false,
-                headerTitleStyle: { color: colors.label, fontFamily: fontFamily.display },
+                headerTintColor: colors.ink,
+                headerStyle: { backgroundColor: colors.background },
+                headerTitleStyle: { fontFamily: fontFamily.bold, fontSize: 20, color: colors.ink },
+                headerLargeTitleStyle: { fontFamily: fontFamily.bold, fontSize: 28, color: colors.ink },
                 headerBackButtonDisplayMode: 'minimal',
-                headerRight: () => <AvatarMenu />,
             }}
         >
             <Stack.Screen name="index" options={{ title: 'Jogos' }} />
-            <Stack.Screen
-                name="match/[matchId]"
-                options={{ title: 'Partida', headerLargeTitleEnabled: false, headerRight: undefined }}
-            />
+            <Stack.Screen name="match/[matchId]" options={{ title: 'Partida', headerLargeTitleEnabled: false }} />
         </Stack>
     );
 }

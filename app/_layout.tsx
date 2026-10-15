@@ -63,14 +63,6 @@ function RootLayoutNav() {
                                     <SplashGate />
                                     <Stack screenOptions={{ headerShown: false }}>
                                         <Stack.Screen name="(tabs)" />
-                                        <Stack.Screen
-                                            name="profile"
-                                            options={{
-                                                headerShown: true,
-                                                title: 'Perfil',
-                                                headerBackButtonDisplayMode: 'minimal',
-                                            }}
-                                        />
                                     </Stack>
                                 </AuthProvider>
                             </ToastProvider>

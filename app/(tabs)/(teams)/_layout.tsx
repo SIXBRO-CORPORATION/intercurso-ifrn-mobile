@@ -1,5 +1,4 @@
 import { Stack } from 'expo-router/stack';
-import { AvatarMenu } from '@/components/avatar-menu';
 import { colors, fontFamily } from '@/theme';
 
 export default function TeamsLayout() {
@@ -8,28 +7,21 @@ export default function TeamsLayout() {
             screenOptions={{
                 headerLargeTitleEnabled: true,
                 headerShadowVisible: false,
-                headerTitleStyle: { color: colors.label, fontFamily: fontFamily.display },
+                headerTintColor: colors.ink,
+                headerStyle: { backgroundColor: colors.background },
+                headerTitleStyle: { fontFamily: fontFamily.bold, fontSize: 20, color: colors.ink },
+                headerLargeTitleStyle: { fontFamily: fontFamily.bold, fontSize: 28, color: colors.ink },
                 headerBackButtonDisplayMode: 'minimal',
-                headerRight: () => <AvatarMenu />,
             }}
         >
-            <Stack.Screen name="index" options={{ title: 'Times' }} />
-            <Stack.Screen
-                name="team/new"
-                options={{ title: 'Criar time', headerLargeTitleEnabled: false, headerRight: undefined }}
-            />
-            <Stack.Screen
-                name="team/[id]"
-                options={{ title: 'Time', headerLargeTitleEnabled: false, headerRight: undefined }}
-            />
+            <Stack.Screen name="index" options={{ title: 'Equipes' }} />
+            <Stack.Screen name="team/new" options={{ title: 'Criar equipe', headerLargeTitleEnabled: false }} />
+            <Stack.Screen name="team/[id]" options={{ title: 'Equipe', headerLargeTitleEnabled: false }} />
             <Stack.Screen
                 name="join/index"
-                options={{ title: 'Entrar em um time', headerLargeTitleEnabled: false, headerRight: undefined }}
+                options={{ title: 'Entrar em uma equipe', headerLargeTitleEnabled: false }}
             />
-            <Stack.Screen
-                name="join/[token]"
-                options={{ title: 'Convite', headerLargeTitleEnabled: false, headerRight: undefined }}
-            />
+            <Stack.Screen name="join/[token]" options={{ title: 'Convite', headerLargeTitleEnabled: false }} />
         </Stack>
     );
 }
