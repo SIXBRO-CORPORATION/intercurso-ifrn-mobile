@@ -43,7 +43,7 @@ export default function TabsLayout() {
         <Tabs style={styles.root}>
             <TabSlot />
             <TabList asChild>
-                <View style={[styles.tabList, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
+                <View style={StyleSheet.flatten([styles.tabList, { paddingBottom: Math.max(insets.bottom, spacing.sm) }])}>
                     {canManage ? (
                         <>
                             <TabTrigger name="panel" href="/(management)" asChild>
