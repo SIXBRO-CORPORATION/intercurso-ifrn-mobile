@@ -49,13 +49,13 @@ export default function TabsLayout() {
                             <TabTrigger name="panel" href="/(management)" asChild>
                                 <TabButton icon="grid" label="Painel" />
                             </TabTrigger>
-                            <TabTrigger name="management-teams" href="/(management)/teams" asChild>
+                            <TabTrigger name="management-teams" href="/(management-teams)/teams" asChild>
                                 <TabButton icon="users" label="Equipes" />
                             </TabTrigger>
                             <TabTrigger name="brackets" href="/(brackets)" asChild>
                                 <TabButton icon="bracket" label="Chaves" />
                             </TabTrigger>
-                            <TabTrigger name="matches" href="/(management)/matches" asChild>
+                            <TabTrigger name="matches" href="/(management-matches)/matches" asChild>
                                 <TabButton icon="calendar" label="Partidas" />
                             </TabTrigger>
                             <TabTrigger name="profile" href="/profile" asChild>

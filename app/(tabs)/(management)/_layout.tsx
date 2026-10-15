@@ -17,8 +17,6 @@ export default function ManagementLayout() {
             <Stack.Screen name="index" options={{ title: 'Painel' }} />
             <Stack.Screen name="seasons" options={{ headerShown: false }} />
             <Stack.Screen name="modalities" options={{ headerShown: false }} />
-            <Stack.Screen name="teams" options={{ headerShown: false }} />
-            <Stack.Screen name="matches" options={{ headerShown: false }} />
         </Stack>
     );
 }
