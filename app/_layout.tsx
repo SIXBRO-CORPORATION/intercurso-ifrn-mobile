@@ -54,11 +54,16 @@ function RootNavigator() {
         return null;
     }
 
-    const showWelcome = !isAuthenticated && !hasEnteredAsVisitor;
+    const canEnterApp = isAuthenticated || hasEnteredAsVisitor;
 
     return (
         <Stack screenOptions={{ headerShown: false }}>
-            {showWelcome ? <Stack.Screen name="welcome" /> : <Stack.Screen name="(tabs)" />}
+            <Stack.Protected guard={!canEnterApp}>
+                <Stack.Screen name="welcome" />
+            </Stack.Protected>
+            <Stack.Protected guard={canEnterApp}>
+                <Stack.Screen name="(tabs)" />
+            </Stack.Protected>
         </Stack>
     );
 }
