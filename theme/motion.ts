@@ -1,4 +1,4 @@
-import { Easing } from 'react-native';
+import { Easing } from 'react-native-reanimated';
 
 export const motion = {
     fast: 150,
