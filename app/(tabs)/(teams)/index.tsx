@@ -82,7 +82,7 @@ export default function TeamsScreen() {
                 />
                 <Button
                     title="Entrar com código"
-                    variant="secondary"
+                    variant="neutral"
                     onPress={() => router.push('/join')}
                     style={styles.action}
                 />

@@ -219,7 +219,7 @@ function BracketContent({ seasonId, modalityId }: { seasonId: string; modalityId
                         {bracket.available_actions.includes('resort') ? (
                             <Button
                                 title="Sortear novamente"
-                                variant="secondary"
+                                variant="neutral"
                                 loading={resortBracket.isPending}
                                 onPress={confirmResort}
                             />

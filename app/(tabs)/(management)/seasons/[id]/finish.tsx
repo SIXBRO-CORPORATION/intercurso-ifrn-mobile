@@ -56,7 +56,7 @@ function FinishForm({ season }: { season: SeasonDetails }) {
 
             <Button
                 title="Finalizar temporada"
-                variant="destructive"
+                variant="danger"
                 disabled={!matches}
                 loading={finish.isPending}
                 onPress={handleSubmit}

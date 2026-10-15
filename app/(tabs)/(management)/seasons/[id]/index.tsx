@@ -68,21 +68,21 @@ function RegistrationActions({ season }: { season: SeasonDetails }) {
             {has('edit_registration_dates') ? (
                 <Button
                     title="Editar datas de inscrição"
-                    variant="secondary"
+                    variant="neutral"
                     onPress={() => router.push({ pathname: `${base}/edit-dates` as never, params: { mode: 'both' } })}
                 />
             ) : null}
             {has('edit_registration_end_date') ? (
                 <Button
                     title="Editar data de encerramento"
-                    variant="secondary"
+                    variant="neutral"
                     onPress={() => router.push({ pathname: `${base}/edit-dates` as never, params: { mode: 'end' } })}
                 />
             ) : null}
             {has('close_registration_early') ? (
                 <Button
                     title="Encerrar inscrições agora"
-                    variant="destructive"
+                    variant="danger"
                     loading={closeRegistration.isPending}
                     onPress={confirmClose}
                 />
@@ -120,7 +120,7 @@ function FinishSection({ season, brackets }: { season: SeasonDetails; brackets: 
             {blockedReason ? <ThemedText variant="caption">{blockedReason}</ThemedText> : null}
             <Button
                 title="Finalizar temporada"
-                variant="destructive"
+                variant="danger"
                 disabled={blockedReason !== null}
                 onPress={() => router.push(`/seasons/${season.season_id}/finish` as never)}
             />

@@ -75,8 +75,8 @@ function RejectForm({
             <ThemedText variant="caption">
                 {trimmed.length}/{REJECTION_REASON_MAX}
             </ThemedText>
-            <Button title="Confirmar rejeição" variant="destructive" disabled={!trimmed} loading={loading} onPress={ask} />
-            <Button title="Cancelar" variant="ghost" onPress={onCancel} />
+            <Button title="Confirmar rejeição" variant="danger" disabled={!trimmed} loading={loading} onPress={ask} />
+            <Button title="Cancelar" variant="outline" onPress={onCancel} />
         </View>
     );
 }
@@ -264,7 +264,7 @@ function TeamManagementContent({ teamId }: { teamId: string }) {
                                 loading={approveTeam.isPending}
                                 onPress={askApprove}
                             />
-                            <Button title="Rejeitar time" variant="destructive" onPress={() => setRejecting(true)} />
+                            <Button title="Rejeitar time" variant="danger" onPress={() => setRejecting(true)} />
                         </View>
                     )
                 ) : null}

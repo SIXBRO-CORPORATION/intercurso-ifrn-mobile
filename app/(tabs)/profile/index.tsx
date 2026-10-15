@@ -64,7 +64,7 @@ export default function ProfileScreen() {
                 <InfoRow label="Ativo" value={user.active ? 'Sim' : 'Não'} />
             </View>
 
-            <Button title="Sair" variant="destructive" loading={isLoading} onPress={handleLogout} />
+            <Button title="Sair" variant="danger" loading={isLoading} onPress={handleLogout} />
         </ScrollView>
     );
 }

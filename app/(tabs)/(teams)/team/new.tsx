@@ -184,7 +184,7 @@ export default function CreateTeamScreen() {
                     <ThemedText variant="caption" accessibilityRole="alert">
                         Não foi possível carregar as modalidades.
                     </ThemedText>
-                    <Button title="Tentar de novo" variant="secondary" size="sm" onPress={() => modalities.refetch()} />
+                    <Button title="Tentar de novo" variant="neutral" size="small" onPress={() => modalities.refetch()} />
                 </View>
             );
         }
@@ -255,8 +255,8 @@ export default function CreateTeamScreen() {
                     </Pressable>
                     {photo ? (
                         <View style={styles.photoActions}>
-                            <Button title="Trocar foto" variant="secondary" size="sm" onPress={pickPhoto} />
-                            <Button title="Remover" variant="ghost" size="sm" onPress={() => setPhoto(null)} />
+                            <Button title="Trocar foto" variant="neutral" size="small" onPress={pickPhoto} />
+                            <Button title="Remover" variant="outline" size="small" onPress={() => setPhoto(null)} />
                         </View>
                     ) : null}
                 </View>

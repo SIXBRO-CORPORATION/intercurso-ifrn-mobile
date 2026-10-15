@@ -65,21 +65,21 @@ function PlayersList({
                             <View style={styles.playerActions}>
                                 <Button
                                     title={pointLabel}
-                                    size="sm"
+                                    size="small"
                                     disabled={disabled || isExpelled}
                                     onPress={() => onGoal(player.user_id)}
                                 />
                                 <Button
                                     title="Amarelo"
-                                    size="sm"
-                                    variant="secondary"
+                                    size="small"
+                                    variant="neutral"
                                     disabled={disabled || isExpelled}
                                     onPress={() => onCard(player.user_id, 'YELLOW')}
                                 />
                                 <Button
                                     title="Vermelho"
-                                    size="sm"
-                                    variant="destructive"
+                                    size="small"
+                                    variant="danger"
                                     disabled={disabled || isExpelled}
                                     onPress={() => onCard(player.user_id, 'RED')}
                                 />
@@ -106,8 +106,8 @@ function PenaltyTeamActions({
             <ThemedText variant="subhead" style={styles.penaltyTeamName} numberOfLines={1}>
                 {teamLabel}
             </ThemedText>
-            <Button title="Converteu" size="sm" disabled={disabled} onPress={() => onResult('GOAL')} />
-            <Button title="Perdeu" size="sm" variant="secondary" disabled={disabled} onPress={() => onResult('MISS')} />
+            <Button title="Converteu" size="small" disabled={disabled} onPress={() => onResult('GOAL')} />
+            <Button title="Perdeu" size="small" variant="neutral" disabled={disabled} onPress={() => onResult('MISS')} />
         </View>
     );
 }
@@ -161,7 +161,7 @@ function ScheduledPanel({ match }: { match: MatchPublicResponse }) {
                 />
                 <Button
                     title="Salvar agendamento"
-                    variant="secondary"
+                    variant="neutral"
                     loading={updateMatch.isPending}
                     onPress={handleSaveSchedule}
                 />
@@ -180,7 +180,7 @@ function ScheduledPanel({ match }: { match: MatchPublicResponse }) {
                 }}
             />
 
-            <Button title="Remover partida" variant="ghost" loading={deleteMatch.isPending} onPress={confirmDelete} />
+            <Button title="Remover partida" variant="outline" loading={deleteMatch.isPending} onPress={confirmDelete} />
         </>
     );
 }
@@ -287,8 +287,8 @@ function InProgressPanel({ match }: { match: MatchPublicResponse }) {
                 <View style={styles.actionsRow}>
                     <Button
                         title={match.clock_running ? 'Pausar' : 'Retomar'}
-                        variant="secondary"
-                        size="sm"
+                        variant="neutral"
+                        size="small"
                         loading={pauseClock.isPending || resumeClock.isPending}
                         onPress={() =>
                             match.clock_running
@@ -305,13 +305,13 @@ function InProgressPanel({ match }: { match: MatchPublicResponse }) {
                         }
                     />
                     {isVolleyball ? (
-                        <Button title="Encerrar set" variant="secondary" size="sm" loading={endSet.isPending} onPress={confirmEndSet} />
+                        <Button title="Encerrar set" variant="neutral" size="small" loading={endSet.isPending} onPress={confirmEndSet} />
                     ) : (
                         <>
                             <Button
                                 title="Iniciar período"
-                                variant="secondary"
-                                size="sm"
+                                variant="neutral"
+                                size="small"
                                 loading={startPeriod.isPending}
                                 onPress={() =>
                                     run(
@@ -323,8 +323,8 @@ function InProgressPanel({ match }: { match: MatchPublicResponse }) {
                             />
                             <Button
                                 title="Encerrar período"
-                                variant="secondary"
-                                size="sm"
+                                variant="neutral"
+                                size="small"
                                 loading={endPeriod.isPending}
                                 onPress={confirmEndPeriod}
                             />
@@ -431,7 +431,7 @@ function InProgressPanel({ match }: { match: MatchPublicResponse }) {
                             />
                             <Button
                                 title="Encerrar disputa de pênaltis"
-                                variant="secondary"
+                                variant="neutral"
                                 loading={endPenaltyShootout.isPending}
                                 onPress={confirmEndPenaltyShootout}
                             />
@@ -439,7 +439,7 @@ function InProgressPanel({ match }: { match: MatchPublicResponse }) {
                     ) : (
                         <Button
                             title="Iniciar disputa de pênaltis"
-                            variant="secondary"
+                            variant="neutral"
                             loading={startPenaltyShootout.isPending}
                             onPress={() =>
                                 run(
@@ -456,12 +456,12 @@ function InProgressPanel({ match }: { match: MatchPublicResponse }) {
             <Section title="Outras ações">
                 <Button
                     title="Desfazer último evento"
-                    variant="ghost"
+                    variant="outline"
                     disabled={match.timeline.length === 0}
                     loading={undoLastEvent.isPending}
                     onPress={confirmUndo}
                 />
-                <Button title="Finalizar partida" variant="destructive" loading={finishMatch.isPending} onPress={confirmFinish} />
+                <Button title="Finalizar partida" variant="danger" loading={finishMatch.isPending} onPress={confirmFinish} />
             </Section>
         </>
     );

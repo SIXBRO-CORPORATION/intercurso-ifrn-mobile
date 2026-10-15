@@ -110,7 +110,7 @@ export default function JoinTeamScreen() {
                 loading={join.isPending}
                 disabled={joinBlockedReason !== null}
             />
-            <Button title="Cancelar" variant="ghost" onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
+            <Button title="Cancelar" variant="outline" onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
         </ScrollView>
     );
 }

@@ -111,7 +111,7 @@ function InviteSection({ team, onRegenerated }: { team: TeamDetails; onRegenerat
                     <Button title="Compartilhar convite" onPress={handleShare} />
                     <Button
                         title="Gerar novo convite"
-                        variant="ghost"
+                        variant="outline"
                         loading={regenerate.isPending}
                         onPress={confirmRegenerate}
                     />
@@ -412,7 +412,7 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                         />
                         <Button
                             title="Excluir time"
-                            variant="destructive"
+                            variant="danger"
                             loading={deleteTeam.isPending}
                             onPress={confirmDelete}
                         />
@@ -422,7 +422,7 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                 {isMember && !isOwner && isDraft ? (
                     <Button
                         title="Sair do time"
-                        variant="destructive"
+                        variant="danger"
                         loading={leaveTeam.isPending}
                         onPress={confirmLeave}
                     />
