@@ -20,7 +20,10 @@ export default function SeasonsLayout() {
             screenOptions={{
                 headerLargeTitleEnabled: true,
                 headerShadowVisible: false,
-                headerTitleStyle: { color: colors.label, fontFamily: fontFamily.display },
+                headerTintColor: colors.ink,
+                headerStyle: { backgroundColor: colors.background },
+                headerTitleStyle: { fontFamily: fontFamily.bold, fontSize: 20, color: colors.ink },
+                headerLargeTitleStyle: { fontFamily: fontFamily.bold, fontSize: 28, color: colors.ink },
                 headerBackButtonDisplayMode: 'minimal',
                 headerRight: () => <HeaderAddButton href="/seasons/create" label="Criar temporada" />,
             }}
