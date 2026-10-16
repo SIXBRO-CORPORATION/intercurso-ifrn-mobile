@@ -1,18 +1,18 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/button';
 import { FormField } from '@/components/form/form-field';
+import { Icon } from '@/components/icon';
 import { ManagementGuard } from '@/components/management/management-guard';
 import { EmptyState, ErrorState, LoadingState } from '@/components/states/screen-states';
 import { ThemedText } from '@/components/themed-text';
 import { useFinishSeason, useSeasonDetails } from '@/hooks/useSeasons';
 import type { SeasonDetails } from '@/types/season';
-import { spacing, useBrandColors } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 import { friendlyErrorMessage } from '@/utils/api-error-message';
 
 function FinishForm({ season }: { season: SeasonDetails }) {
-    const brand = useBrandColors();
     const finish = useFinishSeason();
     const [confirmation, setConfirmation] = useState('');
     const [submitError, setSubmitError] = useState<string | null>(null);
@@ -33,10 +33,16 @@ function FinishForm({ season }: { season: SeasonDetails }) {
 
     return (
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-            <ThemedText variant="headline">Esta ação não pode ser desfeita.</ThemedText>
-            <ThemedText variant="subhead">
-                A temporada passa a Finalizada, todos os convites de equipes são desativados e nenhuma alteração será
-                permitida depois disso.
+            <View style={styles.iconBubble}>
+                <Icon name="warn" size={28} color={colors.danger} />
+            </View>
+
+            <ThemedText variant="heading" style={styles.centered}>
+                Finalizar temporada?
+            </ThemedText>
+            <ThemedText variant="body" style={[styles.centered, styles.description]}>
+                Todas as atividades serão encerradas e os convites de equipe, desativados. Essa ação não pode ser
+                desfeita.
             </ThemedText>
 
             <FormField
@@ -45,22 +51,31 @@ function FinishForm({ season }: { season: SeasonDetails }) {
                 onChangeText={setConfirmation}
                 autoCapitalize="none"
                 autoCorrect={false}
+                placeholder={season.name}
                 error={confirmation.length > 0 && !matches ? 'O nome precisa ser idêntico ao da temporada.' : undefined}
             />
 
             {submitError ? (
-                <ThemedText variant="caption" accessibilityRole="alert" style={{ color: brand.primary }}>
+                <ThemedText variant="caption" accessibilityRole="alert" style={styles.errorText}>
                     {submitError}
                 </ThemedText>
             ) : null}
 
-            <Button
-                title="Finalizar temporada"
-                variant="danger"
-                disabled={!matches}
-                loading={finish.isPending}
-                onPress={handleSubmit}
-            />
+            <View style={styles.actions}>
+                <Button
+                    title="Finalizar temporada"
+                    variant="danger"
+                    disabled={!matches}
+                    loading={finish.isPending}
+                    onPress={handleSubmit}
+                />
+                <Button
+                    title="Cancelar"
+                    variant="neutral"
+                    disabled={finish.isPending}
+                    onPress={() => router.back()}
+                />
+            </View>
         </ScrollView>
     );
 }
@@ -106,7 +121,33 @@ export default function FinishSeasonScreen() {
 
 const styles = StyleSheet.create({
     content: {
-        padding: spacing.md,
+        flexGrow: 1,
+        justifyContent: 'center',
+        padding: spacing.xl,
         gap: spacing.md,
+    },
+    iconBubble: {
+        alignSelf: 'center',
+        width: 64,
+        height: 64,
+        borderRadius: radius.pill,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.dangerSoft,
+        marginBottom: spacing.xs,
+    },
+    centered: {
+        textAlign: 'center',
+    },
+    description: {
+        color: colors.textSecondary,
+    },
+    actions: {
+        gap: spacing.sm,
+        marginTop: spacing.xs,
+    },
+    errorText: {
+        color: colors.danger,
+        textAlign: 'center',
     },
 });

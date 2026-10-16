@@ -6,13 +6,12 @@ import { DateField } from '@/components/form/date-field';
 import { ManagementGuard } from '@/components/management/management-guard';
 import { ThemedText } from '@/components/themed-text';
 import { useReopenSeasonRegistration } from '@/hooks/useSeasons';
-import { spacing, useBrandColors } from '@/theme';
+import { colors, spacing } from '@/theme';
 import { friendlyErrorMessage } from '@/utils/api-error-message';
 import { pickerDateToIso } from '@/utils/campus-time';
 
 function ReopenContent() {
     const { id } = useLocalSearchParams<{ id: string }>();
-    const brand = useBrandColors();
     const reopen = useReopenSeasonRegistration();
 
     const [end, setEnd] = useState(() => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
@@ -41,7 +40,7 @@ function ReopenContent() {
 
     return (
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-            <ThemedText variant="subhead">
+            <ThemedText variant="body" style={styles.intro}>
                 As equipes em rascunho poderão ser submetidas de novo. Defina quando as inscrições encerram.
             </ThemedText>
 
@@ -55,7 +54,7 @@ function ReopenContent() {
             />
 
             {submitError ? (
-                <ThemedText variant="caption" accessibilityRole="alert" style={{ color: brand.primary }}>
+                <ThemedText variant="caption" accessibilityRole="alert" style={styles.errorText}>
                     {submitError}
                 </ThemedText>
             ) : null}
@@ -77,5 +76,11 @@ const styles = StyleSheet.create({
     content: {
         padding: spacing.md,
         gap: spacing.md,
+    },
+    intro: {
+        color: colors.textSecondary,
+    },
+    errorText: {
+        color: colors.danger,
     },
 });

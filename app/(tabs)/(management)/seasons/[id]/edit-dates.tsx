@@ -9,14 +9,13 @@ import { ErrorState, LoadingState } from '@/components/states/screen-states';
 import { ThemedText } from '@/components/themed-text';
 import { useEditSeasonDates, useSeasonDetails } from '@/hooks/useSeasons';
 import type { SeasonDetails, SeasonEditDatesRequest } from '@/types/season';
-import { spacing, useBrandColors } from '@/theme';
+import { colors, spacing } from '@/theme';
 import { friendlyErrorMessage } from '@/utils/api-error-message';
 import { formatPickerDate, isoToPickerDate, pickerDateToIso } from '@/utils/campus-time';
 
 type Mode = 'both' | 'start' | 'end';
 
 function EditDatesForm({ season, mode }: { season: SeasonDetails; mode: Mode }) {
-    const brand = useBrandColors();
     const editDates = useEditSeasonDates();
 
     const [start, setStart] = useState(() => isoToPickerDate(season.registration_start_date));
@@ -85,7 +84,7 @@ function EditDatesForm({ season, mode }: { season: SeasonDetails; mode: Mode }) 
 
     return (
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-            <ThemedText variant="subhead">{season.name}</ThemedText>
+            <ThemedText variant="section">{season.name}</ThemedText>
 
             {editsStart ? (
                 <DateField
@@ -118,7 +117,7 @@ function EditDatesForm({ season, mode }: { season: SeasonDetails; mode: Mode }) 
             />
 
             {submitError ? (
-                <ThemedText variant="caption" accessibilityRole="alert" style={{ color: brand.primary }}>
+                <ThemedText variant="caption" accessibilityRole="alert" style={styles.errorText}>
                     {submitError}
                 </ThemedText>
             ) : null}
@@ -160,5 +159,8 @@ const styles = StyleSheet.create({
     content: {
         padding: spacing.md,
         gap: spacing.md,
+    },
+    errorText: {
+        color: colors.danger,
     },
 });
