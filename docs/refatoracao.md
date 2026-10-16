@@ -349,7 +349,7 @@ Os 6 pontos abaixo não correspondiam 1:1 ao que já existia no código. Foram r
 - [ ] 12 — nova rota "Chaves" (aluno)
 - [x] 13 — `app/profile.tsx`, `components/avatar-menu.tsx`
 - [x] 14 — `app/(tabs)/(management)/index.tsx`, `seasons/index.tsx`
-- [ ] 15 — `seasons/create.tsx`, `seasons/[id]/index.tsx`
+- [x] 15 — `seasons/create.tsx`, `seasons/[id]/index.tsx`
 - [ ] 16 — `seasons/[id]/finish.tsx`, `edit-dates.tsx`, `reopen.tsx`
 - [ ] 17 — `modalities/index.tsx`, `modalities/create.tsx`
 - [ ] 18 — `teams/index.tsx`, `teams/[id].tsx` (management)
