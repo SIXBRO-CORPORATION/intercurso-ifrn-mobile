@@ -1,5 +1,6 @@
 import { Pressable } from 'react-native';
 import { router, type Href } from 'expo-router';
+import { Icon } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
 import { colors } from '@/theme';
 
@@ -21,7 +22,7 @@ export function HeaderAddButton({ href, label }: HeaderAddButtonProps) {
 export function CancelButton() {
     return (
         <Pressable accessibilityRole="button" accessibilityLabel="Cancelar" onPress={() => router.back()} hitSlop={8}>
-            <ThemedText variant="section">Cancelar</ThemedText>
+            <Icon name="close" size={24} color={colors.ink} />
         </Pressable>
     );
 }

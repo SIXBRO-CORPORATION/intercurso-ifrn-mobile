@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import DateTimePicker from '@expo/ui/community/datetime-picker';
+import { Icon } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
 import { colors, radius, spacing } from '@/theme';
 import { formatPickerDate, formatPickerDateTime } from '@/utils/campus-time';
@@ -15,47 +16,87 @@ interface DateFieldProps {
     mode?: 'date' | 'datetime';
 }
 
+type AndroidStep = 'closed' | 'date' | 'time';
+
+function mergeDateAndTime(datePart: Date, timePart: Date): Date {
+    const merged = new Date(datePart);
+    merged.setHours(timePart.getHours(), timePart.getMinutes(), 0, 0);
+    return merged;
+}
+
 export function DateField({ label, value, onChange, minimumDate, error, hint, mode = 'date' }: DateFieldProps) {
-    const [androidOpen, setAndroidOpen] = useState(false);
-    const formatValue = mode === 'datetime' ? formatPickerDateTime : formatPickerDate;
+    const showTime = mode === 'datetime';
+    const [androidStep, setAndroidStep] = useState<AndroidStep>('closed');
+    const formatValue = showTime ? formatPickerDateTime : formatPickerDate;
     const borderColor = error ? colors.danger : colors.primary;
-    const borderWidth = error || androidOpen ? 2 : 0;
+    const borderWidth = error || androidStep !== 'closed' ? 2 : 0;
 
     return (
         <View style={styles.wrap}>
             <ThemedText variant="caption">{label}</ThemedText>
             <View style={[styles.control, { borderColor, borderWidth }]}>
                 {Platform.OS === 'ios' ? (
-                    <DateTimePicker
-                        mode={mode}
-                        display="compact"
-                        value={value}
-                        minimumDate={minimumDate}
-                        accentColor={colors.primary}
-                        onValueChange={(_, date) => onChange(date)}
-                        style={styles.iosPicker}
-                    />
+                    <View style={styles.iosRow}>
+                        <Icon name="calendar" size={18} color={colors.textSecondary} />
+                        <DateTimePicker
+                            mode="date"
+                            display="compact"
+                            value={value}
+                            minimumDate={minimumDate}
+                            accentColor={colors.primary}
+                            onValueChange={(_, date) => onChange(showTime ? mergeDateAndTime(date, value) : date)}
+                            style={styles.iosPicker}
+                        />
+                        {showTime ? (
+                            <DateTimePicker
+                                mode="time"
+                                display="compact"
+                                value={value}
+                                accentColor={colors.primary}
+                                onValueChange={(_, time) => onChange(mergeDateAndTime(value, time))}
+                                style={styles.iosPicker}
+                            />
+                        ) : null}
+                    </View>
                 ) : (
                     <>
                         <Pressable
                             accessibilityRole="button"
                             accessibilityLabel={`${label}: ${formatValue(value)}. Alterar data`}
-                            onPress={() => setAndroidOpen(true)}
+                            onPress={() => setAndroidStep('date')}
                             style={({ pressed }) => [styles.androidButton, { opacity: pressed ? 0.7 : 1 }]}
                         >
+                            <Icon name="calendar" size={18} color={colors.textSecondary} />
                             <ThemedText variant="body">{formatValue(value)}</ThemedText>
                         </Pressable>
-                        {androidOpen ? (
+                        {androidStep === 'date' ? (
                             <DateTimePicker
-                                mode={mode}
+                                mode="date"
                                 value={value}
                                 minimumDate={minimumDate}
                                 accentColor={colors.primary}
                                 onValueChange={(_, date) => {
-                                    setAndroidOpen(false);
-                                    onChange(date);
+                                    if (showTime) {
+                                        onChange(mergeDateAndTime(date, value));
+                                        setAndroidStep('time');
+                                    } else {
+                                        onChange(date);
+                                        setAndroidStep('closed');
+                                    }
                                 }}
-                                onDismiss={() => setAndroidOpen(false)}
+                                onDismiss={() => setAndroidStep('closed')}
+                            />
+                        ) : null}
+                        {androidStep === 'time' ? (
+                            <DateTimePicker
+                                mode="time"
+                                value={value}
+                                accentColor={colors.primary}
+                                onValueChange={(_, time) => {
+                                    onChange(mergeDateAndTime(value, time));
+                                    setAndroidStep('closed');
+                                }}
+                                onDismiss={() => setAndroidStep('closed')}
                             />
                         ) : null}
                     </>
@@ -84,15 +125,23 @@ const styles = StyleSheet.create({
         borderCurve: 'continuous',
         backgroundColor: colors.field,
     },
+    iosRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        paddingLeft: spacing.md,
+    },
     iosPicker: {
-        minWidth: 140,
+        minWidth: 118,
         minHeight: 48,
-        marginLeft: spacing.sm,
     },
     androidButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
         minHeight: 48,
         width: '100%',
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         paddingHorizontal: spacing.md,
     },
     errorText: {

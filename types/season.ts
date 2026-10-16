@@ -14,6 +14,12 @@ export interface SeasonListFilters {
     year?: number;
 }
 
+export interface SeasonRulesDocumentFile {
+    uri: string;
+    name: string;
+    type: string;
+}
+
 export interface SeasonCreateRequest {
     name: string;
     year: number;
@@ -21,7 +27,7 @@ export interface SeasonCreateRequest {
     registration_start_date?: IsoDateString;
     registration_end_date: IsoDateString;
     open_immediately?: boolean;
-    rules_document?: string;
+    rules_document?: SeasonRulesDocumentFile | null;
 }
 
 export interface SeasonCreateResponse {

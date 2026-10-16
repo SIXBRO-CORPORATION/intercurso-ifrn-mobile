@@ -22,7 +22,22 @@ function unwrap<T>(data: T | undefined, message: string): T {
 
 class SeasonService {
     async createSeason(request: SeasonCreateRequest): Promise<SeasonCreateResponse> {
-        const response = await httpClient.post<SeasonCreateResponse>(`${BASE_PATH}/`, request);
+        const form = new FormData();
+        form.append('name', request.name);
+        form.append('year', String(request.year));
+        request.modality_ids.forEach((modalityId) => form.append('modality_ids', modalityId));
+        form.append('registration_end_date', request.registration_end_date);
+        if (request.registration_start_date) {
+            form.append('registration_start_date', request.registration_start_date);
+        }
+        if (request.open_immediately !== undefined) {
+            form.append('open_immediately', String(request.open_immediately));
+        }
+        if (request.rules_document) {
+            form.append('rules_document', request.rules_document as unknown as Blob);
+        }
+
+        const response = await httpClient.post<SeasonCreateResponse>(`${BASE_PATH}/`, form);
 
         return unwrap(response.data, 'O backend não retornou os dados da temporada criada');
     }

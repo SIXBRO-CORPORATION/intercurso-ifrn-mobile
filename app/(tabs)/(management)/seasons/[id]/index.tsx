@@ -1,7 +1,7 @@
 import { Alert, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/button';
-import { InfoRow, LinkRow, Section } from '@/components/management/section';
+import { LinkRow, Section } from '@/components/management/section';
 import { ManagementGuard } from '@/components/management/management-guard';
 import { SeasonStatusBadge } from '@/components/management/season-status-badge';
 import { ErrorState, LoadingState } from '@/components/states/screen-states';
@@ -13,7 +13,7 @@ import { ApiError } from '@/types/api';
 import { BracketStatusLabel, type SeasonStatus } from '@/types/enums';
 import type { BracketSummaryResponse } from '@/types/bracket';
 import type { SeasonDetails } from '@/types/season';
-import { spacing } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 import { friendlyErrorMessage } from '@/utils/api-error-message';
 import { formatCampusDateTime } from '@/utils/campus-time';
 
@@ -34,10 +34,38 @@ function bracketLabel(bracket?: BracketSummaryResponse): string {
     return `${BracketStatusLabel[bracket.status]} · ${bracket.finished_matches}/${bracket.total_matches} partidas`;
 }
 
+function StatBox({ value, label, color }: { value: number; label: string; color: string }) {
+    return (
+        <View style={styles.statBox}>
+            <ThemedText variant="largeTitle" style={{ color }}>
+                {value}
+            </ThemedText>
+            <ThemedText variant="label" style={styles.statLabel}>
+                {label}
+            </ThemedText>
+        </View>
+    );
+}
+
+function DateRow({ label, planned, real, isLast }: { label: string; planned: string; real?: string | null; isLast?: boolean }) {
+    return (
+        <View style={[styles.dateRow, isLast && styles.dateRowLast]}>
+            <View style={styles.dateRowTexts}>
+                <ThemedText variant="caption">{label}</ThemedText>
+                <ThemedText variant="section">{planned}</ThemedText>
+            </View>
+            <ThemedText variant="caption" style={styles.dateRowAnnotation}>
+                {real ? `Real: ${formatCampusDateTime(real)}` : 'Previsto'}
+            </ThemedText>
+        </View>
+    );
+}
+
 function RegistrationActions({ season }: { season: SeasonDetails }) {
     const closeRegistration = useCloseSeasonRegistration();
     const has = (action: SeasonDetails['available_actions'][number]) => season.available_actions.includes(action);
     const base = `/seasons/${season.season_id}`;
+    const canEditDates = has('edit_registration_dates') || has('edit_registration_end_date');
 
     const confirmClose = () =>
         Alert.alert(
@@ -53,45 +81,45 @@ function RegistrationActions({ season }: { season: SeasonDetails }) {
             ]
         );
 
-    if (season.available_actions.length === 0) {
-        return (
-            <ThemedText variant="caption">
-                {season.status === 'FINISHED'
-                    ? 'Temporada finalizada: datas e inscrições não podem ser alteradas.'
-                    : 'Temporada em andamento: datas de inscrição não podem ser alteradas.'}
-            </ThemedText>
-        );
-    }
-
     return (
         <View style={styles.actions}>
-            {has('edit_registration_dates') ? (
-                <Button
-                    title="Editar datas de inscrição"
-                    variant="neutral"
-                    onPress={() => router.push({ pathname: `${base}/edit-dates` as never, params: { mode: 'both' } })}
-                />
-            ) : null}
-            {has('edit_registration_end_date') ? (
-                <Button
-                    title="Editar data de encerramento"
-                    variant="neutral"
-                    onPress={() => router.push({ pathname: `${base}/edit-dates` as never, params: { mode: 'end' } })}
-                />
-            ) : null}
             {has('close_registration_early') ? (
                 <Button
                     title="Encerrar inscrições agora"
-                    variant="danger"
+                    variant="warning"
+                    icon="clock"
                     loading={closeRegistration.isPending}
                     onPress={confirmClose}
                 />
             ) : null}
             {has('reopen_registration') ? (
-                <Button title="Reabrir inscrições" onPress={() => router.push(`${base}/reopen` as never)} />
+                <Button
+                    title="Reabrir inscrições"
+                    variant="primary"
+                    icon="undo"
+                    onPress={() => router.push(`${base}/reopen` as never)}
+                />
+            ) : null}
+            <Button
+                title="Editar datas"
+                variant="neutral"
+                icon={canEditDates ? 'edit' : 'lock'}
+                disabled={!canEditDates}
+                onPress={() => {
+                    if (has('edit_registration_dates')) {
+                        router.push({ pathname: `${base}/edit-dates` as never, params: { mode: 'both' } });
+                    } else {
+                        router.push({ pathname: `${base}/edit-dates` as never, params: { mode: 'end' } });
+                    }
+                }}
+            />
+            {!canEditDates ? (
+                <ThemedText variant="caption" style={styles.actionsHint}>
+                    A edição de datas só é possível antes da abertura.
+                </ThemedText>
             ) : null}
             {closeRegistration.isError ? (
-                <ThemedText variant="caption" accessibilityRole="alert">
+                <ThemedText variant="caption" accessibilityRole="alert" style={styles.errorText}>
                     {friendlyErrorMessage(closeRegistration.error, 'Não foi possível encerrar as inscrições.')}
                 </ThemedText>
             ) : null}
@@ -114,7 +142,7 @@ function FinishSection({ season, brackets }: { season: SeasonDetails; brackets: 
 
     return (
         <Section title="Finalizar temporada">
-            <ThemedText variant="subhead">
+            <ThemedText variant="body">
                 Ação irreversível. Encerra a temporada e desativa todos os convites de equipes.
             </ThemedText>
             {blockedReason ? <ThemedText variant="caption">{blockedReason}</ThemedText> : null}
@@ -174,38 +202,45 @@ function SeasonDetailsContent({ seasonId }: { seasonId: string }) {
                 contentContainerStyle={styles.content}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
             >
-                <View style={styles.hero}>
-                    <ThemedText variant="title" selectable>
-                        {season.name}
-                    </ThemedText>
-                    <ThemedText variant="subhead">
-                        {season.year}
-                        {season.active ? ' · Temporada ativa' : ''}
-                    </ThemedText>
+                <View style={styles.badgesRow}>
                     <SeasonStatusBadge status={season.status} />
-                    <ThemedText variant="subhead">{NEXT_STEP[season.status]}</ThemedText>
+                    {season.active ? (
+                        <View style={styles.activeBadge}>
+                            <ThemedText variant="label" style={styles.activeBadgeText}>
+                                Ativa
+                            </ThemedText>
+                        </View>
+                    ) : null}
+                </View>
+                <ThemedText variant="body" style={styles.nextStep}>
+                    {NEXT_STEP[season.status]}
+                </ThemedText>
+
+                <View style={styles.statsRow}>
+                    <StatBox value={season.total_teams_created} label="Times criados" color={colors.ink} />
+                    <StatBox value={season.total_teams_submitted} label="Submetidos" color={colors.warningText} />
+                    <StatBox value={season.total_teams_approved} label="Aprovados" color={colors.primary} />
                 </View>
 
-                <Section title="Inscrições">
-                    <InfoRow label="Início previsto" value={dateOrDash(season.registration_start_date)} />
-                    <InfoRow label="Fim previsto" value={dateOrDash(season.registration_end_date)} />
-                    <InfoRow label="Aberta em" value={dateOrDash(season.registration_opened_at)} />
-                    <InfoRow label="Encerrada em" value={dateOrDash(season.registration_closed_at)} />
-                    <RegistrationActions season={season} />
-                </Section>
+                <View style={styles.datesCard}>
+                    <DateRow
+                        label="Abertura"
+                        planned={dateOrDash(season.registration_start_date)}
+                        real={season.registration_opened_at}
+                    />
+                    <DateRow
+                        label="Encerramento"
+                        planned={dateOrDash(season.registration_end_date)}
+                        real={season.registration_closed_at}
+                        isLast
+                    />
+                </View>
 
-                <Section title="Equipes">
-                    <InfoRow label="Criadas" value={String(season.total_teams_created)} />
-                    <InfoRow label="Submetidas (total)" value={String(season.total_teams_submitted)} />
-                    <InfoRow label="Aprovadas" value={String(season.total_teams_approved)} />
-                    <ThemedText variant="caption">
-                        “Submetidas” inclui as já aprovadas e rejeitadas.
-                    </ThemedText>
-                </Section>
+                <RegistrationActions season={season} />
 
-                <Section title="Modalidades e chaveamento">
+                <Section title={`Modalidades (${season.modality_ids.length})`}>
                     {season.modality_ids.length === 0 ? (
-                        <ThemedText variant="subhead">Nenhuma modalidade vinculada.</ThemedText>
+                        <ThemedText variant="body">Nenhuma modalidade vinculada.</ThemedText>
                     ) : (
                         season.modality_ids.map((id) => (
                             <LinkRow
@@ -251,11 +286,73 @@ const styles = StyleSheet.create({
         paddingBottom: spacing.xl,
         gap: spacing.md,
     },
-    hero: {
-        gap: spacing.xs,
+    badgesRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    activeBadge: {
+        paddingHorizontal: spacing.sm,
+        paddingVertical: spacing.xxs,
+        borderRadius: radius.pill,
+        backgroundColor: colors.warningSoft,
+    },
+    activeBadgeText: {
+        color: colors.warningText,
+    },
+    nextStep: {
+        color: colors.textSecondary,
+    },
+    statsRow: {
+        flexDirection: 'row',
+        gap: spacing.sm,
+    },
+    statBox: {
+        flex: 1,
+        alignItems: 'center',
+        gap: 2,
+        paddingVertical: spacing.md,
+        borderRadius: radius.lg,
+        borderCurve: 'continuous',
+        backgroundColor: colors.field,
+    },
+    statLabel: {
+        color: colors.textSecondary,
+    },
+    datesCard: {
+        borderRadius: radius.lg,
+        borderCurve: 'continuous',
+        borderWidth: 1,
+        borderColor: colors.border,
+        backgroundColor: colors.surface,
+        paddingHorizontal: spacing.md,
+    },
+    dateRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: spacing.sm,
+        paddingVertical: spacing.md,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: colors.border,
+    },
+    dateRowLast: {
+        borderBottomWidth: 0,
+    },
+    dateRowTexts: {
+        gap: 2,
+    },
+    dateRowAnnotation: {
+        color: colors.textMuted,
     },
     actions: {
         gap: spacing.sm,
-        marginTop: spacing.xs,
+    },
+    actionsHint: {
+        color: colors.textSecondary,
+        textAlign: 'center',
+    },
+    errorText: {
+        color: colors.danger,
     },
 });

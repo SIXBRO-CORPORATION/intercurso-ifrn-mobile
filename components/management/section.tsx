@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
         padding: spacing.md,
         borderRadius: radius.lg,
         borderCurve: 'continuous',
-        backgroundColor: colors.secondarySystemBackground as string,
+        backgroundColor: colors.surface,
         boxShadow: shadows.card,
     },
     row: {
@@ -79,6 +79,6 @@ const styles = StyleSheet.create({
         flexShrink: 1,
     },
     chevron: {
-        color: colors.secondaryLabel as string,
+        color: colors.textMuted,
     },
 });
