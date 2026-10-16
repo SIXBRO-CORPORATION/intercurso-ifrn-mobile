@@ -14,7 +14,7 @@ export default function ManagementLayout() {
                 headerBackButtonDisplayMode: 'minimal',
             }}
         >
-            <Stack.Screen name="index" options={{ title: 'Painel' }} />
+            <Stack.Screen name="index" options={{ title: '' }} />
             <Stack.Screen name="seasons" options={{ headerShown: false }} />
             <Stack.Screen name="modalities" options={{ headerShown: false }} />
         </Stack>
