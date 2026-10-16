@@ -1,10 +1,12 @@
 import { useCallback } from 'react';
-import { Alert, RefreshControl, ScrollView, Share, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, RefreshControl, ScrollView, Share, StyleSheet, View } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/button';
 import { LoginPrompt } from '@/components/auth/login-prompt';
 import { InfoRow, Section } from '@/components/management/section';
 import { ErrorState, LoadingState } from '@/components/states/screen-states';
+import { Icon } from '@/components/icon';
 import { MemberCard, type MemberAction } from '@/components/teams/member-card';
 import { TeamStatusBadge } from '@/components/teams/team-status-badge';
 import { TeamAvatar } from '@/components/teams/team-avatar';
@@ -72,6 +74,12 @@ function InviteSection({ team, onRegenerated }: { team: TeamDetails; onRegenerat
         });
     };
 
+    const handleCopy = async () => {
+        if (!token) return;
+        await Clipboard.setStringAsync(token);
+        toast.success('Código copiado!');
+    };
+
     const confirmRegenerate = () =>
         Alert.alert(
             'Gerar novo convite?',
@@ -104,9 +112,20 @@ function InviteSection({ team, onRegenerated }: { team: TeamDetails; onRegenerat
                     </ThemedText>
                     <View style={styles.code}>
                         <ThemedText variant="caption">CÓDIGO DO CONVITE</ThemedText>
-                        <ThemedText variant="code" selectable>
-                            {token}
-                        </ThemedText>
+                        <View style={styles.codeRow}>
+                            <ThemedText variant="code" selectable style={styles.codeText}>
+                                {token}
+                            </ThemedText>
+                            <Pressable
+                                accessibilityRole="button"
+                                accessibilityLabel="Copiar código do convite"
+                                hitSlop={8}
+                                onPress={handleCopy}
+                                style={({ pressed }) => [styles.copyButton, { opacity: pressed ? 0.6 : 1 }]}
+                            >
+                                <Icon name="copy" size={18} color={colors.primary} />
+                            </Pressable>
+                        </View>
                     </View>
                     <Button title="Compartilhar convite" onPress={handleShare} />
                     <Button
@@ -473,5 +492,21 @@ const styles = StyleSheet.create({
         borderRadius: radius.md,
         borderCurve: 'continuous',
         backgroundColor: colors.systemBackground as string,
+    },
+    codeRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+    },
+    codeText: {
+        flex: 1,
+    },
+    copyButton: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.surface,
     },
 });

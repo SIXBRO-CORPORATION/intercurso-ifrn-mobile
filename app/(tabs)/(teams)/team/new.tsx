@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Alert, Image, Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { router, Stack } from 'expo-router';
 import { Button } from '@/components/button';
@@ -13,6 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useModalities } from '@/hooks/useModalities';
 import { useActiveSeason } from '@/hooks/useSeasons';
 import { useCreateTeam } from '@/hooks/useTeams';
+import { useToast } from '@/providers/ToastProvider';
 import { ApiError } from '@/types/api';
 import type { TeamPhotoFile, TeamRegisterResponse } from '@/types/team';
 import { GenderLabel, type Gender } from '@/types/enums';
@@ -65,7 +67,6 @@ function unavailableReason(modality: ModalitySummaryResponse, gender: Gender | n
     return null;
 }
 
-// Cabeçalho "Passo X de 2" + barra de progresso de 2 segmentos (guia 08/09).
 function StepProgress({ step }: { step: 1 | 2; title: string }) {
     return (
         <View style={styles.progressWrap}>
@@ -130,9 +131,8 @@ function ModalityOption({
     );
 }
 
-// Tela "Equipe criada!" (guia 10) — substitui o header nativo por um topo
-// próprio com botão de fechar, já que esta tela não é mais um passo contado.
 function SuccessStep({ team }: { team: TeamRegisterResponse }) {
+    const toast = useToast();
     const inviteLink = team.invite_token ? buildInviteLink(team.invite_token) : null;
 
     const handleShare = async () => {
@@ -140,6 +140,12 @@ function SuccessStep({ team }: { team: TeamRegisterResponse }) {
         await Share.share({
             message: `Entre na minha equipe "${team.name}" no Intercurso: ${inviteLink}\nCódigo do convite: ${team.invite_token}`,
         });
+    };
+
+    const handleCopy = async () => {
+        if (!inviteLink) return;
+        await Clipboard.setStringAsync(inviteLink);
+        toast.success('Link copiado!');
     };
 
     return (
@@ -171,9 +177,20 @@ function SuccessStep({ team }: { team: TeamRegisterResponse }) {
                         <ThemedText variant="overline" style={styles.muted}>
                             Link de convite
                         </ThemedText>
-                        <ThemedText variant="bodyLg" selectable numberOfLines={1}>
-                            {inviteLink}
-                        </ThemedText>
+                        <View style={styles.inviteLinkRow}>
+                            <ThemedText variant="bodyLg" selectable numberOfLines={1} style={styles.inviteLinkText}>
+                                {inviteLink}
+                            </ThemedText>
+                            <Pressable
+                                accessibilityRole="button"
+                                accessibilityLabel="Copiar link de convite"
+                                hitSlop={8}
+                                onPress={handleCopy}
+                                style={({ pressed }) => [styles.copyButton, { opacity: pressed ? 0.6 : 1 }]}
+                            >
+                                <Icon name="copy" size={18} color={colors.primaryDark} />
+                            </Pressable>
+                        </View>
                     </View>
 
                     <View style={styles.qrBox}>
@@ -643,6 +660,22 @@ const styles = StyleSheet.create({
         borderRadius: radius.lg,
         borderCurve: 'continuous',
         backgroundColor: colors.primarySoft,
+    },
+    inviteLinkRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+    },
+    inviteLinkText: {
+        flex: 1,
+    },
+    copyButton: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.surface,
     },
     qrBox: {
         padding: spacing.lg,

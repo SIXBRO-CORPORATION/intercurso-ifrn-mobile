@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { Link, router } from 'expo-router';
 import { Button } from '@/components/button';
@@ -8,6 +9,7 @@ import { TeamStatusBadge } from '@/components/teams/team-status-badge';
 import { TeamAvatar } from '@/components/teams/team-avatar';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
+import { useModalities } from '@/hooks/useModalities';
 import { useActiveSeason } from '@/hooks/useSeasons';
 import { useTeams } from '@/hooks/useTeams';
 import type { TeamSummary } from '@/types/team';
@@ -17,7 +19,8 @@ import { friendlyErrorMessage } from '@/utils/api-error-message';
 import { formatCampusShortDate, formatCampusTime } from '@/utils/campus-time';
 import { isMonitorOrAbove } from '@/utils/permissions';
 
-function membersLabel(count: number): string {
+function membersLabel(count: number, max: number | null | undefined): string {
+    if (max != null) return `${count}/${max} membros`;
     return `${count} ${count === 1 ? 'membro' : 'membros'}`;
 }
 
@@ -65,7 +68,15 @@ function RegistrationBanner({
     );
 }
 
-function TeamCard({ team, isOwner }: { team: TeamSummary; isOwner: boolean }) {
+function TeamCard({
+    team,
+    isOwner,
+    maxMembers,
+}: {
+    team: TeamSummary;
+    isOwner: boolean;
+    maxMembers: number | null | undefined;
+}) {
     const role = isOwner ? 'Dono' : 'Membro';
     const subtitle = [team.modality_name, role].filter(Boolean).join(' · ');
 
@@ -73,7 +84,7 @@ function TeamCard({ team, isOwner }: { team: TeamSummary; isOwner: boolean }) {
         <Link href={`/team/${team.team_id}`} asChild>
             <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`${team.name}, ${subtitle}, ${membersLabel(team.members_count)}. Abrir equipe`}
+                accessibilityLabel={`${team.name}, ${subtitle}, ${membersLabel(team.members_count, maxMembers)}. Abrir equipe`}
             >
                 {({ pressed }) => (
                     <View style={[styles.card, { opacity: pressed ? 0.85 : 1 }]}>
@@ -94,7 +105,7 @@ function TeamCard({ team, isOwner }: { team: TeamSummary; isOwner: boolean }) {
                             <View style={styles.membersRow}>
                                 <Icon name="users" size={16} color={colors.textSecondary} />
                                 <ThemedText variant="label" style={styles.muted}>
-                                    {membersLabel(team.members_count)}
+                                    {membersLabel(team.members_count, maxMembers)}
                                 </ThemedText>
                             </View>
                         </View>
@@ -109,6 +120,12 @@ export default function TeamsScreen() {
     const { user, isAuthenticated, isInitializing } = useAuth();
     const activeSeason = useActiveSeason();
     const teams = useTeams(activeSeason.data ? { season_id: activeSeason.data.season_id } : undefined);
+
+    const modalities = useModalities(activeSeason.data?.season_id);
+    const maxMembersByModality = useMemo(
+        () => new Map(modalities.data?.map((m) => [m.modality_id, m.max_members])),
+        [modalities.data]
+    );
 
     if (isInitializing) {
         return <LoadingState label="Carregando…" />;
@@ -178,7 +195,13 @@ export default function TeamsScreen() {
         <FlatList
             data={items}
             keyExtractor={(item) => item.team_id}
-            renderItem={({ item }) => <TeamCard team={item} isOwner={item.owner_id === user.user_id} />}
+            renderItem={({ item }) => (
+                <TeamCard
+                    team={item}
+                    isOwner={item.owner_id === user.user_id}
+                    maxMembers={maxMembersByModality.get(item.modality_id)}
+                />
+            )}
             contentInsetAdjustmentBehavior="automatic"
             contentContainerStyle={[styles.content, items.length === 0 && styles.fill]}
             ListHeaderComponent={renderHeader}
