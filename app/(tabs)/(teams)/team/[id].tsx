@@ -1,13 +1,13 @@
-import { useCallback } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, Share, StyleSheet, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/button';
 import { LoginPrompt } from '@/components/auth/login-prompt';
-import { InfoRow, Section } from '@/components/management/section';
+import { BottomSheet, type BottomSheetHandle } from '@/components/overlays/bottom-sheet';
 import { ErrorState, LoadingState } from '@/components/states/screen-states';
-import { Icon } from '@/components/icon';
-import { MemberCard, type MemberAction } from '@/components/teams/member-card';
+import { Icon, type IconName } from '@/components/icon';
+import { MemberAvatar, MemberCard } from '@/components/teams/member-card';
 import { TeamStatusBadge } from '@/components/teams/team-status-badge';
 import { TeamAvatar } from '@/components/teams/team-avatar';
 import { ThemedText } from '@/components/themed-text';
@@ -23,131 +23,262 @@ import {
     useTeamDetails,
 } from '@/hooks/useTeams';
 import { useToast } from '@/providers/ToastProvider';
-import type { TeamStatus } from '@/types/enums';
+import { TeamMemberRoleLabel, type TeamStatus } from '@/types/enums';
 import type { TeamDetails, TeamMember } from '@/types/team';
-import { colors, radius, spacing, useBrandColors } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 import { friendlyErrorMessage } from '@/utils/api-error-message';
-import { formatCampusDateTime } from '@/utils/campus-time';
+import { formatCampusDate, formatCampusDateTime } from '@/utils/campus-time';
 import { formatGenderRule, formatMembersRange } from '@/utils/modality-gender';
 import { describeMissingQuota, getGenderQuota } from '@/utils/team-gender-quota';
 import { buildInviteLink } from '@/utils/team-invite';
-
-const STATUS_COPY: Record<TeamStatus, string> = {
-    DRAFT: 'O time está em rascunho. Convide os integrantes e submeta para aprovação quando atingir os requisitos da modalidade.',
-    SUBMITTED: 'Aguardando aprovação do monitor. O time está travado e a organização confirma a doação de cada integrante.',
-    APPROVED: 'Time aprovado e liberado para competir.',
-    REJECTED: 'O time foi rejeitado pelo monitor.',
-};
 
 function plural(count: number, one: string, many: string): string {
     return `${count} ${count === 1 ? one : many}`;
 }
 
-function RejectionNotice({ team }: { team: TeamDetails }) {
-    const brand = useBrandColors();
-
-    if (team.status !== 'DRAFT' || !team.rejection_reason) return null;
-
+function InfoBanner({ text }: { text: string }) {
     return (
-        <View style={[styles.notice, { borderColor: brand.accent }]} accessibilityRole="alert">
-            <ThemedText variant="headline">Devolvido para rascunho pelo monitor</ThemedText>
-            <ThemedText variant="subhead">{team.rejection_reason}</ThemedText>
-            {team.rejected_at ? (
-                <ThemedText variant="caption">Em {formatCampusDateTime(team.rejected_at)}</ThemedText>
-            ) : null}
-            <ThemedText variant="caption">Corrija o que foi apontado e submeta novamente.</ThemedText>
+        <View style={styles.infoBanner}>
+            <Icon name="info" size={18} color={colors.primaryDark} />
+            <ThemedText variant="bodySm" style={styles.infoBannerText}>
+                {text}
+            </ThemedText>
         </View>
     );
 }
 
-function InviteSection({ team, onRegenerated }: { team: TeamDetails; onRegenerated: (token: string) => void }) {
-    const toast = useToast();
-    const regenerate = useRegenerateInvite();
+type TimelineState = 'done' | 'active' | 'pending';
 
-    const token = team.invite_token ?? null;
+const TIMELINE_ICON: Record<TimelineState, IconName> = { done: 'check', active: 'clock', pending: 'minus' };
+const TIMELINE_COLOR: Record<TimelineState, string> = {
+    done: colors.primary,
+    active: colors.warning,
+    pending: colors.border,
+};
 
-    const handleShare = async () => {
-        if (!token) return;
-        const link = buildInviteLink(token);
-        await Share.share({
-            message: `Entre no meu time "${team.name}" no Intercurso: ${link}\nCódigo do convite: ${token}`,
-        });
-    };
+function TimelineStep({
+    label,
+    trailing,
+    state,
+    isLast,
+}: {
+    label: string;
+    trailing?: string;
+    state: TimelineState;
+    isLast: boolean;
+}) {
+    return (
+        <View style={styles.timelineRow}>
+            <View style={styles.timelineRail}>
+                <View style={[styles.timelineDot, { backgroundColor: TIMELINE_COLOR[state] }]}>
+                    <Icon name={TIMELINE_ICON[state]} size={13} color={colors.surface} />
+                </View>
+                {!isLast ? (
+                    <View style={[styles.timelineLine, state === 'done' ? styles.timelineLineDone : null]} />
+                ) : null}
+            </View>
+            <View style={styles.timelineTextRow}>
+                <ThemedText variant="body" style={state === 'pending' ? styles.muted : undefined}>
+                    {label}
+                </ThemedText>
+                {trailing ? (
+                    <ThemedText variant="section" style={state === 'active' ? styles.warningText : undefined}>
+                        {trailing}
+                    </ThemedText>
+                ) : null}
+            </View>
+        </View>
+    );
+}
 
-    const handleCopy = async () => {
-        if (!token) return;
-        await Clipboard.setStringAsync(token);
-        toast.success('Código copiado!');
-    };
-
-    const confirmRegenerate = () =>
-        Alert.alert(
-            'Gerar novo convite?',
-            'O link e o código atuais deixam de funcionar. Quem já entrou no time continua no time.',
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Gerar novo',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            const result = await regenerate.mutateAsync({ teamId: team.team_id });
-                            onRegenerated(result.invite_token);
-                            toast.success('Novo convite gerado.');
-                        } catch (error) {
-                            toast.error(friendlyErrorMessage(error, 'Não foi possível gerar um novo convite.'));
-                        }
-                    },
-                },
-            ]
-        );
+function SubmittedHero({ team }: { team: TeamDetails }) {
+    const donationsDone = team.donations_confirmed >= team.donations_total;
 
     return (
-        <Section title="Convite">
-            {token ? (
-                <>
-                    <ThemedText variant="subhead">
-                        Compartilhe o link ou o código. Quem receber entra pelo app, e o convite é desativado quando o
-                        time é submetido.
+        <>
+            <View style={[styles.banner, styles.bannerWarning]}>
+                <View style={[styles.bannerIcon, styles.bannerIconWarning]}>
+                    <Icon name="clock" size={22} color={colors.surface} />
+                </View>
+                <View style={styles.bannerTexts}>
+                    <ThemedText variant="section">Aguardando aprovação</ThemedText>
+                    {team.submmited_at ? (
+                        <ThemedText variant="bodySm" style={styles.warningText}>
+                            Enviada em {formatCampusDateTime(team.submmited_at)}
+                        </ThemedText>
+                    ) : null}
+                </View>
+            </View>
+
+            <View style={styles.timelineCard}>
+                <TimelineStep label="Equipe submetida" state="done" isLast={false} />
+                <TimelineStep
+                    label="Doações confirmadas"
+                    trailing={`${team.donations_confirmed}/${team.donations_total}`}
+                    state={donationsDone ? 'done' : 'active'}
+                    isLast={false}
+                />
+                <TimelineStep label="Aprovação do monitor" state="pending" isLast />
+            </View>
+        </>
+    );
+}
+
+function ApprovedHero({ team, seasonYear }: { team: TeamDetails; seasonYear?: number }) {
+    return (
+        <View style={[styles.banner, styles.bannerSuccess]}>
+            <View style={styles.bannerIconOnTint}>
+                <Icon name="check" size={22} color={colors.surface} />
+            </View>
+            <View style={styles.bannerTexts}>
+                <ThemedText variant="section" style={styles.onPrimaryText}>
+                    Equipe aprovada!
+                </ThemedText>
+                <ThemedText variant="bodySm" style={styles.onPrimaryTextMuted}>
+                    {seasonYear
+                        ? `Você está dentro do Intercurso ${seasonYear}.`
+                        : `"${team.name}" está confirmada para a temporada.`}
+                </ThemedText>
+            </View>
+        </View>
+    );
+}
+
+function RejectedHero({ team }: { team: TeamDetails }) {
+    return (
+        <>
+            <View style={[styles.banner, styles.bannerDanger]}>
+                <View style={styles.bannerIconOnTint}>
+                    <Icon name="close" size={22} color={colors.surface} />
+                </View>
+                <View style={styles.bannerTexts}>
+                    <ThemedText variant="section" style={styles.onPrimaryText}>
+                        Equipe rejeitada
                     </ThemedText>
-                    <View style={styles.code}>
-                        <ThemedText variant="caption">CÓDIGO DO CONVITE</ThemedText>
-                        <View style={styles.codeRow}>
-                            <ThemedText variant="code" selectable style={styles.codeText}>
-                                {token}
-                            </ThemedText>
-                            <Pressable
-                                accessibilityRole="button"
-                                accessibilityLabel="Copiar código do convite"
-                                hitSlop={8}
-                                onPress={handleCopy}
-                                style={({ pressed }) => [styles.copyButton, { opacity: pressed ? 0.6 : 1 }]}
-                            >
-                                <Icon name="copy" size={18} color={colors.primary} />
-                            </Pressable>
-                        </View>
+                    {team.rejected_at ? (
+                        <ThemedText variant="bodySm" style={styles.onPrimaryTextMuted}>
+                            Revisado pelo monitor em {formatCampusDate(team.rejected_at)}
+                        </ThemedText>
+                    ) : null}
+                </View>
+            </View>
+
+            {team.rejection_reason ? (
+                <View style={styles.reasonCard} accessibilityRole="alert">
+                    <ThemedText variant="overline" style={styles.dangerText}>
+                        Motivo
+                    </ThemedText>
+                    <ThemedText variant="body" style={styles.reasonText}>
+                        {team.rejection_reason}
+                    </ThemedText>
+                </View>
+            ) : null}
+        </>
+    );
+}
+
+interface DraftHeroProps {
+    team: TeamDetails;
+    memberCount: number;
+    min?: number;
+    max?: number;
+    canManageInvite: boolean;
+    onCopyInvite: () => void;
+    onRegenerateInvite: () => void;
+    regenerating: boolean;
+}
+
+function DraftHero({ team, memberCount, min, max, canManageInvite, onCopyInvite, onRegenerateInvite, regenerating }: DraftHeroProps) {
+    const progress = max ? Math.min(memberCount / max, 1) : null;
+    const hasActiveToken = !!team.invite_token && team.token_active;
+
+    return (
+        <View style={styles.heroCard}>
+            <View style={styles.heroTopRow}>
+                <TeamAvatar name={team.name} photo={team.photo} size={64} />
+                <View style={styles.heroTexts}>
+                    <ThemedText variant="heading" numberOfLines={1}>
+                        {team.name}
+                    </ThemedText>
+                    <ThemedText variant="body" style={styles.muted}>
+                        {team.modality_name ?? 'Modalidade'}
+                    </ThemedText>
+                </View>
+                <TeamStatusBadge status="DRAFT" />
+            </View>
+
+            <View style={styles.progressBlock}>
+                <View style={styles.progressLabelRow}>
+                    <ThemedText variant="section">
+                        {max !== undefined ? `${memberCount} de ${max} membros` : plural(memberCount, 'membro', 'membros')}
+                    </ThemedText>
+                    {min !== undefined ? (
+                        <ThemedText variant="bodySm" style={styles.muted}>{`mínimo ${min}`}</ThemedText>
+                    ) : null}
+                </View>
+                {max !== undefined ? (
+                    <View style={styles.progressTrack}>
+                        <View style={[styles.progressFill, { width: `${(progress ?? 0) * 100}%` }]} />
                     </View>
-                    <Button title="Compartilhar convite" onPress={handleShare} />
-                    <Button
-                        title="Gerar novo convite"
-                        variant="outline"
-                        loading={regenerate.isPending}
-                        onPress={confirmRegenerate}
-                    />
-                </>
-            ) : (
-                <>
-                    <ThemedText variant="subhead">
-                        O código deste convite não está disponível neste aparelho. Gere um novo para compartilhar.
-                    </ThemedText>
-                    <Button
-                        title="Gerar novo convite"
-                        loading={regenerate.isPending}
-                        onPress={confirmRegenerate}
-                    />
-                </>
-            )}
-        </Section>
+                ) : null}
+            </View>
+
+            {canManageInvite ? (
+                hasActiveToken ? (
+                    <>
+                        <Button title="Copiar link de convite" variant="soft" icon="link" onPress={onCopyInvite} />
+                        <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel="Gerar novo link de convite"
+                            onPress={onRegenerateInvite}
+                            disabled={regenerating}
+                            hitSlop={8}
+                            style={({ pressed }) => [styles.regenerateLink, { opacity: pressed ? 0.6 : 1 }]}
+                        >
+                            <Icon name="shuffle" size={14} color={colors.textSecondary} />
+                            <ThemedText variant="caption" style={styles.muted}>
+                                {regenerating ? 'Gerando novo convite…' : 'Gerar novo link de convite'}
+                            </ThemedText>
+                        </Pressable>
+                    </>
+                ) : (
+                    <Button title="Gerar convite" variant="soft" icon="link" loading={regenerating} onPress={onRegenerateInvite} />
+                )
+            ) : null}
+        </View>
+    );
+}
+
+function SheetAction({
+    icon,
+    label,
+    tone = 'primary',
+    onPress,
+}: {
+    icon: IconName;
+    label: string;
+    tone?: 'primary' | 'danger';
+    onPress: () => void;
+}) {
+    const bubble = tone === 'danger' ? colors.dangerSoft : colors.primarySoft;
+    const iconColor = tone === 'danger' ? colors.danger : colors.primaryDark;
+    const textColor = tone === 'danger' ? colors.danger : colors.ink;
+
+    return (
+        <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={label}
+            onPress={onPress}
+            style={({ pressed }) => [styles.sheetAction, { opacity: pressed ? 0.6 : 1 }]}
+        >
+            <View style={[styles.sheetActionIcon, { backgroundColor: bubble }]}>
+                <Icon name={icon} size={18} color={iconColor} />
+            </View>
+            <ThemedText variant="body" style={[styles.sheetActionLabel, { color: textColor }]}>
+                {label}
+            </ThemedText>
+            <Icon name="chev_r" size={18} color={colors.textMuted} />
+        </Pressable>
     );
 }
 
@@ -161,11 +292,28 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
     const removeMember = useRemoveTeamMember();
     const leaveTeam = useLeaveTeam();
     const deleteTeam = useDeleteTeam();
+    const regenerateInvite = useRegenerateInvite();
+
+    const [activeMember, setActiveMember] = useState<TeamMember | null>(null);
+    const [editingAfterRejection, setEditingAfterRejection] = useState(false);
+    const memberSheetRef = useRef<BottomSheetHandle>(null);
+    const submitSheetRef = useRef<BottomSheetHandle>(null);
 
     const leaveScreen = useCallback(() => {
         if (router.canGoBack()) router.back();
         else router.replace('/');
     }, []);
+
+    const run = useCallback(async (action: () => Promise<unknown>, success: string, fallback: string) => {
+        try {
+            await action();
+            toast.success(success);
+            return true;
+        } catch (error) {
+            toast.error(friendlyErrorMessage(error, fallback));
+            return false;
+        }
+    }, [toast]);
 
     if (details.isPending) {
         return <LoadingState label="Carregando time…" />;
@@ -186,10 +334,11 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
     const me = user?.user_id;
     const isOwner = !!me && team.owner_id === me;
     const isMember = !!me && team.members.some((member) => member.user_id === me);
-    const isDraft = team.status === 'DRAFT';
+    const isDraft = team.status === 'DRAFT' || (team.status === 'REJECTED' && editingAfterRejection);
     const memberCount = team.members.length;
     const registrationOpen =
         activeSeason.data?.status === 'REGISTRATION_OPEN' && activeSeason.data.season_id === team.season_id;
+    const seasonYear = activeSeason.data?.season_id === team.season_id ? activeSeason.data?.year : undefined;
 
     const min = team.min_members ?? undefined;
     const max = team.max_members ?? undefined;
@@ -211,76 +360,91 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
         submitBlockedReason = quotaMessage;
     }
 
-    const run = async (action: () => Promise<unknown>, success: string, fallback: string) => {
-        try {
-            await action();
-            toast.success(success);
-            return true;
-        } catch (error) {
-            toast.error(friendlyErrorMessage(error, fallback));
-            return false;
-        }
-    };
+    const handleShare = useCallback(async () => {
+        if (!team.invite_token) return;
+        const link = buildInviteLink(team.invite_token);
+        await Share.share({
+            message: `Entre no meu time "${team.name}" no Intercurso: ${link}\nCódigo do convite: ${team.invite_token}`,
+        });
+    }, [team.invite_token, team.name]);
 
-    const confirmSubmit = () =>
+    const handleCopyInvite = useCallback(async () => {
+        if (!team.invite_token) return;
+        const link = buildInviteLink(team.invite_token);
+        await Clipboard.setStringAsync(link);
+        toast.success('Link copiado!');
+    }, [team.invite_token, toast]);
+
+    const handleRegenerateInvite = useCallback(() => {
         Alert.alert(
-            'Submeter para aprovação?',
-            [
-                team.name,
-                `Modalidade: ${team.modality_name ?? '—'}`,
-                `Membros: ${memberCount}`,
-                `Capitão: ${captainName}`,
-                '',
-                '• O time será travado e não aceitará mais membros.',
-                '• Ele aguarda a aprovação do monitor.',
-                '• A doação de cada integrante será confirmada pela organização.',
-            ].join('\n'),
+            'Gerar novo convite?',
+            'O link e o código atuais deixam de funcionar. Quem já entrou no time continua no time.',
             [
                 { text: 'Cancelar', style: 'cancel' },
                 {
-                    text: 'Submeter',
-                    onPress: async () => {
-                        await run(
-                            () => submitTeam.mutateAsync({ teamId: team.team_id }),
-                            'Time submetido para aprovação.',
-                            'Não foi possível submeter o time.'
-                        );
-                    },
+                    text: 'Gerar novo',
+                    style: 'destructive',
+                    onPress: () =>
+                        run(
+                            () => regenerateInvite.mutateAsync({ teamId: team.team_id }),
+                            'Novo convite gerado.',
+                            'Não foi possível gerar um novo convite.'
+                        ),
                 },
             ]
         );
+    }, [regenerateInvite, run, team.team_id]);
 
-    const confirmCaptain = (member: TeamMember) =>
-        Alert.alert('Definir capitão?', `${member.name} passa a ser o capitão do time.`, [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-                text: 'Definir',
-                onPress: () =>
-                    run(
-                        () => selectCaptain.mutateAsync({ teamId: team.team_id, userId: member.user_id }),
-                        `${member.name} é o novo capitão.`,
-                        'Não foi possível definir o capitão.'
-                    ),
-            },
-        ]);
+    const openMemberSheet = useCallback((member: TeamMember) => {
+        setActiveMember(member);
+        memberSheetRef.current?.present();
+    }, []);
 
-    const confirmRemove = (member: TeamMember) =>
-        Alert.alert('Remover do time?', `${member.name} será removido(a) do time.`, [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-                text: 'Remover',
-                style: 'destructive',
-                onPress: () =>
-                    run(
-                        () => removeMember.mutateAsync({ teamId: team.team_id, userId: member.user_id }),
-                        `${member.name} foi removido(a).`,
-                        'Não foi possível remover o integrante.'
-                    ),
-            },
-        ]);
+    const closeMemberSheet = useCallback(() => {
+        memberSheetRef.current?.dismiss();
+    }, []);
 
-    const confirmLeave = () =>
-        Alert.alert('Sair do time?', 'Você deixa de fazer parte de "' + team.name + '".', [
+    const confirmCaptain = useCallback(
+        (member: TeamMember) => {
+            closeMemberSheet();
+            Alert.alert('Definir capitão?', `${member.name} passa a ser o capitão do time.`, [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Definir',
+                    onPress: () =>
+                        run(
+                            () => selectCaptain.mutateAsync({ teamId: team.team_id, userId: member.user_id }),
+                            `${member.name} é o novo capitão.`,
+                            'Não foi possível definir o capitão.'
+                        ),
+                },
+            ]);
+        },
+        [closeMemberSheet, run, selectCaptain, team.team_id]
+    );
+
+    const confirmRemove = useCallback(
+        (member: TeamMember) => {
+            closeMemberSheet();
+            Alert.alert('Remover do time?', `${member.name} será removido(a) do time.`, [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Remover',
+                    style: 'destructive',
+                    onPress: () =>
+                        run(
+                            () => removeMember.mutateAsync({ teamId: team.team_id, userId: member.user_id }),
+                            `${member.name} foi removido(a).`,
+                            'Não foi possível remover o integrante.'
+                        ),
+                },
+            ]);
+        },
+        [closeMemberSheet, removeMember, run, team.team_id]
+    );
+
+    const confirmLeave = useCallback(() => {
+        Alert.alert('Sair do time?', `Você deixa de fazer parte de "${team.name}".`, [
             { text: 'Cancelar', style: 'cancel' },
             {
                 text: 'Sair',
@@ -295,8 +459,9 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                 },
             },
         ]);
+    }, [leaveScreen, leaveTeam, run, team.name, team.team_id]);
 
-    const confirmDelete = () =>
+    const confirmDelete = useCallback(() => {
         Alert.alert(
             'Excluir time?',
             `"${team.name}" será excluído. Os integrantes saem do time e o convite deixa de funcionar. Essa ação não pode ser desfeita.`,
@@ -311,17 +476,51 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                             'Time excluído.',
                             'Não foi possível excluir o time.'
                         );
-                        if (ok) {
-                            leaveScreen();
-                        }
+                        if (ok) leaveScreen();
                     },
                 },
             ]
         );
+    }, [deleteTeam, leaveScreen, run, team.name, team.team_id]);
+
+    const handleConfirmSubmit = useCallback(async () => {
+        const ok = await run(
+            () => submitTeam.mutateAsync({ teamId: team.team_id }),
+            'Time submetido para aprovação.',
+            'Não foi possível submeter o time.'
+        );
+        if (ok) {
+            setEditingAfterRejection(false);
+            submitSheetRef.current?.dismiss();
+        }
+    }, [run, submitTeam, team.team_id]);
+
+    const handleContactMonitor = useCallback(() => {
+        toast.info('Em breve você vai poder falar com o monitor por aqui.');
+    }, [toast]);
+
+    const canShareInvite = isOwner && isDraft && !!team.invite_token && team.token_active;
 
     return (
         <>
-            <Stack.Screen options={{ title: team.name }} />
+            <Stack.Screen
+                options={{
+                    title: team.name,
+                    headerRight: canShareInvite
+                        ? () => (
+                              <Pressable
+                                  accessibilityRole="button"
+                                  accessibilityLabel="Compartilhar convite"
+                                  onPress={handleShare}
+                                  hitSlop={8}
+                                  style={styles.headerAction}
+                              >
+                                  <Icon name="share" size={20} color={colors.ink} />
+                              </Pressable>
+                          )
+                        : undefined,
+                }}
+            />
             <ScrollView
                 contentInsetAdjustmentBehavior="automatic"
                 contentContainerStyle={styles.content}
@@ -335,103 +534,106 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                     />
                 }
             >
-                <View style={styles.hero}>
-                    <TeamAvatar name={team.name} photo={team.photo} size={96} />
-                    <ThemedText variant="title" selectable>
-                        {team.name}
-                    </ThemedText>
-                    <ThemedText variant="subhead">
-                        {team.modality_name ?? 'Modalidade'}
-                        {genderRule ? ` · ${genderRule}` : ''}
-                    </ThemedText>
-                    <TeamStatusBadge status={team.status} />
-                    <ThemedText variant="subhead">{STATUS_COPY[team.status]}</ThemedText>
-                </View>
+                {isDraft ? (
+                    <DraftHero
+                        team={team}
+                        memberCount={memberCount}
+                        min={min}
+                        max={max}
+                        canManageInvite={isOwner}
+                        onCopyInvite={handleCopyInvite}
+                        onRegenerateInvite={handleRegenerateInvite}
+                        regenerating={regenerateInvite.isPending}
+                    />
+                ) : team.status === 'SUBMITTED' ? (
+                    <SubmittedHero team={team} />
+                ) : team.status === 'APPROVED' ? (
+                    <ApprovedHero team={team} seasonYear={seasonYear} />
+                ) : (
+                    <RejectedHero team={team} />
+                )}
 
-                <RejectionNotice team={team} />
-
-                {isOwner && isDraft ? (
-                    <InviteSection team={team} onRegenerated={() => details.refetch()} />
+                {genderRule ? (
+                    <ThemedText variant="bodySm" style={styles.muted}>
+                        {genderRule}
+                    </ThemedText>
                 ) : null}
 
-                <Section title="Membros">
-                    <InfoRow label="Total" value={membersLabel} />
-                    {isDraft && min !== undefined ? (
-                        <ThemedText variant="caption">
-                            {missing > 0
-                                ? `Faltam ${plural(missing, 'integrante', 'integrantes')} para poder submeter.`
-                                : 'O time já tem o mínimo de integrantes para submissão.'}
-                        </ThemedText>
+                <View style={styles.sectionHeader}>
+                    <ThemedText variant="heading">{`Integrantes (${memberCount})`}</ThemedText>
+                    {isOwner && isDraft && canShareInvite ? (
+                        <Pressable accessibilityRole="button" accessibilityLabel="Convidar" onPress={handleShare} hitSlop={8}>
+                            <ThemedText variant="section" style={styles.link}>
+                                Convidar
+                            </ThemedText>
+                        </Pressable>
+                    ) : team.status === 'APPROVED' ? (
+                        <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel="Ver chaves"
+                            onPress={() => router.push('/(brackets)')}
+                            hitSlop={8}
+                        >
+                            <ThemedText variant="section" style={styles.link}>
+                                Ver chaves
+                            </ThemedText>
+                        </Pressable>
                     ) : null}
-                    {isDraft && quota ? (
-                        <ThemedText variant="caption">
-                            {quota.satisfied
-                                ? `Cota de gênero atendida (${quota.male} homens e ${quota.female} mulheres).`
-                                : quotaMessage}
-                        </ThemedText>
-                    ) : null}
-                    {team.members.map((member, index) => {
-                        const memberIsOwner = member.user_id === team.owner_id;
-                        const memberIsCaptain = member.user_id === team.captain_id;
-                        const actions: MemberAction[] =
-                            isOwner && isDraft
-                                ? [
-                                      ...(memberIsCaptain
-                                          ? []
-                                          : [{ label: 'Definir capitão', onPress: () => confirmCaptain(member) }]),
-                                      ...(memberIsOwner
-                                          ? []
-                                          : [
-                                                {
-                                                    label: 'Remover',
-                                                    destructive: true,
-                                                    onPress: () => confirmRemove(member),
-                                                },
-                                            ]),
-                                  ]
-                                : [];
+                </View>
 
-                        return (
-                            <MemberCard
-                                key={member.user_id}
-                                name={member.name}
-                                isOwner={memberIsOwner}
-                                isCaptain={memberIsCaptain}
-                                donation={isDraft ? undefined : member.donation_status}
-                                actions={actions}
-                                divider={index > 0}
-                            />
-                        );
-                    })}
-                </Section>
+                <ThemedText variant="label" style={styles.muted}>
+                    {membersLabel} integrantes
+                </ThemedText>
 
-                {!isDraft ? (
-                    <Section title="Acompanhamento">
-                        {team.submmited_at ? (
-                            <InfoRow label="Submetido em" value={formatCampusDateTime(team.submmited_at)} />
-                        ) : null}
-                        <InfoRow
-                            label="Doações"
-                            value={`${team.donations_confirmed}/${team.donations_total} confirmadas`}
+                {isDraft && min !== undefined ? (
+                    <ThemedText variant="caption" style={styles.muted}>
+                        {missing > 0
+                            ? `Faltam ${plural(missing, 'integrante', 'integrantes')} para poder submeter.`
+                            : 'O time já tem o mínimo de integrantes para submissão.'}
+                    </ThemedText>
+                ) : null}
+                {isDraft && quota ? (
+                    <ThemedText variant="caption" style={styles.muted}>
+                        {quota.satisfied
+                            ? `Cota de gênero atendida (${quota.male} homens e ${quota.female} mulheres).`
+                            : quotaMessage}
+                    </ThemedText>
+                ) : null}
+
+                <View style={styles.membersList}>
+                    {team.members.map((member) => (
+                        <MemberCard
+                            key={member.user_id}
+                            name={member.name}
+                            isOwner={member.user_id === team.owner_id}
+                            isCaptain={member.user_id === team.captain_id}
+                            donation={isDraft ? undefined : member.donation_status}
+                            onPress={isOwner && isDraft ? () => openMemberSheet(member) : undefined}
                         />
-                        {team.approved_at ? (
-                            <InfoRow label="Aprovado em" value={formatCampusDateTime(team.approved_at)} />
-                        ) : null}
-                    </Section>
+                    ))}
+                </View>
+
+                {team.status === 'SUBMITTED' ? (
+                    <InfoBanner text="Leve sua doação de alimentos ao monitor para confirmar sua participação." />
                 ) : null}
 
                 {isOwner && isDraft ? (
                     <View style={styles.actions}>
-                        {submitBlockedReason ? <ThemedText variant="caption">{submitBlockedReason}</ThemedText> : null}
+                        {submitBlockedReason ? (
+                            <ThemedText variant="caption" style={styles.muted}>
+                                {submitBlockedReason}
+                            </ThemedText>
+                        ) : null}
                         <Button
                             title="Submeter para aprovação"
+                            icon="check"
                             disabled={submitBlockedReason !== null}
-                            loading={submitTeam.isPending}
-                            onPress={confirmSubmit}
+                            onPress={() => submitSheetRef.current?.present()}
                         />
                         <Button
-                            title="Excluir time"
+                            title="Excluir equipe"
                             variant="danger"
+                            icon="trash"
                             loading={deleteTeam.isPending}
                             onPress={confirmDelete}
                         />
@@ -439,14 +641,103 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                 ) : null}
 
                 {isMember && !isOwner && isDraft ? (
-                    <Button
-                        title="Sair do time"
-                        variant="danger"
-                        loading={leaveTeam.isPending}
-                        onPress={confirmLeave}
-                    />
+                    <Button title="Sair do time" variant="danger" loading={leaveTeam.isPending} onPress={confirmLeave} />
+                ) : null}
+
+                {isOwner && team.status === 'REJECTED' && !editingAfterRejection ? (
+                    <View style={styles.actions}>
+                        <Button title="Voltar para rascunho" icon="edit" onPress={() => setEditingAfterRejection(true)} />
+                        <Button title="Falar com o monitor" variant="neutral" onPress={handleContactMonitor} />
+                    </View>
                 ) : null}
             </ScrollView>
+
+            <BottomSheet ref={memberSheetRef} onDismiss={() => setActiveMember(null)} snapPoints={['40%']}>
+                {activeMember ? (
+                    <View style={styles.memberSheet}>
+                        <View style={styles.memberSheetHeader}>
+                            <MemberAvatar name={activeMember.name} size={48} />
+                            <View style={styles.memberSheetTexts}>
+                                <ThemedText variant="heading" numberOfLines={1}>
+                                    {activeMember.name}
+                                </ThemedText>
+                                <ThemedText variant="body" style={styles.muted}>
+                                    {TeamMemberRoleLabel[activeMember.role]}
+                                </ThemedText>
+                            </View>
+                        </View>
+
+                        {activeMember.user_id !== team.captain_id ? (
+                            <SheetAction icon="star" label="Tornar capitão" onPress={() => confirmCaptain(activeMember)} />
+                        ) : null}
+                        {activeMember.user_id !== team.owner_id ? (
+                            <SheetAction
+                                icon="trash"
+                                label="Remover da equipe"
+                                tone="danger"
+                                onPress={() => confirmRemove(activeMember)}
+                            />
+                        ) : null}
+
+                        <Button title="Cancelar" variant="neutral" onPress={closeMemberSheet} />
+                    </View>
+                ) : null}
+            </BottomSheet>
+
+            <BottomSheet
+                ref={submitSheetRef}
+                title="Submeter para aprovação?"
+                description="Depois de submetida, a equipe não aceita mais novos membros e aguarda a confirmação das doações pelo monitor."
+                snapPoints={['55%']}
+            >
+                <View style={styles.submitSummaryCard}>
+                    <View style={styles.avatarStack}>
+                        {team.members.slice(0, 5).map((member, index) => (
+                            <View
+                                key={member.user_id}
+                                style={[styles.avatarStackItem, { marginLeft: index === 0 ? 0 : -10, zIndex: 5 - index }]}
+                            >
+                                <MemberAvatar name={member.name} size={32} />
+                            </View>
+                        ))}
+                        {memberCount > 5 ? (
+                            <ThemedText variant="bodySm" style={styles.avatarStackMore}>{`+${memberCount - 5}`}</ThemedText>
+                        ) : null}
+                    </View>
+                    <ThemedText variant="section">{`${plural(memberCount, 'membro', 'membros')} · Capitão: ${captainName}`}</ThemedText>
+                    {missing === 0 && min !== undefined ? (
+                        <View style={styles.checkRow}>
+                            <Icon name="check" size={16} color={colors.primary} />
+                            <ThemedText variant="bodySm" style={styles.primaryDarkText}>
+                                {`Mínimo de ${min} membros atingido`}
+                            </ThemedText>
+                        </View>
+                    ) : null}
+                </View>
+
+                <View style={styles.infoList}>
+                    <View style={styles.infoListRow}>
+                        <Icon name="info" size={16} color={colors.textMuted} />
+                        <ThemedText variant="bodySm" style={styles.muted}>
+                            Link de convite será desativado
+                        </ThemedText>
+                    </View>
+                    <View style={styles.infoListRow}>
+                        <Icon name="info" size={16} color={colors.textMuted} />
+                        <ThemedText variant="bodySm" style={styles.muted}>
+                            Doações pendentes até a confirmação
+                        </ThemedText>
+                    </View>
+                </View>
+
+                <Button title="Confirmar submissão" loading={submitTeam.isPending} onPress={handleConfirmSubmit} />
+                <Button
+                    title="Cancelar"
+                    variant="neutral"
+                    disabled={submitTeam.isPending}
+                    onPress={() => submitSheetRef.current?.dismiss()}
+                />
+            </BottomSheet>
         </>
     );
 }
@@ -472,41 +763,258 @@ const styles = StyleSheet.create({
         paddingBottom: spacing.xl,
         gap: spacing.md,
     },
-    hero: {
-        gap: spacing.xs,
+    muted: {
+        color: colors.textSecondary,
     },
-    notice: {
-        gap: spacing.xs,
-        padding: spacing.md,
-        borderRadius: radius.md,
+    link: {
+        color: colors.primary,
+    },
+    headerAction: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.field,
+    },
+
+    heroCard: {
+        gap: spacing.sm,
+        padding: spacing.lg,
+        borderRadius: radius.xl,
         borderCurve: 'continuous',
-        borderWidth: StyleSheet.hairlineWidth * 4,
-        backgroundColor: colors.secondarySystemBackground as string,
+        borderWidth: 1,
+        borderColor: colors.border,
+        backgroundColor: colors.surface,
     },
-    actions: {
-        gap: spacing.xs,
+    heroTopRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
     },
-    code: {
+    heroTexts: {
+        flex: 1,
         gap: 2,
-        padding: spacing.md,
-        borderRadius: radius.md,
-        borderCurve: 'continuous',
-        backgroundColor: colors.systemBackground as string,
     },
-    codeRow: {
+    progressBlock: {
+        gap: spacing.xs,
+    },
+    progressLabelRow: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        justifyContent: 'space-between',
+    },
+    progressTrack: {
+        height: 8,
+        borderRadius: radius.pill,
+        backgroundColor: colors.field,
+        overflow: 'hidden',
+    },
+    progressFill: {
+        height: '100%',
+        borderRadius: radius.pill,
+        backgroundColor: colors.primary,
+    },
+    regenerateLink: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: spacing.xxs,
+        paddingVertical: spacing.xxs,
+    },
+
+    banner: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.sm,
+        padding: spacing.md,
+        borderRadius: radius.xl,
+        borderCurve: 'continuous',
     },
-    codeText: {
-        flex: 1,
+    bannerWarning: {
+        backgroundColor: colors.warningSoft,
     },
-    copyButton: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
+    bannerSuccess: {
+        backgroundColor: colors.primary,
+    },
+    bannerDanger: {
+        backgroundColor: colors.danger,
+    },
+    bannerIcon: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    bannerIconWarning: {
+        backgroundColor: colors.warning,
+    },
+    bannerIconOnTint: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    },
+    bannerTexts: {
+        flex: 1,
+        gap: 2,
+    },
+    onPrimaryText: {
+        color: colors.surface,
+    },
+    onPrimaryTextMuted: {
+        color: 'rgba(255, 255, 255, 0.85)',
+    },
+    warningText: {
+        color: colors.warningText,
+    },
+    dangerText: {
+        color: colors.danger,
+    },
+    primaryDarkText: {
+        color: colors.primaryDark,
+    },
+    reasonCard: {
+        gap: spacing.xxs,
+        padding: spacing.md,
+        borderRadius: radius.lg,
+        borderCurve: 'continuous',
+        backgroundColor: colors.dangerSoft,
+    },
+    reasonText: {
+        color: colors.ink,
+    },
+
+    timelineCard: {
+        padding: spacing.md,
+        borderRadius: radius.xl,
+        borderCurve: 'continuous',
+        borderWidth: 1,
+        borderColor: colors.border,
         backgroundColor: colors.surface,
+    },
+    timelineRow: {
+        flexDirection: 'row',
+        gap: spacing.sm,
+    },
+    timelineRail: {
+        alignItems: 'center',
+    },
+    timelineDot: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    timelineLine: {
+        width: 2,
+        flex: 1,
+        minHeight: spacing.lg,
+        backgroundColor: colors.border,
+    },
+    timelineLineDone: {
+        backgroundColor: colors.primary,
+    },
+    timelineTextRow: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingBottom: spacing.md,
+    },
+
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    membersList: {
+        gap: spacing.sm,
+    },
+
+    infoBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        padding: spacing.md,
+        borderRadius: radius.lg,
+        borderCurve: 'continuous',
+        backgroundColor: colors.primarySoft,
+    },
+    infoBannerText: {
+        flex: 1,
+        color: colors.primaryDark,
+    },
+
+    actions: {
+        gap: spacing.xs,
+    },
+
+    memberSheet: {
+        gap: spacing.xs,
+    },
+    memberSheetHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
+        paddingBottom: spacing.sm,
+    },
+    memberSheetTexts: {
+        flex: 1,
+        gap: 2,
+    },
+    sheetAction: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
+        minHeight: 56,
+    },
+    sheetActionIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    sheetActionLabel: {
+        flex: 1,
+    },
+
+    submitSummaryCard: {
+        gap: spacing.xs,
+        padding: spacing.md,
+        borderRadius: radius.lg,
+        borderCurve: 'continuous',
+        backgroundColor: colors.field,
+    },
+    avatarStack: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    avatarStackItem: {
+        borderWidth: 2,
+        borderColor: colors.field,
+        borderRadius: 999,
+    },
+    avatarStackMore: {
+        marginLeft: spacing.xs,
+        color: colors.textSecondary,
+    },
+    checkRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xxs,
+    },
+    infoList: {
+        gap: spacing.xs,
+    },
+    infoListRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
     },
 });

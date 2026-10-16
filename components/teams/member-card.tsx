@@ -1,129 +1,136 @@
 import { Pressable, StyleSheet, View } from 'react-native';
+import { Icon } from '@/components/icon';
 import { Pill } from '@/components/teams/pill';
 import { ThemedText } from '@/components/themed-text';
 import { DonationStatusLabel, type DonationStatus } from '@/types/enums';
-import { colors, onTint, radius, spacing, useBrandColors } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 
 const AVATAR_SIZE = 40;
 
-export interface MemberAction {
-    label: string;
-    onPress: () => void;
-    destructive?: boolean;
-    disabled?: boolean;
+const AVATAR_TONES: { background: string; foreground: string }[] = [
+    { background: colors.primarySoft, foreground: colors.primaryDark },
+    { background: colors.dangerSoft, foreground: colors.danger },
+    { background: colors.warningSoft, foreground: colors.warningText },
+];
+
+function initialOf(name: string): string {
+    return name.trim().charAt(0).toUpperCase() || '?';
+}
+
+function toneOf(name: string) {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = (hash * 31 + name.charCodeAt(i)) | 0;
+    }
+    return AVATAR_TONES[Math.abs(hash) % AVATAR_TONES.length];
+}
+
+export function MemberAvatar({ name, size = AVATAR_SIZE }: { name: string; size?: number }) {
+    const tone = toneOf(name);
+
+    return (
+        <View
+            style={[
+                styles.avatar,
+                { width: size, height: size, borderRadius: size / 2, backgroundColor: tone.background },
+            ]}
+        >
+            <ThemedText variant="section" style={{ color: tone.foreground }}>
+                {initialOf(name)}
+            </ThemedText>
+        </View>
+    );
 }
 
 interface MemberCardProps {
     name: string;
-    subtitle?: string;
     isOwner: boolean;
     isCaptain: boolean;
     donation?: DonationStatus;
-    actions?: MemberAction[];
-    divider?: boolean;
+    onPress?: () => void;
 }
 
-function initials(name: string): string {
-    return name
-        .trim()
-        .split(/\s+/)
-        .slice(0, 2)
-        .map((part) => part[0]?.toUpperCase() ?? '')
-        .join('');
-}
+export function MemberCard({ name, isOwner, isCaptain, donation, onPress }: MemberCardProps) {
+    const donationConfirmed = donation === 'DONATION_CONFIRMED';
 
-function ActionButton({ action }: { action: MemberAction }) {
-    const brand = useBrandColors();
-    const tint = action.destructive ? brand.accent : brand.primary;
+    const accessibilityLabel = [
+        name,
+        isOwner ? 'Dono' : null,
+        isCaptain ? 'Capitão' : null,
+        donation ? DonationStatusLabel[donation] : null,
+    ]
+        .filter(Boolean)
+        .join(', ');
+
+    const content = (
+        <View style={styles.row}>
+            <MemberAvatar name={name} />
+            <View style={styles.texts}>
+                <ThemedText variant="section" numberOfLines={1}>
+                    {name}
+                </ThemedText>
+                {donation ? (
+                    <ThemedText
+                        variant="bodySm"
+                        style={{ color: donationConfirmed ? colors.primaryDark : colors.warningText }}
+                    >
+                        {DonationStatusLabel[donation]}
+                    </ThemedText>
+                ) : isOwner || isCaptain ? (
+                    <View style={styles.pills}>
+                        {isOwner ? <Pill label="Dono" tone="dark" /> : null}
+                        {isCaptain ? <Pill label="Capitão" tone="soft" /> : null}
+                    </View>
+                ) : null}
+            </View>
+            {donation ? (
+                <View
+                    style={[
+                        styles.statusDot,
+                        { backgroundColor: donationConfirmed ? colors.primary : colors.warning },
+                    ]}
+                >
+                    <Icon name={donationConfirmed ? 'check' : 'clock'} size={14} color={colors.surface} />
+                </View>
+            ) : onPress ? (
+                <Icon name="more" size={20} color={colors.textMuted} />
+            ) : null}
+        </View>
+    );
+
+    if (!onPress) {
+        return (
+            <View style={styles.card} accessible accessibilityLabel={accessibilityLabel}>
+                {content}
+            </View>
+        );
+    }
 
     return (
         <Pressable
             accessibilityRole="button"
-            accessibilityLabel={action.label}
-            accessibilityState={{ disabled: !!action.disabled }}
-            disabled={action.disabled}
-            onPress={action.onPress}
-            style={({ pressed }) => [
-                styles.action,
-                { borderColor: tint, opacity: action.disabled ? 0.4 : pressed ? 0.6 : 1 },
-            ]}
+            accessibilityLabel={`Ações de ${name}`}
+            onPress={onPress}
+            style={({ pressed }) => [styles.card, { opacity: pressed ? 0.7 : 1 }]}
         >
-            <ThemedText variant="subhead" style={{ color: tint, fontWeight: '600' }}>
-                {action.label}
-            </ThemedText>
+            {content}
         </Pressable>
-    );
-}
-
-export function MemberCard({ name, subtitle, isOwner, isCaptain, donation, actions = [], divider }: MemberCardProps) {
-    const brand = useBrandColors();
-
-    const roles = [isOwner ? 'Dono' : null, isCaptain ? 'Capitão' : null].filter(Boolean).join(', ');
-    const description = [name, roles, donation ? DonationStatusLabel[donation] : null].filter(Boolean).join(', ');
-
-    return (
-        <View
-            style={[styles.card, divider && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator as string }]}
-            accessible={actions.length === 0}
-            accessibilityLabel={actions.length === 0 ? description : undefined}
-        >
-            <View style={styles.top}>
-                <View
-                    style={[
-                        styles.avatar,
-                        { backgroundColor: isOwner ? brand.primary : (colors.separator as string) },
-                    ]}
-                >
-                    <ThemedText variant="caption" style={isOwner ? { color: onTint } : undefined}>
-                        {initials(name)}
-                    </ThemedText>
-                </View>
-
-                <View style={styles.texts}>
-                    <ThemedText variant="headline" numberOfLines={1}>
-                        {name}
-                    </ThemedText>
-                    {subtitle ? <ThemedText variant="caption">{subtitle}</ThemedText> : null}
-                    {isOwner || isCaptain || donation ? (
-                        <View style={styles.pills}>
-                            {isOwner ? <Pill label="DONO" tone="outline" /> : null}
-                            {isCaptain ? <Pill label="CAPITÃO" tone="outline" /> : null}
-                            {donation ? (
-                                <Pill
-                                    label={donation === 'DONATION_CONFIRMED' ? 'DOAÇÃO CONFIRMADA' : 'DOAÇÃO PENDENTE'}
-                                    tone={donation === 'DONATION_CONFIRMED' ? 'filled' : 'neutral'}
-                                />
-                            ) : null}
-                        </View>
-                    ) : null}
-                </View>
-            </View>
-
-            {actions.length > 0 ? (
-                <View style={styles.actions}>
-                    {actions.map((action) => (
-                        <ActionButton key={action.label} action={action} />
-                    ))}
-                </View>
-            ) : null}
-        </View>
     );
 }
 
 const styles = StyleSheet.create({
     card: {
-        gap: spacing.sm,
-        paddingVertical: spacing.sm,
+        borderRadius: radius.md,
+        borderCurve: 'continuous',
+        backgroundColor: colors.field,
+        padding: spacing.sm,
     },
-    top: {
+    row: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: spacing.md,
+        gap: spacing.sm,
     },
     avatar: {
-        width: AVATAR_SIZE,
-        height: AVATAR_SIZE,
-        borderRadius: AVATAR_SIZE / 2,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -133,21 +140,14 @@ const styles = StyleSheet.create({
     },
     pills: {
         flexDirection: 'row',
-        flexWrap: 'wrap',
         gap: spacing.xs,
-        marginTop: spacing.xs,
+        marginTop: 2,
     },
-    actions: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: spacing.sm,
-        paddingLeft: AVATAR_SIZE + spacing.md,
-    },
-    action: {
-        minHeight: 36,
+    statusDot: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: spacing.md,
-        borderWidth: 1,
-        borderRadius: radius.full,
     },
 });

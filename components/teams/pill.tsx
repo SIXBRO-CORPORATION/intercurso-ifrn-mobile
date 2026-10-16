@@ -2,7 +2,7 @@ import { StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { colors, fontFamily, radius, spacing } from '@/theme';
 
-export type PillTone = 'filled' | 'neutral' | 'outline' | 'dark';
+export type PillTone = 'filled' | 'neutral' | 'outline' | 'dark' | 'soft';
 
 interface ToneStyle {
     background: string;
@@ -16,6 +16,7 @@ const tones: Record<PillTone, ToneStyle> = {
     neutral: { background: colors.field, foreground: colors.textSecondary },
     outline: { background: 'transparent', foreground: colors.primary, borderColor: colors.primary, borderWidth: 1 },
     dark: { background: colors.ink, foreground: colors.surface },
+    soft: { background: colors.primarySoft, foreground: colors.primaryDark },
 };
 
 export function Pill({ label, tone = 'neutral' }: { label: string; tone?: PillTone }) {
