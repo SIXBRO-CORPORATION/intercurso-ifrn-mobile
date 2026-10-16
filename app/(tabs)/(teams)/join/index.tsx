@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { Button } from '@/components/button';
 import { FormField } from '@/components/form/form-field';
+import { Icon } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
-import { spacing } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 import { extractInviteToken } from '@/utils/team-invite';
 
 export default function JoinWithCodeScreen() {
@@ -24,9 +25,16 @@ export default function JoinWithCodeScreen() {
 
     return (
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-            <ThemedText variant="subhead">
-                Se você abriu o link de convite no celular, o app já mostra o time automaticamente. Caso contrário, cole
-                aqui o link ou o código enviado pelo dono do time.
+            <View style={[styles.iconBubble, styles.selfCenter]}>
+                <Icon name="link" size={28} color={colors.primaryDark} />
+            </View>
+
+            <ThemedText variant="heading" style={styles.centered}>
+                Entrar com link ou código
+            </ThemedText>
+            <ThemedText variant="body" style={[styles.centered, styles.muted]}>
+                Se você abriu o link de convite no celular, o app já mostra o time automaticamente. Caso contrário,
+                cole aqui o link ou o código enviado pelo dono do time.
             </ThemedText>
 
             <FormField
@@ -45,7 +53,27 @@ export default function JoinWithCodeScreen() {
 
 const styles = StyleSheet.create({
     content: {
-        padding: spacing.md,
+        flexGrow: 1,
+        padding: spacing.xl,
+        paddingTop: spacing.xxl,
         gap: spacing.md,
+    },
+    iconBubble: {
+        width: 64,
+        height: 64,
+        borderRadius: radius.pill,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.primarySoft,
+        marginBottom: spacing.xs,
+    },
+    selfCenter: {
+        alignSelf: 'center',
+    },
+    centered: {
+        textAlign: 'center',
+    },
+    muted: {
+        color: colors.textSecondary,
     },
 });

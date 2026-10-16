@@ -215,6 +215,13 @@ export default function TeamsScreen() {
                         disabled={!canCreate}
                         onPress={() => router.push('/team/new')}
                     />
+                    <Button
+                        title="Entrar com código"
+                        icon="link"
+                        variant="outline"
+                        disabled={!canCreate}
+                        onPress={() => router.push('/join')}
+                    />
                 </View>
             }
             refreshControl={
@@ -337,6 +344,7 @@ const styles = StyleSheet.create({
         color: colors.textSecondary,
     },
     footer: {
+        gap: spacing.sm,
         paddingHorizontal: spacing.md,
         paddingTop: spacing.md,
     },

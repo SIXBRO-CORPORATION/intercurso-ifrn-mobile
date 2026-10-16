@@ -1,27 +1,102 @@
 import { useState } from 'react';
-import { Image, ScrollView, StyleSheet, View } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/button';
 import { LoginPrompt } from '@/components/auth/login-prompt';
-import { InfoRow, Section } from '@/components/management/section';
+import { Icon } from '@/components/icon';
 import { ErrorState, LoadingState } from '@/components/states/screen-states';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
 import { useJoinTeamViaInvite, useTeamInviteInfo } from '@/hooks/useTeams';
 import { useToast } from '@/providers/ToastProvider';
 import { ApiError } from '@/types/api';
-import { radius, spacing, useBrandColors } from '@/theme';
+import type { TeamInvitePreview } from '@/types/team';
+import { colors, fontFamily, radius, spacing } from '@/theme';
 import { friendlyErrorMessage } from '@/utils/api-error-message';
-import { formatGenderRule, formatMembersRange } from '@/utils/modality-gender';
+
+function initialsOf(name: string): string {
+    const letters = name
+        .trim()
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((word) => word.charAt(0).toUpperCase())
+        .join('');
+    return letters || '?';
+}
+
+function InviteAvatar({ name, photo }: { name: string; photo?: string | null }) {
+    return (
+        <View style={styles.avatarRing}>
+            {photo ? (
+                <Image source={{ uri: photo }} style={styles.avatarPhoto} accessibilityIgnoresInvertColors />
+            ) : (
+                <ThemedText variant="largeTitle" style={styles.avatarInitials}>
+                    {initialsOf(name)}
+                </ThemedText>
+            )}
+        </View>
+    );
+}
+
+function InfoCard({ team }: { team: TeamInvitePreview }) {
+    const max = team.max_members ?? null;
+    const membersValue = max != null ? `${team.members_count}/${max}` : String(team.members_count);
+    const progress = max ? Math.min(team.members_count / max, 1) : null;
+
+    return (
+        <View style={styles.infoCard}>
+            <View style={styles.infoRow}>
+                <ThemedText variant="body" style={styles.muted}>
+                    Dono
+                </ThemedText>
+                <ThemedText variant="section">{team.owner_name ?? '—'}</ThemedText>
+            </View>
+            <View style={[styles.infoRow, styles.infoRowDivider]}>
+                <ThemedText variant="body" style={styles.muted}>
+                    Capitão
+                </ThemedText>
+                <ThemedText variant="section">{team.captain_name ?? 'Não definido'}</ThemedText>
+            </View>
+            <View style={[styles.infoRow, styles.infoRowDivider, progress != null && styles.infoRowNoGap]}>
+                <ThemedText variant="body" style={styles.muted}>
+                    Membros
+                </ThemedText>
+                <ThemedText variant="section">{membersValue}</ThemedText>
+            </View>
+            {progress != null ? (
+                <View style={styles.progressTrack}>
+                    <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+                </View>
+            ) : null}
+        </View>
+    );
+}
+
+function DonationBanner() {
+    return (
+        <View style={styles.donationBanner}>
+            <View style={styles.donationIcon}>
+                <Icon name="info" size={20} color={colors.surface} />
+            </View>
+            <View style={styles.donationTexts}>
+                <ThemedText variant="section">Doação de alimentos</ThemedText>
+                <ThemedText variant="bodySm" style={styles.muted}>
+                    Leve sua doação ao monitor para confirmar sua participação.
+                </ThemedText>
+            </View>
+        </View>
+    );
+}
 
 export default function JoinTeamScreen() {
     const { token } = useLocalSearchParams<{ token: string }>();
-    const brand = useBrandColors();
     const toast = useToast();
     const { user, isAuthenticated, isInitializing } = useAuth();
     const preview = useTeamInviteInfo(isAuthenticated ? token : '');
     const join = useJoinTeamViaInvite();
     const [joinError, setJoinError] = useState<string | null>(null);
+
+    const handleClose = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
     if (isInitializing) {
         return <LoadingState label="Carregando…" />;
@@ -48,10 +123,7 @@ export default function JoinTeamScreen() {
     }
 
     const team = preview.data;
-    const membersRange = formatMembersRange(team.min_members, team.max_members);
-    const capacity = membersRange ? `${team.members_count} (${membersRange})` : String(team.members_count);
     const isFull = team.max_members != null && team.members_count >= team.max_members;
-
     const requiredGender = team.gender_mode === 'MALE' ? 'M' : team.gender_mode === 'FEMALE' ? 'F' : null;
     const genderMismatch = requiredGender !== null && !!user?.gender && user.gender !== requiredGender;
     const joinBlockedReason = isFull
@@ -75,58 +147,181 @@ export default function JoinTeamScreen() {
 
     return (
         <ScrollView contentContainerStyle={styles.content}>
-            <View style={styles.hero}>
-                {team.photo ? (
-                    <Image source={{ uri: team.photo }} style={styles.photo} accessibilityIgnoresInvertColors />
-                ) : null}
-                <ThemedText variant="title" selectable>
-                    {team.name}
-                </ThemedText>
-                {team.modality_name ? <ThemedText variant="subhead">{team.modality_name}</ThemedText> : null}
-            </View>
+            <Stack.Screen options={{ headerShown: false }} />
+            <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Fechar"
+                onPress={handleClose}
+                hitSlop={8}
+                style={styles.closeButton}
+            >
+                <Icon name="close" size={22} color={colors.ink} />
+            </Pressable>
 
-            <Section title="Sobre o time">
-                {team.modality_name ? <InfoRow label="Modalidade" value={team.modality_name} /> : null}
-                {team.gender_mode ? <InfoRow label="Regra de gênero" value={formatGenderRule(team)} /> : null}
-                <InfoRow label="Membros" value={capacity} />
-                <InfoRow label="Dono" value={team.owner_name ?? '—'} />
-                <InfoRow label="Capitão" value={team.captain_name ?? 'Não definido'} />
-            </Section>
+            <ThemedText variant="overline" style={styles.inviteLabel}>
+                Você foi convidado
+            </ThemedText>
+
+            <InviteAvatar name={team.name} photo={team.photo} />
+
+            <ThemedText variant="title" style={styles.centered} selectable>
+                {team.name}
+            </ThemedText>
+
+            {team.modality_name ? (
+                <View style={styles.modalityPill}>
+                    <ThemedText variant="caption" style={styles.modalityPillText}>
+                        {team.modality_name}
+                    </ThemedText>
+                </View>
+            ) : null}
+
+            <InfoCard team={team} />
+            <DonationBanner />
 
             {joinError ? (
-                <ThemedText variant="caption" accessibilityRole="alert" style={{ color: brand.primary }}>
+                <ThemedText variant="caption" accessibilityRole="alert" style={styles.errorText}>
                     {joinError}
                 </ThemedText>
             ) : null}
-
             {joinBlockedReason ? (
-                <ThemedText variant="caption" accessibilityRole="alert" style={{ color: brand.primary }}>
+                <ThemedText variant="caption" accessibilityRole="alert" style={styles.errorText}>
                     {joinBlockedReason}
                 </ThemedText>
             ) : null}
-            <Button
-                title="Entrar no time"
-                onPress={handleJoin}
-                loading={join.isPending}
-                disabled={joinBlockedReason !== null}
-            />
-            <Button title="Cancelar" variant="outline" onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
+
+            <View style={styles.actions}>
+                <Button
+                    title="Entrar no time"
+                    icon="user_plus"
+                    onPress={handleJoin}
+                    loading={join.isPending}
+                    disabled={joinBlockedReason !== null}
+                />
+                <Button title="Agora não" variant="neutral" onPress={handleClose} />
+            </View>
         </ScrollView>
     );
 }
 
 const styles = StyleSheet.create({
     content: {
-        padding: spacing.md,
+        flexGrow: 1,
+        alignItems: 'center',
+        padding: spacing.xl,
+        paddingTop: spacing['3xl'],
         gap: spacing.md,
     },
-    hero: {
-        gap: spacing.xs,
-        alignItems: 'flex-start',
+    closeButton: {
+        position: 'absolute',
+        top: spacing.xl,
+        left: spacing.lg,
+        padding: spacing.xs,
+        zIndex: 1,
     },
-    photo: {
-        width: 72,
-        height: 72,
+    centered: {
+        textAlign: 'center',
+    },
+    muted: {
+        color: colors.textSecondary,
+    },
+    inviteLabel: {
+        color: colors.primary,
+        textAlign: 'center',
+        marginTop: spacing.xl,
+    },
+    avatarRing: {
+        width: 112,
+        height: 112,
+        borderRadius: radius.pill,
+        borderWidth: 3,
+        borderColor: colors.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.primarySoft,
+        overflow: 'hidden',
+        marginTop: spacing.xs,
+    },
+    avatarPhoto: {
+        width: '100%',
+        height: '100%',
+    },
+    avatarInitials: {
+        color: colors.primaryDark,
+    },
+    modalityPill: {
+        alignSelf: 'center',
+        paddingHorizontal: spacing.sm,
+        paddingVertical: spacing.xxs,
+        borderRadius: radius.pill,
+        borderCurve: 'continuous',
+        backgroundColor: colors.primarySoft,
+    },
+    modalityPillText: {
+        color: colors.primaryDark,
+        fontFamily: fontFamily.bold,
+    },
+    infoCard: {
+        width: '100%',
+        padding: spacing.md,
         borderRadius: radius.lg,
+        borderCurve: 'continuous',
+        backgroundColor: colors.field,
+    },
+    infoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: spacing.sm,
+    },
+    infoRowDivider: {
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: colors.border,
+    },
+    infoRowNoGap: {
+        paddingBottom: spacing.xs,
+    },
+    progressTrack: {
+        height: 6,
+        borderRadius: radius.pill,
+        backgroundColor: colors.border,
+        marginBottom: spacing.xxs,
+        overflow: 'hidden',
+    },
+    progressFill: {
+        height: '100%',
+        borderRadius: radius.pill,
+        backgroundColor: colors.primary,
+    },
+    donationBanner: {
+        width: '100%',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        padding: spacing.md,
+        borderRadius: radius.lg,
+        borderCurve: 'continuous',
+        backgroundColor: colors.warningSoft,
+    },
+    donationIcon: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.warning,
+    },
+    donationTexts: {
+        flex: 1,
+        gap: 2,
+    },
+    errorText: {
+        width: '100%',
+        color: colors.danger,
+    },
+    actions: {
+        width: '100%',
+        gap: spacing.sm,
+        marginTop: spacing.sm,
     },
 });
