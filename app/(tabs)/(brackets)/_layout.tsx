@@ -14,6 +14,7 @@ export default function BracketsLayout() {
             }}
         >
             <Stack.Screen name="index" options={{ title: 'Chaves' }} />
+            <Stack.Screen name="[modalityId]" options={{ title: 'Chaves', headerLargeTitleEnabled: false }} />
         </Stack>
     );
 }

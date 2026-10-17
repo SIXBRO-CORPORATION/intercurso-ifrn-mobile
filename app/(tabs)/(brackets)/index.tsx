@@ -1,11 +1,5 @@
-import { ScreenPlaceholder } from '@/components/screen-placeholder';
+import { BracketsScreen } from '@/components/brackets/brackets-screen';
 
-
-export default function BracketsScreen() {
-    return (
-        <ScreenPlaceholder
-            title="Chaves"
-            description="O chaveamento da sua modalidade chega na Fase 12, reaproveitando hooks/useBrackets.ts."
-        />
-    );
+export default function BracketsIndexScreen() {
+    return <BracketsScreen />;
 }
