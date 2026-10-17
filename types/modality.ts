@@ -43,3 +43,10 @@ export interface ModalityCreateResponse {
     configuration?: ModalityConfiguration;
     message: string;
 }
+
+export interface ModalityStatusResponse {
+    modality_id: string;
+    name: string;
+    active: boolean;
+    message: string;
+}

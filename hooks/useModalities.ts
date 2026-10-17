@@ -29,3 +29,22 @@ export function useAllModalities() {
         queryFn: ({ signal }) => modalityService.listModalities(undefined, signal),
     });
 }
+
+export function useModalitiesAdmin() {
+    return useQuery({
+        queryKey: queryKeys.modalities.admin(),
+        queryFn: ({ signal }) => modalityService.listModalitiesAdmin(signal),
+    });
+}
+
+export function useUpdateModalityActive() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ modalityId, active }: { modalityId: string; active: boolean }) =>
+            modalityService.updateModalityActive(modalityId, active),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.modalities.all });
+        },
+    });
+}

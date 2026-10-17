@@ -11,6 +11,7 @@ export const queryKeys = {
     modalities: {
         all: ['modalities'] as const,
         list: (seasonId?: string) => ['modalities', 'list', seasonId ?? ''] as const,
+        admin: () => ['modalities', 'admin'] as const,
         detail: (modalityId: string) => ['modalities', modalityId] as const,
     },
     seasons: {

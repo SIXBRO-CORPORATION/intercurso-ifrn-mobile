@@ -1,32 +1,99 @@
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
+import { Icon } from '@/components/icon';
+import { ListRowIcon } from '@/components/list-row';
+import { Toggle } from '@/components/form/toggle';
 import { EmptyState, ErrorState, LoadingState } from '@/components/states/screen-states';
 import { ThemedText } from '@/components/themed-text';
-import { useAllModalities } from '@/hooks/useModalities';
+import { useModalitiesAdmin, useUpdateModalityActive } from '@/hooks/useModalities';
+import { useToast } from '@/providers/ToastProvider';
 import { friendlyErrorMessage } from '@/utils/api-error-message';
+import { ModalityGenderModeLabel, ScoreTypeLabel, type ModalityGenderMode } from '@/types/enums';
 import type { ModalitySummaryResponse } from '@/types/modality-list';
-import { colors, radius, spacing } from '@/theme';
+import { colors, fontFamily, radius, spacing } from '@/theme';
 import { formatGenderRule, formatMembers } from '@/utils/modality-gender';
 
-function ModalityRow({ modality }: { modality: ModalitySummaryResponse }) {
-    const members = formatMembers(modality);
-    const gender = formatGenderRule(modality);
+const GENDER_PILL_TONE: Record<ModalityGenderMode, { background: string; foreground: string }> = {
+    MALE: { background: colors.primarySoft, foreground: colors.primaryDark },
+    FEMALE: { background: colors.primarySoft, foreground: colors.primaryDark },
+    MIXED: { background: colors.warningSoft, foreground: colors.warningText },
+};
+
+function GenderPill({ mode, muted }: { mode: ModalityGenderMode; muted: boolean }) {
+    const tone = GENDER_PILL_TONE[mode];
+    const background = muted ? colors.field : tone.background;
+    const foreground = muted ? colors.textMuted : tone.foreground;
 
     return (
-        <View style={styles.row} accessible accessibilityLabel={`${modality.name}, ${gender}, ${members}`}>
+        <View style={[styles.genderPill, { backgroundColor: background }]}>
+            <ThemedText variant="caption" style={[styles.genderPillLabel, { color: foreground }]}>
+                {ModalityGenderModeLabel[mode]}
+            </ThemedText>
+        </View>
+    );
+}
+
+function configLabel(modality: ModalitySummaryResponse): string {
+    const scoreLabel = ScoreTypeLabel[modality.score_type];
+    const periods = modality.num_periods === 1 ? '1 período' : `${modality.num_periods} períodos`;
+    return `${periods} · ${modality.period_durations_minutes} min · ${scoreLabel}`;
+}
+
+function ModalityRow({ modality }: { modality: ModalitySummaryResponse }) {
+    const toast = useToast();
+    const updateActive = useUpdateModalityActive();
+    const members = formatMembers(modality);
+    const gender = formatGenderRule(modality);
+    const muted = !modality.active;
+
+    const handleToggle = (next: boolean) => {
+        updateActive.mutate(
+            { modalityId: modality.modality_id, active: next },
+            {
+                onError: (error) => {
+                    toast.error(friendlyErrorMessage(error, 'Não foi possível atualizar a modalidade.'));
+                },
+            }
+        );
+    };
+
+    return (
+        <View
+            style={styles.card}
+            accessible
+            accessibilityLabel={`${modality.name}, ${gender}, ${members}, ${modality.active ? 'ativa' : 'inativa'}`}
+        >
+            <ListRowIcon background={muted ? colors.field : colors.primarySoft} size={48}>
+                <Icon name="ball" size={22} color={muted ? colors.textMuted : colors.primary} />
+            </ListRowIcon>
             <View style={styles.texts}>
-                <ThemedText variant="headline" numberOfLines={1}>
+                <ThemedText variant="section" numberOfLines={1} style={muted ? styles.mutedText : undefined}>
                     {modality.name}
                 </ThemedText>
-                <ThemedText variant="subhead">{gender}</ThemedText>
-                <ThemedText variant="subhead">{members}</ThemedText>
+                <View style={styles.meta}>
+                    <GenderPill mode={modality.gender_mode} muted={muted} />
+                    {members ? (
+                        <ThemedText variant="caption" style={styles.membersText} numberOfLines={1}>
+                            {members}
+                        </ThemedText>
+                    ) : null}
+                </View>
+                <ThemedText variant="caption" style={styles.configText} numberOfLines={1}>
+                    {configLabel(modality)}
+                </ThemedText>
             </View>
+            <Toggle
+                value={modality.active}
+                onValueChange={handleToggle}
+                disabled={updateActive.isPending}
+                accessibilityLabel={`${modality.active ? 'Desativar' : 'Ativar'} ${modality.name}`}
+            />
         </View>
     );
 }
 
 export default function ModalitiesScreen() {
-    const modalities = useAllModalities();
+    const modalities = useModalitiesAdmin();
     const items = modalities.data ?? [];
 
     const renderEmpty = () => {
@@ -47,7 +114,7 @@ export default function ModalitiesScreen() {
 
         return (
             <EmptyState
-                title="Nenhuma modalidade ativa"
+                title="Nenhuma modalidade cadastrada"
                 description="Cadastre uma modalidade para poder criar temporadas."
                 actionLabel="Criar modalidade"
                 onAction={() => router.push('/modalities/create')}
@@ -71,6 +138,7 @@ export default function ModalitiesScreen() {
 
 const styles = StyleSheet.create({
     content: {
+        paddingHorizontal: spacing.md,
         paddingTop: spacing.sm,
         paddingBottom: spacing.xl,
     },
@@ -80,14 +148,44 @@ const styles = StyleSheet.create({
     separator: {
         height: spacing.sm,
     },
-    row: {
-        marginHorizontal: spacing.md,
+    card: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
         padding: spacing.md,
         borderRadius: radius.lg,
         borderCurve: 'continuous',
-        backgroundColor: colors.secondarySystemBackground as string,
+        backgroundColor: colors.surface,
+        borderWidth: 1,
+        borderColor: colors.border,
     },
     texts: {
-        gap: 2,
+        flex: 1,
+        gap: spacing.xxs,
+    },
+    meta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+    },
+    genderPill: {
+        alignSelf: 'flex-start',
+        paddingHorizontal: spacing.sm,
+        paddingVertical: 2,
+        borderRadius: radius.pill,
+        borderCurve: 'continuous',
+    },
+    genderPillLabel: {
+        fontFamily: fontFamily.bold,
+    },
+    membersText: {
+        color: colors.textSecondary,
+    },
+    configText: {
+        color: colors.textMuted,
+        marginTop: 2,
+    },
+    mutedText: {
+        color: colors.textMuted,
     },
 });

@@ -1,4 +1,4 @@
-import type { ModalityGenderMode } from './enums';
+import type { ModalityGenderMode, ScoreType } from './enums';
 
 export interface ModalitySummaryResponse {
     modality_id: string;
@@ -8,4 +8,8 @@ export interface ModalitySummaryResponse {
     gender_mode: ModalityGenderMode;
     min_male_members?: number | null;
     min_female_members?: number | null;
+    active: boolean;
+    num_periods: number;
+    period_durations_minutes: number;
+    score_type: ScoreType;
 }
