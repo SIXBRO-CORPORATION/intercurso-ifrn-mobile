@@ -62,7 +62,6 @@ export interface MatchModalityConfigurationResponse {
     num_periods?: number | null;
     period_duration_minutes?: number | null;
     score_type?: string | null;
-    has_third_place_match?: boolean | null;
     points_per_set?: number | null;
     final_set_points?: number | null;
     sets_to_win?: number | null;

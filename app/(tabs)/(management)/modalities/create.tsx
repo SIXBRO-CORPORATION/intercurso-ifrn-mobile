@@ -5,7 +5,6 @@ import { Button } from '@/components/button';
 import { FormField } from '@/components/form/form-field';
 import { Segmented } from '@/components/form/segmented';
 import { Stepper } from '@/components/form/stepper';
-import { Toggle } from '@/components/form/toggle';
 import { ListRow } from '@/components/list-row';
 import { ThemedText } from '@/components/themed-text';
 import { useCreateModality } from '@/hooks/useModalities';
@@ -47,7 +46,6 @@ export default function CreateModalityScreen() {
     const [periods, setPeriods] = useState(DEFAULT_PERIODS);
     const [periodDuration, setPeriodDuration] = useState(DEFAULT_PERIOD_DURATION);
     const [scoreType, setScoreType] = useState<ScoreType>('GOALS');
-    const [hasThirdPlaceMatch, setHasThirdPlaceMatch] = useState(false);
     const [pointsPerSet, setPointsPerSet] = useState(DEFAULT_POINTS_PER_SET);
     const [finalSetPoints, setFinalSetPoints] = useState(DEFAULT_FINAL_SET_POINTS);
     const [setsToWin, setSetsToWin] = useState(DEFAULT_SETS_TO_WIN);
@@ -92,7 +90,6 @@ export default function CreateModalityScreen() {
             num_periods: periods,
             period_durations_minutes: periodDuration,
             score_type: scoreType,
-            has_third_place_match: hasThirdPlaceMatch,
             ...(isSets
                 ? { points_per_set: pointsPerSet, final_set_points: finalSetPoints, sets_to_win: setsToWin }
                 : {}),
@@ -251,18 +248,6 @@ export default function CreateModalityScreen() {
                     />
                 </>
             ) : null}
-
-            <ListRow
-                title="Disputa de terceiro lugar"
-                emphasis="regular"
-                trailing={
-                    <Toggle
-                        value={hasThirdPlaceMatch}
-                        onValueChange={setHasThirdPlaceMatch}
-                        accessibilityLabel="Disputa de terceiro lugar"
-                    />
-                }
-            />
 
             {submitError ? (
                 <ThemedText variant="caption" accessibilityRole="alert" style={styles.errorText}>

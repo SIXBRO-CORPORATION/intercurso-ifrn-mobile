@@ -12,7 +12,6 @@ export interface ModalityCreateRequest {
     num_periods: number;
     period_durations_minutes: number;
     score_type: ScoreType;
-    has_third_place_match?: boolean;
     metadata?: unknown;
 
     points_per_set?: number;
@@ -24,7 +23,6 @@ export interface ModalityConfiguration {
     num_periods: number;
     period_durations_minutes: number;
     score_type: ScoreType;
-    has_third_place_match: boolean;
     metadata?: unknown;
     points_per_set?: number;
     final_set_points?: number;
