@@ -299,6 +299,8 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
     const memberSheetRef = useRef<BottomSheetHandle>(null);
     const submitSheetRef = useRef<BottomSheetHandle>(null);
 
+    const team = details.data;
+
     const leaveScreen = useCallback(() => {
         if (router.canGoBack()) router.back();
         else router.replace('/');
@@ -313,6 +315,151 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
             toast.error(friendlyErrorMessage(error, fallback));
             return false;
         }
+    }, [toast]);
+
+    const handleShare = useCallback(async () => {
+        if (!team?.invite_token) return;
+        const link = buildInviteLink(team.invite_token);
+        await Share.share({
+            message: `Entre no meu time "${team.name}" no Intercurso: ${link}\nCódigo do convite: ${team.invite_token}`,
+        });
+    }, [team?.invite_token, team?.name]);
+
+    const handleCopyInvite = useCallback(async () => {
+        if (!team?.invite_token) return;
+        const link = buildInviteLink(team.invite_token);
+        await Clipboard.setStringAsync(link);
+        toast.success('Link copiado!');
+    }, [team?.invite_token, toast]);
+
+    const handleRegenerateInvite = useCallback(() => {
+        if (!team) return;
+        Alert.alert(
+            'Gerar novo convite?',
+            'O link e o código atuais deixam de funcionar. Quem já entrou no time continua no time.',
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Gerar novo',
+                    style: 'destructive',
+                    onPress: () =>
+                        run(
+                            () => regenerateInvite.mutateAsync({ teamId: team.team_id }),
+                            'Novo convite gerado.',
+                            'Não foi possível gerar um novo convite.'
+                        ),
+                },
+            ]
+        );
+    }, [regenerateInvite, run, team]);
+
+    const openMemberSheet = useCallback((member: TeamMember) => {
+        setActiveMember(member);
+        memberSheetRef.current?.present();
+    }, []);
+
+    const closeMemberSheet = useCallback(() => {
+        memberSheetRef.current?.dismiss();
+    }, []);
+
+    const confirmCaptain = useCallback(
+        (member: TeamMember) => {
+            if (!team) return;
+            closeMemberSheet();
+            Alert.alert('Definir capitão?', `${member.name} passa a ser o capitão do time.`, [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Definir',
+                    onPress: () =>
+                        run(
+                            () => selectCaptain.mutateAsync({ teamId: team.team_id, userId: member.user_id }),
+                            `${member.name} é o novo capitão.`,
+                            'Não foi possível definir o capitão.'
+                        ),
+                },
+            ]);
+        },
+        [closeMemberSheet, run, selectCaptain, team]
+    );
+
+    const confirmRemove = useCallback(
+        (member: TeamMember) => {
+            if (!team) return;
+            closeMemberSheet();
+            Alert.alert('Remover do time?', `${member.name} será removido(a) do time.`, [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Remover',
+                    style: 'destructive',
+                    onPress: () =>
+                        run(
+                            () => removeMember.mutateAsync({ teamId: team.team_id, userId: member.user_id }),
+                            `${member.name} foi removido(a).`,
+                            'Não foi possível remover o integrante.'
+                        ),
+                },
+            ]);
+        },
+        [closeMemberSheet, removeMember, run, team]
+    );
+
+    const confirmLeave = useCallback(() => {
+        if (!team) return;
+        Alert.alert('Sair do time?', `Você deixa de fazer parte de "${team.name}".`, [
+            { text: 'Cancelar', style: 'cancel' },
+            {
+                text: 'Sair',
+                style: 'destructive',
+                onPress: async () => {
+                    const ok = await run(
+                        () => leaveTeam.mutateAsync({ teamId: team.team_id }),
+                        'Você saiu do time.',
+                        'Não foi possível sair do time.'
+                    );
+                    if (ok) leaveScreen();
+                },
+            },
+        ]);
+    }, [leaveScreen, leaveTeam, run, team]);
+
+    const confirmDelete = useCallback(() => {
+        if (!team) return;
+        Alert.alert(
+            'Excluir time?',
+            `"${team.name}" será excluído. Os integrantes saem do time e o convite deixa de funcionar. Essa ação não pode ser desfeita.`,
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Excluir',
+                    style: 'destructive',
+                    onPress: async () => {
+                        const ok = await run(
+                            () => deleteTeam.mutateAsync({ teamId: team.team_id }),
+                            'Time excluído.',
+                            'Não foi possível excluir o time.'
+                        );
+                        if (ok) leaveScreen();
+                    },
+                },
+            ]
+        );
+    }, [deleteTeam, leaveScreen, run, team]);
+
+    const handleConfirmSubmit = useCallback(async () => {
+        if (!team) return;
+        const ok = await run(
+            () => submitTeam.mutateAsync({ teamId: team.team_id }),
+            'Time submetido para aprovação.',
+            'Não foi possível submeter o time.'
+        );
+        if (ok) {
+            setEditingAfterRejection(false);
+            submitSheetRef.current?.dismiss();
+        }
+    }, [run, submitTeam, team]);
+
+    const handleContactMonitor = useCallback(() => {
+        toast.info('Em breve você vai poder falar com o monitor por aqui.');
     }, [toast]);
 
     if (details.isPending) {
@@ -330,7 +477,10 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
         );
     }
 
-    const team = details.data;
+    if (!team) {
+        return null;
+    }
+
     const me = user?.user_id;
     const isOwner = !!me && team.owner_id === me;
     const isMember = !!me && team.members.some((member) => member.user_id === me);
@@ -359,145 +509,6 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
     } else if (quotaMessage) {
         submitBlockedReason = quotaMessage;
     }
-
-    const handleShare = useCallback(async () => {
-        if (!team.invite_token) return;
-        const link = buildInviteLink(team.invite_token);
-        await Share.share({
-            message: `Entre no meu time "${team.name}" no Intercurso: ${link}\nCódigo do convite: ${team.invite_token}`,
-        });
-    }, [team.invite_token, team.name]);
-
-    const handleCopyInvite = useCallback(async () => {
-        if (!team.invite_token) return;
-        const link = buildInviteLink(team.invite_token);
-        await Clipboard.setStringAsync(link);
-        toast.success('Link copiado!');
-    }, [team.invite_token, toast]);
-
-    const handleRegenerateInvite = useCallback(() => {
-        Alert.alert(
-            'Gerar novo convite?',
-            'O link e o código atuais deixam de funcionar. Quem já entrou no time continua no time.',
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Gerar novo',
-                    style: 'destructive',
-                    onPress: () =>
-                        run(
-                            () => regenerateInvite.mutateAsync({ teamId: team.team_id }),
-                            'Novo convite gerado.',
-                            'Não foi possível gerar um novo convite.'
-                        ),
-                },
-            ]
-        );
-    }, [regenerateInvite, run, team.team_id]);
-
-    const openMemberSheet = useCallback((member: TeamMember) => {
-        setActiveMember(member);
-        memberSheetRef.current?.present();
-    }, []);
-
-    const closeMemberSheet = useCallback(() => {
-        memberSheetRef.current?.dismiss();
-    }, []);
-
-    const confirmCaptain = useCallback(
-        (member: TeamMember) => {
-            closeMemberSheet();
-            Alert.alert('Definir capitão?', `${member.name} passa a ser o capitão do time.`, [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Definir',
-                    onPress: () =>
-                        run(
-                            () => selectCaptain.mutateAsync({ teamId: team.team_id, userId: member.user_id }),
-                            `${member.name} é o novo capitão.`,
-                            'Não foi possível definir o capitão.'
-                        ),
-                },
-            ]);
-        },
-        [closeMemberSheet, run, selectCaptain, team.team_id]
-    );
-
-    const confirmRemove = useCallback(
-        (member: TeamMember) => {
-            closeMemberSheet();
-            Alert.alert('Remover do time?', `${member.name} será removido(a) do time.`, [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Remover',
-                    style: 'destructive',
-                    onPress: () =>
-                        run(
-                            () => removeMember.mutateAsync({ teamId: team.team_id, userId: member.user_id }),
-                            `${member.name} foi removido(a).`,
-                            'Não foi possível remover o integrante.'
-                        ),
-                },
-            ]);
-        },
-        [closeMemberSheet, removeMember, run, team.team_id]
-    );
-
-    const confirmLeave = useCallback(() => {
-        Alert.alert('Sair do time?', `Você deixa de fazer parte de "${team.name}".`, [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-                text: 'Sair',
-                style: 'destructive',
-                onPress: async () => {
-                    const ok = await run(
-                        () => leaveTeam.mutateAsync({ teamId: team.team_id }),
-                        'Você saiu do time.',
-                        'Não foi possível sair do time.'
-                    );
-                    if (ok) leaveScreen();
-                },
-            },
-        ]);
-    }, [leaveScreen, leaveTeam, run, team.name, team.team_id]);
-
-    const confirmDelete = useCallback(() => {
-        Alert.alert(
-            'Excluir time?',
-            `"${team.name}" será excluído. Os integrantes saem do time e o convite deixa de funcionar. Essa ação não pode ser desfeita.`,
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Excluir',
-                    style: 'destructive',
-                    onPress: async () => {
-                        const ok = await run(
-                            () => deleteTeam.mutateAsync({ teamId: team.team_id }),
-                            'Time excluído.',
-                            'Não foi possível excluir o time.'
-                        );
-                        if (ok) leaveScreen();
-                    },
-                },
-            ]
-        );
-    }, [deleteTeam, leaveScreen, run, team.name, team.team_id]);
-
-    const handleConfirmSubmit = useCallback(async () => {
-        const ok = await run(
-            () => submitTeam.mutateAsync({ teamId: team.team_id }),
-            'Time submetido para aprovação.',
-            'Não foi possível submeter o time.'
-        );
-        if (ok) {
-            setEditingAfterRejection(false);
-            submitSheetRef.current?.dismiss();
-        }
-    }, [run, submitTeam, team.team_id]);
-
-    const handleContactMonitor = useCallback(() => {
-        toast.info('Em breve você vai poder falar com o monitor por aqui.');
-    }, [toast]);
 
     const canShareInvite = isOwner && isDraft && !!team.invite_token && team.token_active;
 

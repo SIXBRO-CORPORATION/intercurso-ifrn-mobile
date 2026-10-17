@@ -5,14 +5,16 @@ export default function TeamsManagementLayout() {
     return (
         <Stack
             screenOptions={{
-                headerLargeTitleEnabled: true,
+                headerLargeTitleEnabled: false,
                 headerShadowVisible: false,
-                headerTitleStyle: { color: colors.label, fontFamily: fontFamily.display },
+                headerTintColor: colors.ink,
+                headerStyle: { backgroundColor: colors.background },
+                headerTitleStyle: { fontFamily: fontFamily.bold, fontSize: 20, color: colors.ink },
                 headerBackButtonDisplayMode: 'minimal',
             }}
         >
-            <Stack.Screen name="index" options={{ title: 'Times' }} />
-            <Stack.Screen name="[id]" options={{ title: 'Time', headerLargeTitleEnabled: false }} />
+            <Stack.Screen name="index" options={{ title: '' }} />
+            <Stack.Screen name="[id]" options={{ title: 'Equipe' }} />
         </Stack>
     );
 }
