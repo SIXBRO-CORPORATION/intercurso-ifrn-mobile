@@ -355,6 +355,6 @@ Os 6 pontos abaixo não correspondiam 1:1 ao que já existia no código. Foram r
 - [x] 18 — `teams/index.tsx`, `teams/[id].tsx` (management)
 - [x] 19 — `seasons/[id]/bracket/[modalityId].tsx`
 - [x] 20 — `seasons/[id]/bracket/match/[matchId].tsx` + nova rota "Partidas" (monitor)
-- [ ] 21 — `components/match/monitor-panel.tsx` (ScheduledPanel)
+- [x] 21 — `components/match/monitor-panel.tsx` (ScheduledPanel)
 - [ ] 22 — `components/match/monitor-panel.tsx` (InProgressPanel)
 - [ ] 23 — QA final e limpeza

@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
-import { router } from 'expo-router';
+import { useRef, useState } from 'react';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { Button } from '@/components/button';
-import { DateField } from '@/components/form/date-field';
+import { Icon } from '@/components/icon';
 import { Section } from '@/components/management/section';
+import { BottomSheet, type BottomSheetHandle } from '@/components/overlays/bottom-sheet';
+import { ConfirmDialog } from '@/components/overlays/confirm-dialog';
+import { MemberAvatar } from '@/components/teams/member-card';
 import { ThemedText } from '@/components/themed-text';
-import { useDeleteMatch, useUpdateMatch } from '@/hooks/useBrackets';
 import {
     useEndPenaltyShootout,
     useEndPeriod,
@@ -24,69 +25,157 @@ import {
 import { useToast } from '@/providers/ToastProvider';
 import type { MatchPublicPlayerResponse, MatchPublicResponse } from '@/types/match';
 import { type CardType, type PenaltyKickResult } from '@/types/enums';
-import { spacing } from '@/theme';
+import { colors, radius, shadows, spacing } from '@/theme';
 import { friendlyErrorMessage } from '@/utils/api-error-message';
-import { isoToPickerDateTime, pickerDateTimeToIso } from '@/utils/campus-time';
 import { expelledPlayerIds } from './match-helpers';
+
+const EMPTY_EXPELLED: ReadonlySet<string> = new Set();
+
+function PlayerPill({
+    player,
+    expelled,
+    disabled,
+    onPress,
+}: {
+    player: MatchPublicPlayerResponse;
+    expelled: boolean;
+    disabled?: boolean;
+    onPress?: () => void;
+}) {
+    const pill = (
+        <View style={[styles.playerPill, expelled && styles.playerPillExpelled]}>
+            <MemberAvatar name={player.name} size={32} />
+            <ThemedText variant="body" numberOfLines={1} style={styles.playerPillName}>
+                {player.name}
+            </ThemedText>
+            {expelled ? <Icon name="card" size={14} color={colors.danger} /> : null}
+        </View>
+    );
+
+    if (!onPress) {
+        return <View style={styles.playerPillSlot}>{pill}</View>;
+    }
+
+    return (
+        <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Registrar evento para ${player.name}${expelled ? ', expulso' : ''}`}
+            disabled={disabled}
+            onPress={onPress}
+            style={({ pressed }) => [styles.playerPillSlot, { opacity: pressed && !disabled ? 0.7 : 1 }]}
+        >
+            {pill}
+        </Pressable>
+    );
+}
 
 function PlayersList({
     players,
-    teamName: teamLabel,
-    pointLabel,
-    expelled,
-    disabled,
+    teamName,
+    pointLabel = 'Gol',
+    expelled = EMPTY_EXPELLED,
+    disabled = false,
+    readOnly = false,
     onGoal,
     onCard,
 }: {
     players: MatchPublicPlayerResponse[];
-    teamName: string;
-    pointLabel: string;
-    expelled: Set<string>;
-    disabled: boolean;
-    onGoal: (playerId: string) => void;
-    onCard: (playerId: string, cardType: CardType) => void;
+    teamName?: string;
+    pointLabel?: string;
+    expelled?: ReadonlySet<string>;
+    disabled?: boolean;
+    readOnly?: boolean;
+    onGoal?: (playerId: string) => void;
+    onCard?: (playerId: string, cardType: CardType) => void;
 }) {
+    const sheetRef = useRef<BottomSheetHandle>(null);
+    const [selected, setSelected] = useState<MatchPublicPlayerResponse | null>(null);
+
+    const openFor = (player: MatchPublicPlayerResponse) => {
+        setSelected(player);
+        sheetRef.current?.present();
+    };
+
+    const pick = (action?: () => void) => {
+        sheetRef.current?.dismiss();
+        action?.();
+    };
+
     return (
         <View style={styles.teamPlayers}>
-            <ThemedText variant="caption" style={styles.teamPlayersTitle}>
-                {teamLabel.toUpperCase()}
-            </ThemedText>
+            {teamName ? (
+                <ThemedText variant="caption" style={styles.teamPlayersTitle}>
+                    {teamName.toUpperCase()}
+                </ThemedText>
+            ) : null}
+
             {players.length === 0 ? (
-                <ThemedText variant="subhead">Nenhum jogador disponível.</ThemedText>
+                <ThemedText variant="body" style={styles.emptyPlayers}>
+                    Nenhum jogador disponível.
+                </ThemedText>
             ) : (
-                players.map((player) => {
-                    const isExpelled = expelled.has(player.user_id);
-                    return (
-                        <View key={player.user_id} style={styles.playerRow}>
-                            <ThemedText variant="subhead" style={styles.playerName} numberOfLines={1}>
-                                {player.name}
-                                {isExpelled ? ' · Expulso' : ''}
-                            </ThemedText>
-                            <View style={styles.playerActions}>
-                                <Button
-                                    title={pointLabel}
-                                    size="small"
-                                    disabled={disabled || isExpelled}
-                                    onPress={() => onGoal(player.user_id)}
-                                />
-                                <Button
-                                    title="Amarelo"
-                                    size="small"
-                                    variant="neutral"
-                                    disabled={disabled || isExpelled}
-                                    onPress={() => onCard(player.user_id, 'YELLOW')}
-                                />
-                                <Button
-                                    title="Vermelho"
-                                    size="small"
-                                    variant="danger"
-                                    disabled={disabled || isExpelled}
-                                    onPress={() => onCard(player.user_id, 'RED')}
-                                />
+                <View style={styles.playersGrid}>
+                    {players.map((player) => (
+                        <PlayerPill
+                            key={player.user_id}
+                            player={player}
+                            expelled={expelled.has(player.user_id)}
+                            disabled={disabled}
+                            onPress={readOnly ? undefined : () => openFor(player)}
+                        />
+                    ))}
+                </View>
+            )}
+
+            {readOnly ? null : (
+                <BottomSheet ref={sheetRef} snapPoints={['42%']} onDismiss={() => setSelected(null)}>
+                    {selected ? (
+                        <>
+                            <View style={styles.sheetHeader}>
+                                <MemberAvatar name={selected.name} size={44} />
+                                <View style={styles.sheetHeaderTexts}>
+                                    <ThemedText variant="section" numberOfLines={1}>
+                                        {selected.name}
+                                    </ThemedText>
+                                    <ThemedText variant="body" style={styles.sheetHeaderSubtitle} numberOfLines={1}>
+                                        {teamName ? `${teamName} · registrando evento` : 'Registrando evento'}
+                                    </ThemedText>
+                                </View>
                             </View>
-                        </View>
-                    );
-                })
+
+                            <Button
+                                title={pointLabel}
+                                icon="ball"
+                                disabled={disabled}
+                                onPress={() => pick(() => onGoal?.(selected.user_id))}
+                            />
+                            <Button
+                                title="Cartão amarelo"
+                                variant="warning"
+                                icon="card"
+                                disabled={disabled}
+                                onPress={() => pick(() => onCard?.(selected.user_id, 'YELLOW'))}
+                            />
+                            <Button
+                                title="Cartão vermelho"
+                                variant="danger"
+                                icon="card"
+                                disabled={disabled}
+                                onPress={() => pick(() => onCard?.(selected.user_id, 'RED'))}
+                            />
+                            <Pressable
+                                accessibilityRole="button"
+                                accessibilityLabel="Cancelar"
+                                onPress={() => sheetRef.current?.dismiss()}
+                                style={styles.sheetCancel}
+                            >
+                                <ThemedText variant="body" style={styles.sheetCancelText}>
+                                    Cancelar
+                                </ThemedText>
+                            </Pressable>
+                        </>
+                    ) : null}
+                </BottomSheet>
             )}
         </View>
     );
@@ -114,73 +203,52 @@ function PenaltyTeamActions({
 
 function ScheduledPanel({ match }: { match: MatchPublicResponse }) {
     const toast = useToast();
-    const updateMatch = useUpdateMatch();
-    const deleteMatch = useDeleteMatch();
     const startMatch = useStartMatch();
-    const [date, setDate] = useState(() => isoToPickerDateTime(match.scheduled_date));
+    const [confirmOpen, setConfirmOpen] = useState(false);
 
-    const handleSaveSchedule = async () => {
+    const lineup = [...match.team1_players, ...match.team2_players];
+
+    const handleStart = async () => {
         try {
-            await updateMatch.mutateAsync({
-                matchId: match.match_id,
-                request: { scheduled_date: pickerDateTimeToIso(date) },
-            });
-            toast.success('Agendamento atualizado.');
+            await startMatch.mutateAsync({ matchId: match.match_id });
+            setConfirmOpen(false);
+            toast.success('Partida iniciada.');
         } catch (error) {
-            toast.error(friendlyErrorMessage(error, 'Não foi possível atualizar o agendamento.'));
+            setConfirmOpen(false);
+            toast.error(friendlyErrorMessage(error, 'Não foi possível iniciar a partida.'));
         }
     };
 
-    const confirmDelete = () =>
-        Alert.alert('Remover partida?', 'Esta partida será removida do chaveamento.', [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-                text: 'Remover',
-                style: 'destructive',
-                onPress: async () => {
-                    try {
-                        await deleteMatch.mutateAsync(match.match_id);
-                        toast.success('Partida removida.');
-                        router.back();
-                    } catch (error) {
-                        toast.error(friendlyErrorMessage(error, 'Não foi possível remover a partida.'));
-                    }
-                },
-            },
-        ]);
-
     return (
         <>
-            <Section title="Agendamento">
-                <DateField
-                    label="Data e horário"
-                    value={date}
-                    onChange={setDate}
-                    minimumDate={new Date()}
-                    mode="datetime"
-                />
-                <Button
-                    title="Salvar agendamento"
-                    variant="neutral"
-                    loading={updateMatch.isPending}
-                    onPress={handleSaveSchedule}
-                />
+            <View style={styles.startWrap}>
+                <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Iniciar partida"
+                    onPress={() => setConfirmOpen(true)}
+                    style={({ pressed }) => [styles.startButton, { opacity: pressed ? 0.9 : 1 }]}
+                >
+                    <Icon name="play" size={30} color={colors.surface} />
+                </Pressable>
+                <ThemedText variant="body" style={styles.startLabel}>
+                    Toque para iniciar
+                </ThemedText>
+            </View>
+
+            <Section title="Escalações">
+                <PlayersList players={lineup} readOnly />
             </Section>
 
-            <Button
-                title="Iniciar partida"
-                loading={startMatch.isPending}
-                onPress={async () => {
-                    try {
-                        await startMatch.mutateAsync({ matchId: match.match_id });
-                        toast.success('Partida iniciada.');
-                    } catch (error) {
-                        toast.error(friendlyErrorMessage(error, 'Não foi possível iniciar a partida.'));
-                    }
-                }}
+            <ConfirmDialog
+                visible={confirmOpen}
+                title="Começar partida?"
+                description="O cronômetro vai iniciar e os alunos receberão a notificação de início de jogo."
+                confirmLabel="Começar"
+                cancelLabel="Cancelar"
+                confirming={startMatch.isPending}
+                onConfirm={handleStart}
+                onCancel={() => setConfirmOpen(false)}
             />
-
-            <Button title="Remover partida" variant="outline" loading={deleteMatch.isPending} onPress={confirmDelete} />
         </>
     );
 }
@@ -479,28 +547,81 @@ const styles = StyleSheet.create({
         flexWrap: 'wrap',
         gap: spacing.sm,
     },
+    startWrap: {
+        alignItems: 'center',
+        gap: spacing.sm,
+        paddingVertical: spacing.lg,
+    },
+    startButton: {
+        width: 88,
+        height: 88,
+        borderRadius: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.primary,
+        boxShadow: shadows.primaryButton,
+    },
+    startLabel: {
+        color: colors.textSecondary,
+    },
     teamPlayers: {
         gap: spacing.xs,
     },
     teamPlayersTitle: {
         marginBottom: spacing.xs,
     },
+    emptyPlayers: {
+        color: colors.textSecondary,
+        textAlign: 'center',
+        paddingVertical: spacing.sm,
+    },
     playersDivider: {
         height: spacing.sm,
     },
-    playerRow: {
+    playersGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: spacing.xs,
+    },
+    playerPillSlot: {
+        width: '48%',
+    },
+    playerPill: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: spacing.sm,
-        minHeight: 36,
+        gap: spacing.xs,
+        minHeight: 48,
+        paddingVertical: spacing.xs,
+        paddingHorizontal: spacing.sm,
+        borderRadius: radius.pill,
+        borderCurve: 'continuous',
+        backgroundColor: colors.field,
     },
-    playerName: {
+    playerPillExpelled: {
+        backgroundColor: colors.dangerSoft,
+    },
+    playerPillName: {
         flex: 1,
     },
-    playerActions: {
+    sheetHeader: {
         flexDirection: 'row',
-        gap: spacing.xs,
+        alignItems: 'center',
+        gap: spacing.sm,
+        marginBottom: spacing.xs,
+    },
+    sheetHeaderTexts: {
+        flex: 1,
+        gap: 2,
+    },
+    sheetHeaderSubtitle: {
+        color: colors.textSecondary,
+    },
+    sheetCancel: {
+        alignItems: 'center',
+        paddingVertical: spacing.sm,
+    },
+    sheetCancelText: {
+        color: colors.textSecondary,
     },
     penaltyTeam: {
         flexDirection: 'row',
