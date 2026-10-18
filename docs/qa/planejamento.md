@@ -54,7 +54,7 @@ Todo arquivo de rota do projeto aparece em alguma linha acima. Se, ao longo do Q
 | ID | Fluxo | App | Fase 1 | Fase 2 |
 |----|-------|-----|--------|--------|
 | A1 | Boas-vindas e login | Aluno/Visitante | Concluído — ver `docs/qa/a01-boas-vindas-login.md` | Concluído — ver `docs/qa/a01-boas-vindas-login.md` |
-| A2 | Jogos (feed) + partida ao vivo/encerrada | Aluno/Visitante | Não iniciado | Não iniciado |
+| A2 | Jogos (feed) + partida ao vivo/encerrada | Aluno/Visitante | Concluído — ver `docs/qa/a02-jogos-partida.md` | Concluído — ver `docs/qa/a02-jogos-partida.md` |
 | A3 | Chaves | Aluno/Visitante | Não iniciado | Não iniciado |
 | A4 | Minhas equipes + criar equipe | Aluno/Visitante | Não iniciado | Não iniciado |
 | A5 | Entrar via convite + ciclo de vida da equipe | Aluno/Visitante | Não iniciado | Não iniciado |
