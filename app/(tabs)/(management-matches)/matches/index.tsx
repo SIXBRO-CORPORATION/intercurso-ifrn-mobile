@@ -59,6 +59,7 @@ function MatchRow({ seasonId, match }: { seasonId: string; match: MatchListItemR
     const isLive = match.status === 'IN_PROGRESS';
     const team1Name = match.team1?.name ?? 'A definir';
     const team2Name = match.team2?.name ?? 'A definir';
+    const readyToStart = isScheduled && !!match.team1 && !!match.team2 && !!match.scheduled_date;
 
     const editHref = `/(management-matches)/matches/${match.match_id}?seasonId=${seasonId}&view=edit` as const;
     const liveHref = `/(management-matches)/matches/${match.match_id}?seasonId=${seasonId}` as const;
@@ -98,12 +99,20 @@ function MatchRow({ seasonId, match }: { seasonId: string; match: MatchListItemR
                             </View>
 
                             <View style={styles.cardCenter}>
-                                {isScheduled ? (
+                                {readyToStart ? (
                                     <Button
                                         title="Iniciar"
                                         size="small"
                                         icon="play"
                                         onPress={() => router.push(liveHref)}
+                                    />
+                                ) : isScheduled ? (
+                                    <Button
+                                        title="Agendar"
+                                        size="small"
+                                        variant="neutral"
+                                        icon="edit"
+                                        onPress={() => router.push(editHref)}
                                     />
                                 ) : (
                                     <ThemedText variant="timer" style={styles.cardScore}>
