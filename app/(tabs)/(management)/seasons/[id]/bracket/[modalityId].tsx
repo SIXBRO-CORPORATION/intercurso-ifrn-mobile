@@ -507,9 +507,13 @@ function BracketContent({ seasonId, modalityId }: { seasonId: string; modalityId
 
 function MatchRow({ seasonId, match }: { seasonId: string; match: BracketMatchResponse }) {
     const needsSchedule = match.status === 'SCHEDULED' && !match.scheduled_date;
+    const href =
+        match.status === 'SCHEDULED'
+            ? `/seasons/${seasonId}/bracket/match/${match.match_id}?view=edit`
+            : `/seasons/${seasonId}/bracket/match/${match.match_id}`;
 
     return (
-        <Link href={`/seasons/${seasonId}/bracket/match/${match.match_id}`} asChild>
+        <Link href={href} asChild>
             <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`${matchTitle(match)}, ${MATCH_STATUS_LABEL[match.status]}. Gerenciar partida`}

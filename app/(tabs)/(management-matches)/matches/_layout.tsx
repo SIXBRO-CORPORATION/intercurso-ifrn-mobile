@@ -5,15 +5,15 @@ export default function MatchesLayout() {
     return (
         <Stack
             screenOptions={{
-                headerLargeTitleEnabled: true,
+                headerLargeTitleEnabled: false,
                 headerShadowVisible: false,
                 headerTintColor: colors.ink,
                 headerStyle: { backgroundColor: colors.background },
                 headerTitleStyle: { fontFamily: fontFamily.bold, fontSize: 20, color: colors.ink },
-                headerLargeTitleStyle: { fontFamily: fontFamily.bold, fontSize: 28, color: colors.ink },
+                headerBackButtonDisplayMode: 'minimal',
             }}
         >
-            <Stack.Screen name="index" options={{ title: 'Partidas' }} />
+            <Stack.Screen name="index" options={{ title: '' }} />
         </Stack>
     );
 }

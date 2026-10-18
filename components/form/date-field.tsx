@@ -13,7 +13,7 @@ interface DateFieldProps {
     minimumDate?: Date;
     error?: string;
     hint?: string;
-    mode?: 'date' | 'datetime';
+    mode?: 'date' | 'datetime' | 'time';
 }
 
 type AndroidStep = 'closed' | 'date' | 'time';
@@ -24,10 +24,17 @@ function mergeDateAndTime(datePart: Date, timePart: Date): Date {
     return merged;
 }
 
+
+function formatPickerTime(date: Date): string {
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
 export function DateField({ label, value, onChange, minimumDate, error, hint, mode = 'date' }: DateFieldProps) {
-    const showTime = mode === 'datetime';
+    const showDate = mode !== 'time';
+    const showTime = mode === 'datetime' || mode === 'time';
+    const leadingIcon = mode === 'time' ? 'clock' : 'calendar';
     const [androidStep, setAndroidStep] = useState<AndroidStep>('closed');
-    const formatValue = showTime ? formatPickerDateTime : formatPickerDate;
+    const formatValue = mode === 'time' ? formatPickerTime : mode === 'datetime' ? formatPickerDateTime : formatPickerDate;
     const borderColor = error ? colors.danger : colors.primary;
     const borderWidth = error || androidStep !== 'closed' ? 2 : 0;
 
@@ -37,16 +44,18 @@ export function DateField({ label, value, onChange, minimumDate, error, hint, mo
             <View style={[styles.control, { borderColor, borderWidth }]}>
                 {Platform.OS === 'ios' ? (
                     <View style={styles.iosRow}>
-                        <Icon name="calendar" size={18} color={colors.textSecondary} />
-                        <DateTimePicker
-                            mode="date"
-                            display="compact"
-                            value={value}
-                            minimumDate={minimumDate}
-                            accentColor={colors.primary}
-                            onValueChange={(_, date) => onChange(showTime ? mergeDateAndTime(date, value) : date)}
-                            style={styles.iosPicker}
-                        />
+                        <Icon name={leadingIcon} size={18} color={colors.textSecondary} />
+                        {showDate ? (
+                            <DateTimePicker
+                                mode="date"
+                                display="compact"
+                                value={value}
+                                minimumDate={minimumDate}
+                                accentColor={colors.primary}
+                                onValueChange={(_, date) => onChange(showTime ? mergeDateAndTime(date, value) : date)}
+                                style={styles.iosPicker}
+                            />
+                        ) : null}
                         {showTime ? (
                             <DateTimePicker
                                 mode="time"
@@ -62,11 +71,11 @@ export function DateField({ label, value, onChange, minimumDate, error, hint, mo
                     <>
                         <Pressable
                             accessibilityRole="button"
-                            accessibilityLabel={`${label}: ${formatValue(value)}. Alterar data`}
-                            onPress={() => setAndroidStep('date')}
+                            accessibilityLabel={`${label}: ${formatValue(value)}. Alterar ${showDate ? 'data' : 'hora'}`}
+                            onPress={() => setAndroidStep(showDate ? 'date' : 'time')}
                             style={({ pressed }) => [styles.androidButton, { opacity: pressed ? 0.7 : 1 }]}
                         >
-                            <Icon name="calendar" size={18} color={colors.textSecondary} />
+                            <Icon name={leadingIcon} size={18} color={colors.textSecondary} />
                             <ThemedText variant="body">{formatValue(value)}</ThemedText>
                         </Pressable>
                         {androidStep === 'date' ? (
