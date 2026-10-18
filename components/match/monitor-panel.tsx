@@ -1,7 +1,9 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type RefObject } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Button } from '@/components/button';
 import { Icon } from '@/components/icon';
+import { ListRow, ListRowIcon } from '@/components/list-row';
 import { Section } from '@/components/management/section';
 import { BottomSheet, type BottomSheetHandle } from '@/components/overlays/bottom-sheet';
 import { ConfirmDialog } from '@/components/overlays/confirm-dialog';
@@ -24,12 +26,77 @@ import {
 } from '@/hooks/useMatches';
 import { useToast } from '@/providers/ToastProvider';
 import type { MatchPublicPlayerResponse, MatchPublicResponse } from '@/types/match';
-import { type CardType, type PenaltyKickResult } from '@/types/enums';
+import { EventTypeLabel, type CardType, type PenaltyKickResult } from '@/types/enums';
 import { colors, radius, shadows, spacing } from '@/theme';
 import { friendlyErrorMessage } from '@/utils/api-error-message';
-import { expelledPlayerIds } from './match-helpers';
+import { expelledPlayerIds, playerName, teamName } from './match-helpers';
 
 const EMPTY_EXPELLED: ReadonlySet<string> = new Set();
+
+function clockLabel(totalSeconds: number): string {
+    const safe = Math.max(0, Math.floor(totalSeconds));
+    const minutes = Math.floor(safe / 60);
+    const seconds = safe % 60;
+    return `${minutes}'${seconds < 10 ? `0${seconds}` : seconds}`;
+}
+
+function undoPreview(match: MatchPublicResponse): { title: string; description: string } {
+    const last = match.timeline[match.timeline.length - 1];
+    if (!last) {
+        return {
+            title: 'Desfazer último evento?',
+            description: 'O último evento registrado nesta partida será removido.',
+        };
+    }
+
+    const who = playerName(match, last.player_id);
+    const time = clockLabel(last.clock_seconds);
+    const base = `${EventTypeLabel[last.event_type]}${who ? ` de ${who}` : ''} aos ${time}`;
+
+    const isScoreEvent = last.event_type === 'GOAL' || last.event_type === 'POINT';
+    if (isScoreEvent && last.team_id) {
+        const nextTeam1 = last.team_id === match.team1.team_id ? match.team1.score - 1 : match.team1.score;
+        const nextTeam2 = last.team_id === match.team2.team_id ? match.team2.score - 1 : match.team2.score;
+        return {
+            title: 'Desfazer evento?',
+            description: `Desfazer ${base}? O placar será atualizado para ${Math.max(0, nextTeam1)} × ${Math.max(0, nextTeam2)}.`,
+        };
+    }
+
+    return { title: 'Desfazer evento?', description: `Desfazer ${base}?` };
+}
+
+interface PenaltyKickRow {
+    id: string;
+    teamLabel: string;
+    playerLabel: string;
+    made: boolean;
+    ordinalLabel: string;
+}
+
+function penaltyKickRows(match: MatchPublicResponse): PenaltyKickRow[] {
+    const counts = new Map<string, number>();
+    const rows: PenaltyKickRow[] = [];
+
+    for (const event of match.timeline) {
+        if (event.event_type !== 'PENALTY_GOAL' && event.event_type !== 'PENALTY_MISS') continue;
+
+        const teamId = event.team_id ?? '';
+        const ordinal = (counts.get(teamId) ?? 0) + 1;
+        counts.set(teamId, ordinal);
+
+        rows.push({
+            id: event.event_id,
+            teamLabel: teamName(match, event.team_id) ?? '',
+            playerLabel: playerName(match, event.player_id) ?? 'Jogador',
+            made: event.event_type === 'PENALTY_GOAL',
+            ordinalLabel: `${ordinal}ª cobrança`,
+        });
+    }
+
+    return rows;
+}
+
 
 function PlayerPill({
     player,
@@ -191,13 +258,195 @@ function PenaltyTeamActions({
     onResult: (result: PenaltyKickResult) => void;
 }) {
     return (
-        <View style={styles.penaltyTeam}>
-            <ThemedText variant="subhead" style={styles.penaltyTeamName} numberOfLines={1}>
+        <View style={styles.penaltyTeamColumn}>
+            <ThemedText variant="label" numberOfLines={1} style={styles.penaltyTeamLabel}>
                 {teamLabel}
             </ThemedText>
-            <Button title="Converteu" size="small" disabled={disabled} onPress={() => onResult('GOAL')} />
-            <Button title="Perdeu" size="small" variant="neutral" disabled={disabled} onPress={() => onResult('MISS')} />
+            <Button title="Gol" icon="check" disabled={disabled} onPress={() => onResult('GOAL')} />
+            <Button title="Perdeu" icon="close" variant="dangerSoft" disabled={disabled} onPress={() => onResult('MISS')} />
         </View>
+    );
+}
+
+function PenaltyScoreTally({ match }: { match: MatchPublicResponse }) {
+    return (
+        <View style={styles.penaltyTally}>
+            <ThemedText variant="heading">{match.team1.penalty_score ?? 0}</ThemedText>
+            <ThemedText variant="body" style={styles.penaltyTallyDash}>
+                ×
+            </ThemedText>
+            <ThemedText variant="heading">{match.team2.penalty_score ?? 0}</ThemedText>
+        </View>
+    );
+}
+
+function PenaltyKicksList({ match }: { match: MatchPublicResponse }) {
+    const rows = penaltyKickRows(match);
+    if (rows.length === 0) return null;
+
+    return (
+        <View style={styles.kicksList}>
+            <ThemedText variant="label" style={styles.kicksTitle}>
+                Cobranças
+            </ThemedText>
+            {rows.map((row) => (
+                <ListRow
+                    key={row.id}
+                    leading={
+                        <ListRowIcon background={row.made ? colors.primary : colors.danger} size={40}>
+                            <Icon name={row.made ? 'check' : 'close'} size={18} color={colors.surface} />
+                        </ListRowIcon>
+                    }
+                    title={`${row.teamLabel} · ${row.playerLabel}`}
+                    trailing={
+                        <ThemedText variant="caption" style={styles.kickOrdinal}>
+                            {row.ordinalLabel}
+                        </ThemedText>
+                    }
+                />
+            ))}
+        </View>
+    );
+}
+
+function SetsPreviousList({ match }: { match: MatchPublicResponse }) {
+    if (match.sets.length === 0) return null;
+
+    return (
+        <View style={styles.setsRow}>
+            <ThemedText variant="label" style={styles.setsRowTitle}>
+                Sets anteriores
+            </ThemedText>
+            <View style={styles.setsChips}>
+                {match.sets.map((set) => (
+                    <View key={set.set_number} style={styles.setChip}>
+                        <ThemedText variant="section">
+                            {set.team1_points} – {set.team2_points}
+                        </ThemedText>
+                        <ThemedText variant="caption" style={styles.setChipLabel}>
+                            Set {set.set_number}
+                        </ThemedText>
+                    </View>
+                ))}
+            </View>
+        </View>
+    );
+}
+
+function VolleyballPointSheet({
+    sheetRef,
+    teamLabel,
+    players,
+    disabled,
+    onSelect,
+}: {
+    sheetRef: RefObject<BottomSheetHandle | null>;
+    teamLabel: string;
+    players: MatchPublicPlayerResponse[];
+    disabled?: boolean;
+    onSelect: (playerId: string) => void;
+}) {
+    return (
+        <BottomSheet ref={sheetRef} title={`Ponto · ${teamLabel}`} snapPoints={['50%']}>
+            <View style={styles.volleySheetList}>
+                {players.length === 0 ? (
+                    <ThemedText variant="body" style={styles.emptyPlayers}>
+                        Nenhum jogador disponível.
+                    </ThemedText>
+                ) : (
+                    players.map((player) => (
+                        <Pressable
+                            key={player.user_id}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Registrar ponto de ${player.name}`}
+                            disabled={disabled}
+                            onPress={() => {
+                                sheetRef.current?.dismiss();
+                                onSelect(player.user_id);
+                            }}
+                            style={({ pressed }) => [styles.volleySheetRow, { opacity: pressed && !disabled ? 0.7 : 1 }]}
+                        >
+                            <MemberAvatar name={player.name} size={32} />
+                            <ThemedText variant="body" numberOfLines={1} style={styles.volleySheetRowName}>
+                                {player.name}
+                            </ThemedText>
+                            <Icon name="chev_r" size={18} color={colors.textMuted} />
+                        </Pressable>
+                    ))
+                )}
+            </View>
+        </BottomSheet>
+    );
+}
+
+function VolleyTeamButton({
+    teamName: teamLabel,
+    disabled,
+    onPress,
+}: {
+    teamName: string;
+    disabled?: boolean;
+    onPress: () => void;
+}) {
+    return (
+        <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Registrar ponto para ${teamLabel}`}
+            disabled={disabled}
+            onPress={onPress}
+            style={({ pressed }) => [styles.volleyButtonSlot, { opacity: pressed && !disabled ? 0.9 : 1 }]}
+        >
+            <LinearGradient colors={colors.gradientPrimary} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.volleyButton}>
+                <View style={styles.volleyButtonTop}>
+                    <Icon name="plus" size={18} color={colors.surface} />
+                    <ThemedText variant="button" style={styles.volleyButtonLabel}>
+                        Ponto
+                    </ThemedText>
+                </View>
+                <ThemedText variant="caption" numberOfLines={1} style={styles.volleyButtonTeam}>
+                    {teamLabel}
+                </ThemedText>
+            </LinearGradient>
+        </Pressable>
+    );
+}
+
+function VolleyballScoring({
+    match,
+    disabled,
+    onPoint,
+}: {
+    match: MatchPublicResponse;
+    disabled?: boolean;
+    onPoint: (teamId: string, playerId: string) => void;
+}) {
+    const team1Sheet = useRef<BottomSheetHandle>(null);
+    const team2Sheet = useRef<BottomSheetHandle>(null);
+
+    return (
+        <>
+            <SetsPreviousList match={match} />
+
+            <View style={styles.volleyButtonsRow}>
+                <VolleyTeamButton teamName={match.team1.name} disabled={disabled} onPress={() => team1Sheet.current?.present()} />
+                <VolleyTeamButton teamName={match.team2.name} disabled={disabled} onPress={() => team2Sheet.current?.present()} />
+            </View>
+
+            <VolleyballPointSheet
+                sheetRef={team1Sheet}
+                teamLabel={match.team1.name}
+                players={match.team1_players}
+                disabled={disabled}
+                onSelect={(playerId) => onPoint(match.team1.team_id, playerId)}
+            />
+            <VolleyballPointSheet
+                sheetRef={team2Sheet}
+                teamLabel={match.team2.name}
+                players={match.team2_players}
+                disabled={disabled}
+                onSelect={(playerId) => onPoint(match.team2.team_id, playerId)}
+            />
+        </>
     );
 }
 
@@ -253,6 +502,62 @@ function ScheduledPanel({ match }: { match: MatchPublicResponse }) {
     );
 }
 
+function FinishMatchSheet({
+    sheetRef,
+    match,
+    isVolleyball,
+    finishing,
+    onFinish,
+}: {
+    sheetRef: RefObject<BottomSheetHandle | null>;
+    match: MatchPublicResponse;
+    isVolleyball: boolean;
+    finishing: boolean;
+    onFinish: () => void;
+}) {
+    const score1 = isVolleyball ? (match.team1.sets_won ?? 0) : match.team1.score;
+    const score2 = isVolleyball ? (match.team2.sets_won ?? 0) : match.team2.score;
+
+    let winnerName: string | null = null;
+    if (score1 !== score2) {
+        winnerName = score1 > score2 ? match.team1.name : match.team2.name;
+    } else {
+        const penalty1 = match.team1.penalty_score ?? 0;
+        const penalty2 = match.team2.penalty_score ?? 0;
+        if (penalty1 !== penalty2) {
+            winnerName = penalty1 > penalty2 ? match.team1.name : match.team2.name;
+        }
+    }
+
+    return (
+        <BottomSheet ref={sheetRef} title="Finalizar partida?" snapPoints={['46%']}>
+            <View style={styles.finishCard}>
+                <View style={styles.finishCardTeams}>
+                    <ThemedText variant="section" numberOfLines={1} style={styles.finishCardTeamName}>
+                        {match.team1.name}
+                    </ThemedText>
+                    <ThemedText variant="section" numberOfLines={1} style={[styles.finishCardTeamName, styles.finishCardTeamNameRight]}>
+                        {match.team2.name}
+                    </ThemedText>
+                </View>
+                <ThemedText variant="title" style={styles.finishCardScore}>
+                    {score1} × {score2}
+                </ThemedText>
+                {winnerName ? (
+                    <View style={styles.finishWinnerPill}>
+                        <ThemedText variant="caption" style={styles.finishWinnerLabel}>
+                            Vencedor: {winnerName}
+                        </ThemedText>
+                    </View>
+                ) : null}
+            </View>
+
+            <Button title="Finalizar partida" icon="flag" loading={finishing} onPress={onFinish} />
+            <Button title="Voltar ao jogo" variant="neutral" disabled={finishing} onPress={() => sheetRef.current?.dismiss()} />
+        </BottomSheet>
+    );
+}
+
 function InProgressPanel({ match }: { match: MatchPublicResponse }) {
     const toast = useToast();
     const registerGoal = useRegisterGoal();
@@ -267,6 +572,9 @@ function InProgressPanel({ match }: { match: MatchPublicResponse }) {
     const registerPenaltyKick = useRegisterPenaltyKick();
     const endPenaltyShootout = useEndPenaltyShootout();
     const undoLastEvent = useUndoLastMatchEvent();
+
+    const [undoConfirmOpen, setUndoConfirmOpen] = useState(false);
+    const finishSheetRef = useRef<BottomSheetHandle>(null);
 
     const run = async (action: () => Promise<unknown>, successMessage: string | undefined, fallbackError: string) => {
         try {
@@ -319,35 +627,27 @@ function InProgressPanel({ match }: { match: MatchPublicResponse }) {
             },
         ]);
 
-    const confirmUndo = () =>
-        Alert.alert('Desfazer último evento?', 'O último evento registrado nesta partida será removido.', [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-                text: 'Desfazer',
-                style: 'destructive',
-                onPress: () =>
-                    run(
-                        () => undoLastEvent.mutateAsync({ matchId: match.match_id }),
-                        'Último evento desfeito.',
-                        'Não foi possível desfazer o evento.'
-                    ),
-            },
-        ]);
+    const handleUndo = async () => {
+        try {
+            await undoLastEvent.mutateAsync({ matchId: match.match_id });
+            setUndoConfirmOpen(false);
+            toast.success('Último evento desfeito.');
+        } catch (error) {
+            toast.error(friendlyErrorMessage(error, 'Não foi possível desfazer o evento.'));
+        }
+    };
 
-    const confirmFinish = () =>
-        Alert.alert('Finalizar partida?', 'A partida será encerrada e o resultado não poderá ser alterado por aqui.', [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-                text: 'Finalizar',
-                style: 'destructive',
-                onPress: () =>
-                    run(
-                        () => finishMatch.mutateAsync({ matchId: match.match_id }),
-                        'Partida finalizada.',
-                        'Não foi possível finalizar a partida.'
-                    ),
-            },
-        ]);
+    const handleFinish = async () => {
+        try {
+            await finishMatch.mutateAsync({ matchId: match.match_id });
+            finishSheetRef.current?.dismiss();
+            toast.success('Partida finalizada.');
+        } catch (error) {
+            toast.error(friendlyErrorMessage(error, 'Não foi possível finalizar a partida.'));
+        }
+    };
+
+    const undoDialog = undoPreview(match);
 
     return (
         <>
@@ -357,6 +657,7 @@ function InProgressPanel({ match }: { match: MatchPublicResponse }) {
                         title={match.clock_running ? 'Pausar' : 'Retomar'}
                         variant="neutral"
                         size="small"
+                        icon={match.clock_running ? 'pause' : 'play'}
                         loading={pauseClock.isPending || resumeClock.isPending}
                         onPress={() =>
                             match.clock_running
@@ -373,13 +674,21 @@ function InProgressPanel({ match }: { match: MatchPublicResponse }) {
                         }
                     />
                     {isVolleyball ? (
-                        <Button title="Encerrar set" variant="neutral" size="small" loading={endSet.isPending} onPress={confirmEndSet} />
+                        <Button
+                            title="Encerrar set"
+                            variant="neutral"
+                            size="small"
+                            icon="flag"
+                            loading={endSet.isPending}
+                            onPress={confirmEndSet}
+                        />
                     ) : (
                         <>
                             <Button
                                 title="Iniciar período"
                                 variant="neutral"
                                 size="small"
+                                icon="play"
                                 loading={startPeriod.isPending}
                                 onPress={() =>
                                     run(
@@ -393,6 +702,7 @@ function InProgressPanel({ match }: { match: MatchPublicResponse }) {
                                 title="Encerrar período"
                                 variant="neutral"
                                 size="small"
+                                icon="clock"
                                 loading={endPeriod.isPending}
                                 onPress={confirmEndPeriod}
                             />
@@ -401,105 +711,153 @@ function InProgressPanel({ match }: { match: MatchPublicResponse }) {
                 </View>
             </Section>
 
-            <Section title="Jogadores">
-                <PlayersList
-                    players={match.team1_players}
-                    teamName={match.team1.name}
-                    pointLabel={pointLabel}
-                    expelled={expelled}
-                    disabled={registerGoal.isPending || registerCard.isPending}
-                    onGoal={(playerId) =>
-                        run(
-                            () =>
-                                registerGoal.mutateAsync({
-                                    matchId: match.match_id,
-                                    request: { team_id: match.team1.team_id, player_id: playerId },
-                                }),
-                            undefined,
-                            `Não foi possível registrar o ${pointLabel.toLowerCase()}.`
-                        )
-                    }
-                    onCard={(playerId, cardType) =>
-                        run(
-                            () =>
-                                registerCard.mutateAsync({
-                                    matchId: match.match_id,
-                                    request: { team_id: match.team1.team_id, player_id: playerId, card_type: cardType },
-                                }),
-                            undefined,
-                            'Não foi possível registrar o cartão.'
-                        )
-                    }
-                />
-                <View style={styles.playersDivider} />
-                <PlayersList
-                    players={match.team2_players}
-                    teamName={match.team2.name}
-                    pointLabel={pointLabel}
-                    expelled={expelled}
-                    disabled={registerGoal.isPending || registerCard.isPending}
-                    onGoal={(playerId) =>
-                        run(
-                            () =>
-                                registerGoal.mutateAsync({
-                                    matchId: match.match_id,
-                                    request: { team_id: match.team2.team_id, player_id: playerId },
-                                }),
-                            undefined,
-                            `Não foi possível registrar o ${pointLabel.toLowerCase()}.`
-                        )
-                    }
-                    onCard={(playerId, cardType) =>
-                        run(
-                            () =>
-                                registerCard.mutateAsync({
-                                    matchId: match.match_id,
-                                    request: { team_id: match.team2.team_id, player_id: playerId, card_type: cardType },
-                                }),
-                            undefined,
-                            'Não foi possível registrar o cartão.'
-                        )
-                    }
-                />
-            </Section>
+            {isVolleyball ? (
+                <Section title="Pontuação">
+                    <VolleyballScoring
+                        match={match}
+                        disabled={registerGoal.isPending}
+                        onPoint={(teamId, playerId) =>
+                            run(
+                                () =>
+                                    registerGoal.mutateAsync({
+                                        matchId: match.match_id,
+                                        request: { team_id: teamId, player_id: playerId },
+                                    }),
+                                undefined,
+                                `Não foi possível registrar o ${pointLabel.toLowerCase()}.`
+                            )
+                        }
+                    />
+                    <View style={styles.volleyQuickActions}>
+                        <Button
+                            title="Desfazer"
+                            variant="outline"
+                            size="compact"
+                            icon="undo"
+                            disabled={match.timeline.length === 0}
+                            loading={undoLastEvent.isPending}
+                            onPress={() => setUndoConfirmOpen(true)}
+                            style={styles.volleyQuickActionButton}
+                        />
+                        <Button
+                            title="Fim do set"
+                            variant="warning"
+                            size="compact"
+                            icon="flag"
+                            loading={endSet.isPending}
+                            onPress={confirmEndSet}
+                            style={styles.volleyQuickActionButton}
+                        />
+                    </View>
+                </Section>
+            ) : (
+                <Section title="Jogadores">
+                    <PlayersList
+                        players={match.team1_players}
+                        teamName={match.team1.name}
+                        pointLabel={pointLabel}
+                        expelled={expelled}
+                        disabled={registerGoal.isPending || registerCard.isPending}
+                        onGoal={(playerId) =>
+                            run(
+                                () =>
+                                    registerGoal.mutateAsync({
+                                        matchId: match.match_id,
+                                        request: { team_id: match.team1.team_id, player_id: playerId },
+                                    }),
+                                undefined,
+                                `Não foi possível registrar o ${pointLabel.toLowerCase()}.`
+                            )
+                        }
+                        onCard={(playerId, cardType) =>
+                            run(
+                                () =>
+                                    registerCard.mutateAsync({
+                                        matchId: match.match_id,
+                                        request: { team_id: match.team1.team_id, player_id: playerId, card_type: cardType },
+                                    }),
+                                undefined,
+                                'Não foi possível registrar o cartão.'
+                            )
+                        }
+                    />
+                    <View style={styles.playersDivider} />
+                    <PlayersList
+                        players={match.team2_players}
+                        teamName={match.team2.name}
+                        pointLabel={pointLabel}
+                        expelled={expelled}
+                        disabled={registerGoal.isPending || registerCard.isPending}
+                        onGoal={(playerId) =>
+                            run(
+                                () =>
+                                    registerGoal.mutateAsync({
+                                        matchId: match.match_id,
+                                        request: { team_id: match.team2.team_id, player_id: playerId },
+                                    }),
+                                undefined,
+                                `Não foi possível registrar o ${pointLabel.toLowerCase()}.`
+                            )
+                        }
+                        onCard={(playerId, cardType) =>
+                            run(
+                                () =>
+                                    registerCard.mutateAsync({
+                                        matchId: match.match_id,
+                                        request: { team_id: match.team2.team_id, player_id: playerId, card_type: cardType },
+                                    }),
+                                undefined,
+                                'Não foi possível registrar o cartão.'
+                            )
+                        }
+                    />
+                </Section>
+            )}
 
             {match.match_category === 'KNOCKOUT' ? (
                 <Section title="Disputa de pênaltis">
                     {match.penalty_shootout_active ? (
                         <>
-                            <PenaltyTeamActions
-                                teamName={match.team1.name}
-                                disabled={registerPenaltyKick.isPending}
-                                onResult={(result) =>
-                                    run(
-                                        () =>
-                                            registerPenaltyKick.mutateAsync({
-                                                matchId: match.match_id,
-                                                request: { team_id: match.team1.team_id, result },
-                                            }),
-                                        undefined,
-                                        'Não foi possível registrar a cobrança.'
-                                    )
-                                }
-                            />
-                            <PenaltyTeamActions
-                                teamName={match.team2.name}
-                                disabled={registerPenaltyKick.isPending}
-                                onResult={(result) =>
-                                    run(
-                                        () =>
-                                            registerPenaltyKick.mutateAsync({
-                                                matchId: match.match_id,
-                                                request: { team_id: match.team2.team_id, result },
-                                            }),
-                                        undefined,
-                                        'Não foi possível registrar a cobrança.'
-                                    )
-                                }
-                            />
+                            <PenaltyScoreTally match={match} />
+                            <View style={styles.penaltyTeamsRow}>
+                                <PenaltyTeamActions
+                                    teamName={match.team1.name}
+                                    disabled={registerPenaltyKick.isPending}
+                                    onResult={(result) =>
+                                        run(
+                                            () =>
+                                                registerPenaltyKick.mutateAsync({
+                                                    matchId: match.match_id,
+                                                    request: { team_id: match.team1.team_id, result },
+                                                }),
+                                            undefined,
+                                            'Não foi possível registrar a cobrança.'
+                                        )
+                                    }
+                                />
+                                <PenaltyTeamActions
+                                    teamName={match.team2.name}
+                                    disabled={registerPenaltyKick.isPending}
+                                    onResult={(result) =>
+                                        run(
+                                            () =>
+                                                registerPenaltyKick.mutateAsync({
+                                                    matchId: match.match_id,
+                                                    request: { team_id: match.team2.team_id, result },
+                                                }),
+                                            undefined,
+                                            'Não foi possível registrar a cobrança.'
+                                        )
+                                    }
+                                />
+                            </View>
+
+                            <PenaltyKicksList match={match} />
+
                             <Button
                                 title="Encerrar disputa de pênaltis"
                                 variant="neutral"
+                                icon="flag"
                                 loading={endPenaltyShootout.isPending}
                                 onPress={confirmEndPenaltyShootout}
                             />
@@ -508,6 +866,7 @@ function InProgressPanel({ match }: { match: MatchPublicResponse }) {
                         <Button
                             title="Iniciar disputa de pênaltis"
                             variant="neutral"
+                            icon="shuffle"
                             loading={startPenaltyShootout.isPending}
                             onPress={() =>
                                 run(
@@ -525,12 +884,39 @@ function InProgressPanel({ match }: { match: MatchPublicResponse }) {
                 <Button
                     title="Desfazer último evento"
                     variant="outline"
+                    icon="undo"
                     disabled={match.timeline.length === 0}
                     loading={undoLastEvent.isPending}
-                    onPress={confirmUndo}
+                    onPress={() => setUndoConfirmOpen(true)}
                 />
-                <Button title="Finalizar partida" variant="danger" loading={finishMatch.isPending} onPress={confirmFinish} />
+                <Button
+                    title="Finalizar partida"
+                    variant="danger"
+                    icon="flag"
+                    loading={finishMatch.isPending}
+                    onPress={() => finishSheetRef.current?.present()}
+                />
             </Section>
+
+            <ConfirmDialog
+                visible={undoConfirmOpen}
+                title={undoDialog.title}
+                description={undoDialog.description}
+                confirmLabel="Confirmar"
+                cancelLabel="Cancelar"
+                tone="danger"
+                confirming={undoLastEvent.isPending}
+                onConfirm={handleUndo}
+                onCancel={() => setUndoConfirmOpen(false)}
+            />
+
+            <FinishMatchSheet
+                sheetRef={finishSheetRef}
+                match={match}
+                isVolleyball={isVolleyball}
+                finishing={finishMatch.isPending}
+                onFinish={handleFinish}
+            />
         </>
     );
 }
@@ -623,12 +1009,137 @@ const styles = StyleSheet.create({
     sheetCancelText: {
         color: colors.textSecondary,
     },
-    penaltyTeam: {
+    penaltyTally: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: spacing.sm,
+        paddingVertical: spacing.xs,
+    },
+    penaltyTallyDash: {
+        color: colors.textSecondary,
+    },
+    penaltyTeamsRow: {
+        flexDirection: 'row',
+        gap: spacing.sm,
+    },
+    penaltyTeamColumn: {
+        flex: 1,
+        gap: spacing.xs,
+    },
+    penaltyTeamLabel: {
+        textAlign: 'center',
+        color: colors.textSecondary,
+    },
+    kicksList: {
+        gap: spacing.xs,
+    },
+    kicksTitle: {
+        marginLeft: spacing.xxs,
+        marginTop: spacing.xs,
+    },
+    kickOrdinal: {
+        color: colors.textSecondary,
+    },
+    setsRow: {
+        gap: spacing.xs,
+    },
+    setsRowTitle: {
+        color: colors.textSecondary,
+    },
+    setsChips: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: spacing.xs,
+    },
+    setChip: {
+        alignItems: 'center',
+        minWidth: 76,
+        paddingVertical: spacing.sm,
+        paddingHorizontal: spacing.sm,
+        borderRadius: radius.md,
+        borderCurve: 'continuous',
+        backgroundColor: colors.field,
+    },
+    setChipLabel: {
+        color: colors.textSecondary,
+    },
+    volleySheetList: {
+        gap: spacing.xxs,
+    },
+    volleySheetRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.sm,
+        minHeight: 52,
+        paddingHorizontal: spacing.xs,
     },
-    penaltyTeamName: {
+    volleySheetRowName: {
         flex: 1,
+    },
+    volleyButtonsRow: {
+        flexDirection: 'row',
+        gap: spacing.sm,
+    },
+    volleyButtonSlot: {
+        flex: 1,
+    },
+    volleyButton: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: spacing.xxs,
+        paddingVertical: spacing.lg,
+        borderRadius: radius.lg,
+        borderCurve: 'continuous',
+        boxShadow: shadows.primaryButton,
+    },
+    volleyButtonTop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xxs,
+    },
+    volleyButtonLabel: {
+        color: colors.surface,
+    },
+    volleyButtonTeam: {
+        color: 'rgba(255,255,255,0.85)',
+    },
+    volleyQuickActions: {
+        flexDirection: 'row',
+        gap: spacing.sm,
+    },
+    volleyQuickActionButton: {
+        flex: 1,
+    },
+    finishCard: {
+        alignItems: 'center',
+        gap: spacing.xs,
+        padding: spacing.md,
+        borderRadius: radius.lg,
+        borderCurve: 'continuous',
+        backgroundColor: colors.field,
+    },
+    finishCardTeams: {
+        flexDirection: 'row',
+        width: '100%',
+    },
+    finishCardTeamName: {
+        flex: 1,
+    },
+    finishCardTeamNameRight: {
+        textAlign: 'right',
+    },
+    finishCardScore: {
+        marginTop: spacing.xxs,
+    },
+    finishWinnerPill: {
+        paddingHorizontal: spacing.sm,
+        paddingVertical: spacing.xxs,
+        borderRadius: radius.pill,
+        borderCurve: 'continuous',
+        backgroundColor: colors.primarySoft,
+    },
+    finishWinnerLabel: {
+        color: colors.primaryDark,
     },
 });
