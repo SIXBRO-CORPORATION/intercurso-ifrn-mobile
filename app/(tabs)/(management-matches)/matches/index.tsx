@@ -60,8 +60,8 @@ function MatchRow({ seasonId, match }: { seasonId: string; match: MatchListItemR
     const team1Name = match.team1?.name ?? 'A definir';
     const team2Name = match.team2?.name ?? 'A definir';
 
-    const editHref = `/seasons/${seasonId}/bracket/match/${match.match_id}?view=edit` as const;
-    const liveHref = `/seasons/${seasonId}/bracket/match/${match.match_id}` as const;
+    const editHref = `/(management-matches)/matches/${match.match_id}?seasonId=${seasonId}&view=edit` as const;
+    const liveHref = `/(management-matches)/matches/${match.match_id}?seasonId=${seasonId}` as const;
 
     return (
         <Link href={isScheduled ? editHref : liveHref} asChild>

@@ -14,6 +14,7 @@ export default function MatchesLayout() {
             }}
         >
             <Stack.Screen name="index" options={{ title: '' }} />
+            <Stack.Screen name="[matchId]" options={{ title: '' }} />
         </Stack>
     );
 }
