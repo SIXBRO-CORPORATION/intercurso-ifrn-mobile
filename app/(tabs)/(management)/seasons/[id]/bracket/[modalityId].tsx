@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { Link, router, Stack, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/button';
 import { Toggle } from '@/components/form/toggle';
@@ -7,6 +7,7 @@ import { Icon, type IconName } from '@/components/icon';
 import { ListRow } from '@/components/list-row';
 import { ManagementGuard } from '@/components/management/management-guard';
 import { InfoRow, Section } from '@/components/management/section';
+import { ConfirmDialog } from '@/components/overlays/confirm-dialog';
 import { EmptyState, ErrorState, LoadingState } from '@/components/states/screen-states';
 import { ThemedText } from '@/components/themed-text';
 import {
@@ -19,9 +20,16 @@ import {
 import { useAllModalities } from '@/hooks/useModalities';
 import { useSeasonDetails } from '@/hooks/useSeasons';
 import { useToast } from '@/providers/ToastProvider';
-import type { BracketMatchResponse } from '@/types/bracket';
-import { BracketStatusLabel, ModalityFormatLabel, type MatchStatus, type ModalityFormat, type SeasonStatus } from '@/types/enums';
-import { colors, radius, spacing } from '@/theme';
+import type { BracketMatchResponse, BracketSummaryResponse } from '@/types/bracket';
+import {
+    BracketStatusLabel,
+    ModalityFormatLabel,
+    type BracketStatus,
+    type MatchStatus,
+    type ModalityFormat,
+    type SeasonStatus,
+} from '@/types/enums';
+import { colors, fontFamily, radius, spacing } from '@/theme';
 import { friendlyErrorMessage } from '@/utils/api-error-message';
 import { formatCampusDateTime } from '@/utils/campus-time';
 
@@ -46,6 +54,96 @@ function matchTitle(match: BracketMatchResponse): string {
     const home = match.team1_name ?? 'A definir';
     const away = match.team2_name ?? 'A definir';
     return `${home} x ${away}`;
+}
+
+function regularRoundLabel(matchCount: number, hasLaterRounds: boolean): string {
+    if (!hasLaterRounds) return 'Mata-mata';
+    if (matchCount <= 2) return 'Semifinal';
+    if (matchCount <= 4) return 'Quartas de final';
+    if (matchCount <= 8) return 'Oitavas de final';
+    return 'Primeira fase';
+}
+
+interface MatchSection {
+    key: string;
+    label: string;
+    matches: BracketMatchResponse[];
+}
+
+function groupMatchesIntoSections(matches: BracketMatchResponse[]): MatchSection[] {
+    const sections: MatchSection[] = [];
+
+    const byGroup = new Map<string, BracketMatchResponse[]>();
+    matches
+        .filter((match) => match.match_category === 'GROUP')
+        .forEach((match) => {
+            const label = match.group_name ?? 'Fase de grupos';
+            byGroup.set(label, [...(byGroup.get(label) ?? []), match]);
+        });
+    byGroup.forEach((list, label) => sections.push({ key: `group-${label}`, label, matches: list }));
+
+    const knockoutMatches = matches.filter((match) => match.match_category === 'KNOCKOUT');
+    const regular = knockoutMatches.filter((match) => match.match_type === 'REGULAR');
+    const semifinal = knockoutMatches.filter((match) => match.match_type === 'SEMIFINAL');
+    const thirdPlaceMatches = knockoutMatches.filter((match) => match.match_type === 'THIRD_PLACE');
+    const final = knockoutMatches.filter((match) => match.match_type === 'FINAL');
+
+    if (regular.length > 0) {
+        sections.push({
+            key: 'regular',
+            label: regularRoundLabel(regular.length, semifinal.length > 0 || final.length > 0),
+            matches: regular,
+        });
+    }
+    if (semifinal.length > 0) sections.push({ key: 'semifinal', label: 'Semifinal', matches: semifinal });
+    if (thirdPlaceMatches.length > 0) {
+        sections.push({ key: 'third-place', label: 'Disputa de terceiro lugar', matches: thirdPlaceMatches });
+    }
+    if (final.length > 0) sections.push({ key: 'final', label: 'Final', matches: final });
+
+    return sections;
+}
+
+const BRACKET_STATUS_TONE: Record<BracketStatus, { background: string; foreground: string }> = {
+    DRAFT: { background: colors.field, foreground: colors.textSecondary },
+    ACTIVE: { background: colors.primarySoft, foreground: colors.primaryDark },
+    FINISHED: { background: colors.field, foreground: colors.ink },
+};
+
+function BracketStatusCard({ bracket, modalityName }: { bracket: BracketSummaryResponse; modalityName: string }) {
+    const tone = BRACKET_STATUS_TONE[bracket.status];
+
+    return (
+        <View style={styles.statusCard}>
+            <View style={styles.statusHeader}>
+                <ThemedText variant="title" numberOfLines={1} style={styles.statusModality}>
+                    {modalityName}
+                </ThemedText>
+                <View style={[styles.statusBadge, { backgroundColor: tone.background }]}>
+                    <ThemedText variant="caption" style={[styles.statusBadgeText, { color: tone.foreground }]}>
+                        {BracketStatusLabel[bracket.status]}
+                    </ThemedText>
+                </View>
+            </View>
+            <ThemedText variant="body" style={styles.statusFormat}>
+                {ModalityFormatLabel[bracket.format]}
+            </ThemedText>
+            <View style={styles.statusStats}>
+                <View style={styles.statusStat}>
+                    <ThemedText variant="title">{bracket.total_matches}</ThemedText>
+                    <ThemedText variant="caption">Partidas</ThemedText>
+                </View>
+                <View style={styles.statusStat}>
+                    <ThemedText variant="title">{bracket.started_matches}</ThemedText>
+                    <ThemedText variant="caption">Iniciadas</ThemedText>
+                </View>
+                <View style={styles.statusStat}>
+                    <ThemedText variant="title">{bracket.finished_matches}</ThemedText>
+                    <ThemedText variant="caption">Finalizadas</ThemedText>
+                </View>
+            </View>
+        </View>
+    );
 }
 
 function StepProgress({ step }: { step: 1 | 2 }) {
@@ -219,6 +317,7 @@ function BracketContent({ seasonId, modalityId }: { seasonId: string; modalityId
     const [format, setFormat] = useState<ModalityFormat>('KNOCKOUT');
     const [thirdPlace, setThirdPlace] = useState(true);
     const [step, setStep] = useState<1 | 2>(1);
+    const [resortOpen, setResortOpen] = useState(false);
 
     const bracket = brackets.data?.find((item) => item.modality_id === modalityId);
     const canCreate = season.data ? CREATABLE_SEASON_STATUSES.includes(season.data.status) : false;
@@ -283,23 +382,16 @@ function BracketContent({ seasonId, modalityId }: { seasonId: string; modalityId
         }
     };
 
-    const confirmResort = () =>
-        Alert.alert('Sortear novamente?', 'As partidas atuais serão substituídas pelo novo sorteio.', [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-                text: 'Sortear',
-                style: 'destructive',
-                onPress: async () => {
-                    if (!bracket) return;
-                    try {
-                        await resortBracket.mutateAsync(bracket.bracket_id);
-                        toast.success('Chaveamento sorteado novamente.');
-                    } catch (error) {
-                        toast.error(friendlyErrorMessage(error, 'Não foi possível sortear novamente.'));
-                    }
-                },
-            },
-        ]);
+    const handleResort = async () => {
+        if (!bracket) return;
+        try {
+            await resortBracket.mutateAsync(bracket.bracket_id);
+            setResortOpen(false);
+            toast.success('Chaveamento sorteado novamente.');
+        } catch (error) {
+            toast.error(friendlyErrorMessage(error, 'Não foi possível sortear novamente.'));
+        }
+    };
 
     const refreshing = season.isRefetching || brackets.isRefetching || details.isRefetching;
     const refresh = () => {
@@ -309,6 +401,7 @@ function BracketContent({ seasonId, modalityId }: { seasonId: string; modalityId
         if (bracket) details.refetch();
     };
 
+    // --- Sem chaveamento ainda: assistente de criação em 2 passos (telas 31/32) ---
     if (!bracket) {
         return (
             <>
@@ -345,7 +438,8 @@ function BracketContent({ seasonId, modalityId }: { seasonId: string; modalityId
             </>
         );
     }
-    
+
+    // --- Chaveamento já existe: painel de gestão (telas 33/34) ---
     return (
         <>
             <Stack.Screen options={{ title: modalityName }} />
@@ -354,54 +448,65 @@ function BracketContent({ seasonId, modalityId }: { seasonId: string; modalityId
                 contentContainerStyle={styles.content}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
             >
-                <Section title="Situação">
-                    <InfoRow label="Status" value={BracketStatusLabel[bracket.status]} />
-                    <InfoRow label="Formato" value={ModalityFormatLabel[bracket.format]} />
-                    <InfoRow
-                        label="Partidas"
-                        value={`${bracket.finished_matches} de ${bracket.total_matches} finalizadas`}
-                    />
-                </Section>
+                <BracketStatusCard bracket={bracket} modalityName={modalityName} />
 
-                {bracket.available_actions.includes('resort') ? (
+                <View style={styles.actionsRow}>
+                    {bracket.available_actions.includes('resort') ? (
+                        <Button
+                            title="Re-sortear"
+                            variant="warning"
+                            size="compact"
+                            icon="shuffle"
+                            style={styles.actionButton}
+                            onPress={() => setResortOpen(true)}
+                        />
+                    ) : null}
                     <Button
-                        title="Sortear novamente"
-                        variant="warning"
-                        icon="shuffle"
-                        loading={resortBracket.isPending}
-                        onPress={confirmResort}
+                        title="Ver árvore"
+                        variant="soft"
+                        size="compact"
+                        icon="bracket"
+                        style={styles.actionButton}
+                        onPress={() => router.push(`/(brackets)/${modalityId}` as never)}
                     />
-                ) : null}
+                </View>
 
-                <Section title="Partidas">
-                    {details.isPending ? (
-                        <ThemedText variant="body">Carregando partidas…</ThemedText>
-                    ) : details.isError ? (
-                        <ThemedText variant="body" accessibilityRole="alert">
-                            {friendlyErrorMessage(details.error, 'Não foi possível carregar as partidas.')}
-                        </ThemedText>
-                    ) : details.data && details.data.matches.length > 0 ? (
-                        details.data.matches.map((match) => (
-                            <MatchRow key={match.match_id} seasonId={seasonId} match={match} />
-                        ))
-                    ) : (
-                        <ThemedText variant="body">Nenhuma partida gerada.</ThemedText>
-                    )}
-                </Section>
+                {details.isPending ? (
+                    <ThemedText variant="body">Carregando partidas…</ThemedText>
+                ) : details.isError ? (
+                    <ThemedText variant="body" accessibilityRole="alert">
+                        {friendlyErrorMessage(details.error, 'Não foi possível carregar as partidas.')}
+                    </ThemedText>
+                ) : details.data && details.data.matches.length > 0 ? (
+                    groupMatchesIntoSections(details.data.matches).map((section) => (
+                        <View key={section.key} style={styles.matchSection}>
+                            <ThemedText variant="section">{section.label}</ThemedText>
+                            {section.matches.map((match) => (
+                                <MatchRow key={match.match_id} seasonId={seasonId} match={match} />
+                            ))}
+                        </View>
+                    ))
+                ) : (
+                    <ThemedText variant="body">Nenhuma partida gerada.</ThemedText>
+                )}
             </ScrollView>
+
+            <ConfirmDialog
+                visible={resortOpen}
+                title="Re-sortear chaveamento?"
+                description={`${bracket.total_matches} partidas atuais serão apagadas, incluindo as datas já agendadas. Os times serão sorteados novamente.`}
+                confirmLabel="Re-sortear"
+                tone="danger"
+                confirming={resortBracket.isPending}
+                onConfirm={handleResort}
+                onCancel={() => setResortOpen(false)}
+            />
         </>
     );
 }
 
 function MatchRow({ seasonId, match }: { seasonId: string; match: BracketMatchResponse }) {
-    const schedule =
-        match.status === 'IN_PROGRESS'
-            ? 'AO VIVO'
-            : match.status === 'FINISHED'
-              ? 'Finalizada'
-              : match.scheduled_date
-                ? formatCampusDateTime(match.scheduled_date)
-                : 'Sem data';
+    const needsSchedule = match.status === 'SCHEDULED' && !match.scheduled_date;
 
     return (
         <Link href={`/seasons/${seasonId}/bracket/match/${match.match_id}`} asChild>
@@ -412,18 +517,40 @@ function MatchRow({ seasonId, match }: { seasonId: string; match: BracketMatchRe
                 {({ pressed }) => (
                     <View style={[styles.match, { opacity: pressed ? 0.7 : 1 }]}>
                         <View style={styles.matchTexts}>
-                            {match.group_name ? <ThemedText variant="caption">{match.group_name}</ThemedText> : null}
                             <ThemedText variant="section" numberOfLines={1}>
                                 {matchTitle(match)}
                             </ThemedText>
-                            <ThemedText
-                                variant="caption"
-                                style={match.status === 'IN_PROGRESS' ? styles.matchLive : styles.matchMuted}
-                            >
-                                {schedule}
-                            </ThemedText>
+
+                            {match.status === 'IN_PROGRESS' ? (
+                                <View style={styles.liveRow}>
+                                    <View style={styles.liveDot} />
+                                    <ThemedText variant="overline" style={styles.matchLive}>
+                                        AO VIVO
+                                    </ThemedText>
+                                </View>
+                            ) : match.status === 'FINISHED' ? (
+                                <ThemedText variant="caption" style={styles.matchMuted}>
+                                    Finalizada
+                                </ThemedText>
+                            ) : (
+                                <View style={styles.scheduleRow}>
+                                    <Icon name="calendar" size={14} color={colors.textSecondary} />
+                                    <ThemedText variant="caption" style={styles.matchMuted}>
+                                        {match.scheduled_date ? formatCampusDateTime(match.scheduled_date) : 'Sem data'}
+                                    </ThemedText>
+                                </View>
+                            )}
                         </View>
-                        <Icon name="edit" size={18} color={colors.textMuted} />
+
+                        {needsSchedule ? (
+                            <View style={styles.scheduleBadge}>
+                                <ThemedText variant="caption" style={styles.scheduleBadgeText}>
+                                    Agendar
+                                </ThemedText>
+                            </View>
+                        ) : (
+                            <Icon name="edit" size={18} color={colors.textMuted} />
+                        )}
                     </View>
                 )}
             </Pressable>
@@ -554,6 +681,54 @@ const styles = StyleSheet.create({
         flex: 1,
         color: colors.primaryDark,
     },
+    statusCard: {
+        padding: spacing.lg,
+        borderRadius: radius.lg,
+        borderCurve: 'continuous',
+        backgroundColor: colors.surface,
+        borderWidth: 1,
+        borderColor: colors.border,
+        gap: spacing.xs,
+    },
+    statusHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: spacing.sm,
+    },
+    statusModality: {
+        flex: 1,
+    },
+    statusBadge: {
+        paddingHorizontal: spacing.sm,
+        paddingVertical: spacing.xxs,
+        borderRadius: radius.pill,
+        borderCurve: 'continuous',
+    },
+    statusBadgeText: {
+        fontFamily: fontFamily.bold,
+    },
+    statusFormat: {
+        color: colors.textSecondary,
+    },
+    statusStats: {
+        flexDirection: 'row',
+        marginTop: spacing.sm,
+    },
+    statusStat: {
+        flex: 1,
+        gap: 2,
+    },
+    actionsRow: {
+        flexDirection: 'row',
+        gap: spacing.sm,
+    },
+    actionButton: {
+        flex: 1,
+    },
+    matchSection: {
+        gap: spacing.sm,
+    },
     match: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -566,6 +741,33 @@ const styles = StyleSheet.create({
     matchTexts: {
         flex: 1,
         gap: 2,
+    },
+    liveRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xxs,
+    },
+    liveDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: colors.danger,
+    },
+    scheduleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xxs,
+    },
+    scheduleBadge: {
+        paddingHorizontal: spacing.sm,
+        paddingVertical: spacing.xxs,
+        borderRadius: radius.pill,
+        borderCurve: 'continuous',
+        backgroundColor: colors.primarySoft,
+    },
+    scheduleBadgeText: {
+        color: colors.primaryDark,
+        fontFamily: fontFamily.bold,
     },
     matchLive: {
         color: colors.danger,
