@@ -91,20 +91,24 @@ function TeamPickerSheet({
     );
 }
 
-function TeamField({ label, team, onPress }: { label: string; team: SelectedTeam; onPress: () => void }) {
+function TeamField({ label, team, onPress }: { label: string; team: SelectedTeam | null; onPress: () => void }) {
     return (
         <View style={styles.field}>
             <ThemedText variant="label">{label}</ThemedText>
             <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`${label}: ${team.name}. Trocar time`}
+                accessibilityLabel={`${label}: ${team?.name ?? 'Selecionar time'}. Trocar time`}
                 onPress={onPress}
                 style={({ pressed }) => [styles.fieldBox, { opacity: pressed ? 0.8 : 1 }]}
             >
                 <View style={styles.fieldBoxTeam}>
-                    <TeamAvatar name={team.name} photo={team.photo} size={32} />
-                    <ThemedText variant="bodyLg" numberOfLines={1} style={styles.fieldBoxTeamName}>
-                        {team.name}
+                    <TeamAvatar name={team?.name ?? '?'} photo={team?.photo} size={32} />
+                    <ThemedText
+                        variant="bodyLg"
+                        numberOfLines={1}
+                        style={[styles.fieldBoxTeamName, !team && styles.fieldBoxPlaceholder]}
+                    >
+                        {team?.name ?? 'Selecionar time'}
                     </ThemedText>
                 </View>
                 <Icon name="chev_d" size={18} color={colors.textMuted} />
@@ -123,22 +127,18 @@ function EditMatchForm({ seasonId, match }: { seasonId: string; match: MatchPubl
     const team1Sheet = useRef<BottomSheetHandle>(null);
     const team2Sheet = useRef<BottomSheetHandle>(null);
 
-    const [team1, setTeam1] = useState<SelectedTeam>({
-        team_id: match.team1.team_id,
-        name: match.team1.name,
-        photo: match.team1.photo,
-    });
-    const [team2, setTeam2] = useState<SelectedTeam>({
-        team_id: match.team2.team_id,
-        name: match.team2.name,
-        photo: match.team2.photo,
-    });
+    const [team1, setTeam1] = useState<SelectedTeam | null>(
+        match.team1 ? { team_id: match.team1.team_id, name: match.team1.name, photo: match.team1.photo } : null
+    );
+    const [team2, setTeam2] = useState<SelectedTeam | null>(
+        match.team2 ? { team_id: match.team2.team_id, name: match.team2.name, photo: match.team2.photo } : null
+    );
     const [date, setDate] = useState(() => isoToPickerDateTime(match.scheduled_date));
     const [deleteOpen, setDeleteOpen] = useState(false);
 
     const eligibleTeams = (teams.data ?? []).filter((team) => team.modality_id === match.modality_id);
-    const team1Options = eligibleTeams.filter((team) => team.team_id !== team2.team_id);
-    const team2Options = eligibleTeams.filter((team) => team.team_id !== team1.team_id);
+    const team1Options = eligibleTeams.filter((team) => team.team_id !== team2?.team_id);
+    const team2Options = eligibleTeams.filter((team) => team.team_id !== team1?.team_id);
 
     const invalidateMatch = () => {
         queryClient.invalidateQueries({ queryKey: queryKeys.matches.all });
@@ -146,8 +146,8 @@ function EditMatchForm({ seasonId, match }: { seasonId: string; match: MatchPubl
 
     const handleSave = async () => {
         const request: MatchUpdateRequest = {
-            team1_id: team1.team_id,
-            team2_id: team2.team_id,
+            team1_id: team1?.team_id ?? null,
+            team2_id: team2?.team_id ?? null,
             scheduled_date: pickerDateTimeToIso(date),
         };
 
@@ -220,14 +220,14 @@ function EditMatchForm({ seasonId, match }: { seasonId: string; match: MatchPubl
                 sheetRef={team1Sheet}
                 title="Escolher Time 1"
                 teams={team1Options}
-                selectedTeamId={team1.team_id}
+                selectedTeamId={team1?.team_id}
                 onSelect={(team) => setTeam1({ team_id: team.team_id, name: team.name, photo: team.photo })}
             />
             <TeamPickerSheet
                 sheetRef={team2Sheet}
                 title="Escolher Time 2"
                 teams={team2Options}
-                selectedTeamId={team2.team_id}
+                selectedTeamId={team2?.team_id}
                 onSelect={(team) => setTeam2({ team_id: team.team_id, name: team.name, photo: team.photo })}
             />
 
@@ -349,6 +349,9 @@ const styles = StyleSheet.create({
     },
     fieldBoxTeamName: {
         flex: 1,
+    },
+    fieldBoxPlaceholder: {
+        color: colors.textSecondary,
     },
     dateRow: {
         flexDirection: 'row',
