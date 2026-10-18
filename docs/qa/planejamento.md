@@ -21,6 +21,34 @@ A revisão é dividida em **fluxos** (telas que fazem parte de uma mesma jornada
 
 ---
 
+## Base da divisão em fluxos (cobertura total do app)
+
+**Os 14 fluxos abaixo não foram definidos a partir dos pontos que eu já tinha notado.** Eles foram definidos a partir da **árvore de rotas inteira do app** (todo arquivo em `app/(tabs)/...`), porque o objetivo do QA é testar a aplicação **inteira**, tela por tela — os pontos que eu listei na conversa são só anotações que eu já tinha de *alguns* fluxos, encaixadas dentro do fluxo a que pertencem, e não limitam nem definem o que deve ser testado em cada um. Fluxos como **A1 (Boas-vindas e login)** e **A2 (Jogos/partida)**, por exemplo, não tinham nenhum ponto pré-notado e mesmo assim são fluxos obrigatórios, testados com o mesmo rigor dos demais.
+
+A tabela abaixo mapeia **cada arquivo de rota do projeto** para o fluxo que o cobre, como conferência de que não sobrou nenhuma tela de fora:
+
+| Arquivo de rota (`app/...`) | Fluxo |
+|---|---|
+| `welcome.tsx`, `_layout.tsx` (raiz, auth global) | A1 |
+| `(tabs)/(games)/_layout.tsx`, `(games)/index.tsx`, `(games)/match/[matchId].tsx` | A2 |
+| `(tabs)/(brackets)/_layout.tsx`, `(brackets)/index.tsx`, `(brackets)/[modalityId].tsx` | A3 (visão aluno) / M5 (visão monitor — mesma rota, acessada pela aba do monitor) |
+| `(tabs)/(teams)/_layout.tsx`, `(teams)/index.tsx`, `(teams)/team/new.tsx` | A4 |
+| `(tabs)/(teams)/join/index.tsx`, `(teams)/join/[token].tsx`, `(teams)/team/[id].tsx` | A5 |
+| `(tabs)/profile/_layout.tsx`, `profile/index.tsx` | A6 (conta aluno) / M8 (conta monitor — mesma rota) |
+| `(tabs)/(management)/_layout.tsx`, `(management)/index.tsx` | M1 |
+| `(tabs)/(management)/seasons/_layout.tsx`, `seasons/index.tsx`, `seasons/create.tsx`, `seasons/[id]/index.tsx`, `seasons/[id]/edit-dates.tsx`, `seasons/[id]/finish.tsx`, `seasons/[id]/reopen.tsx` | M2 |
+| `(tabs)/(management)/modalities/_layout.tsx`, `modalities/index.tsx`, `modalities/create.tsx` | M3 |
+| `(tabs)/(management-teams)/teams/_layout.tsx`, `teams/index.tsx`, `teams/[id].tsx` | M4 |
+| `(tabs)/(management)/seasons/[id]/bracket/[modalityId].tsx` | M5 |
+| `(tabs)/(management)/seasons/[id]/bracket/match/[matchId].tsx` | M5 (entrada) / M7 (tela em si, painel de partida ao vivo) |
+| `(tabs)/(management-matches)/matches/_layout.tsx`, `matches/index.tsx`, `matches/[matchId].tsx` | M6 |
+| `(tabs)/_layout.tsx` (tab bar) | transversal — ver regra **G5** abaixo |
+| `+not-found.tsx`, `+native-intent.ts` | transversal — ver regra **G6** abaixo |
+
+Todo arquivo de rota do projeto aparece em alguma linha acima. Se, ao longo do QA, alguém encontrar uma tela/rota nova que não exista nesta lista (por código novo adicionado depois deste planejamento), ela deve ser encaixada no fluxo mais próximo ou virar um novo fluxo — nunca ficar de fora.
+
+---
+
 ## Tabela de acompanhamento dos fluxos
 
 | ID | Fluxo | App | Fase 1 | Fase 2 |
@@ -65,6 +93,12 @@ Uma das telas de protótipo mostra a identificação da modalidade mesmo quando 
 
 ### G4 — Picker de "apenas data" não funciona
 O campo de data usado nas telas de agendar/editar partida, quando configurado só para data (sem hora), aparenta não responder corretamente. Componente: `components/form/date-field.tsx` (prop `mode="date"`), consumido por `components/match/manage-match-screen.tsx` (fluxo M6) — testar em Android e iOS separadamente, já que o componente tem implementações bem diferentes por plataforma.
+
+### G5 — Tab bar (navegação principal)
+`app/(tabs)/_layout.tsx` não pertence a um fluxo específico porque está presente em todos eles. Ainda assim precisa de uma verificação própria, feita na primeira sessão de QA que tocar nela (registrar em `docs/qa/g05-tabbar.md`): ícones e rótulos corretos para cada papel (aluno/visitante vs. monitor), aba ativa destacada corretamente, comportamento ao trocar de aba durante carregamento/erro de uma tela, e consistência do conjunto de abas com o que o guia de estilo define para navegação (`docs/00_guia-de-estilo/00_guia-de-estilo_3-navegacao-icones-movimento.png`).
+
+### G6 — Rotas de infraestrutura
+`app/+not-found.tsx` (tela de rota inexistente) e `app/+native-intent.ts` (tratamento de deep link/intent nativo) não têm protótipo dedicado, mas fazem parte do app e devem ser verificadas em algum momento do QA (sugestão: durante A1, por serem acionadas antes/independente de login): testar o que acontece ao abrir uma URL/rota inválida dentro do app e ao abrir o app via um link de convite externo (`(teams)/join/[token].tsx`) para confirmar que o `native-intent` redireciona corretamente.
 
 ---
 
