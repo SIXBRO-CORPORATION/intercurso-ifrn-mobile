@@ -57,7 +57,7 @@ Todo arquivo de rota do projeto aparece em alguma linha acima. Se, ao longo do Q
 | A2 | Jogos (feed) + partida ao vivo/encerrada | Aluno/Visitante | Concluído — ver `docs/qa/a02-jogos-partida.md` | Concluído — ver `docs/qa/a02-jogos-partida.md` |
 | A3 | Chaves | Aluno/Visitante | Concluído — ver `docs/qa/a03-chaves.md` | Concluído — ver `docs/qa/a03-chaves.md` |
 | A4 | Minhas equipes + criar equipe | Aluno/Visitante | Concluído — ver `docs/qa/a04-minhas-equipes-criar-equipe.md` | Concluído — ver `docs/qa/a04-minhas-equipes-criar-equipe.md` |
-| A5 | Entrar via convite + ciclo de vida da equipe | Aluno/Visitante | Não iniciado | Não iniciado |
+| A5 | Entrar via convite + ciclo de vida da equipe | Aluno/Visitante | Concluído — ver `docs/qa/a05-entrar-via-convite-ciclo-vida-equipe.md` | Concluído — ver `docs/qa/a05-entrar-via-convite-ciclo-vida-equipe.md` |
 | A6 | Perfil | Aluno/Visitante | Não iniciado | Não iniciado |
 | M1 | Painel | Monitor | Não iniciado | Não iniciado |
 | M2 | Temporadas | Monitor | Não iniciado | Não iniciado |
