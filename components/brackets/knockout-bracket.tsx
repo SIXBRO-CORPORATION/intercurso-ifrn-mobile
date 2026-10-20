@@ -32,8 +32,12 @@ const ROUND0_GAP = spacing.lg;
 const ROUND0_SLOT = BRACKET_CARD_HEIGHT + ROUND0_GAP;
 const CONNECTOR_WIDTH = spacing.xl;
 
-function regularRoundLabel(matchCount: number, hasLaterRounds: boolean): string {
+function regularRoundLabel(matches: BracketMatchResponse[], hasLaterRounds: boolean): string {
+    const explicitLabel = matches.find((match) => !!match.round_name)?.round_name;
+    if (explicitLabel) return explicitLabel;
+
     if (!hasLaterRounds) return 'Mata-mata';
+    const matchCount = matches.length;
     if (matchCount <= 2) return 'Semifinal';
     if (matchCount <= 4) return 'Quartas de final';
     if (matchCount <= 8) return 'Oitavas de final';
@@ -50,7 +54,7 @@ function buildRounds(matches: BracketMatchResponse[]): { rounds: Round[]; thirdP
     if (regular.length > 0) {
         rounds.push({
             key: 'regular',
-            label: regularRoundLabel(regular.length, semifinal.length > 0 || final.length > 0),
+            label: regularRoundLabel(regular, semifinal.length > 0 || final.length > 0),
             matches: regular,
         });
     }
@@ -107,9 +111,6 @@ function RoundConnector({ fromCenters, toCenters, height }: { fromCenters: numbe
     );
 }
 
-// Chaveamento mata-mata (tela 05): colunas por fase, roladas na horizontal,
-// com as partidas centralizadas como num chaveamento de verdade e linhas
-// conectando cada dupla de partidas à fase seguinte.
 export function KnockoutBracket({ matches, scoreByMatchId }: KnockoutBracketProps) {
     const { rounds, thirdPlace } = useMemo(() => buildRounds(matches), [matches]);
 

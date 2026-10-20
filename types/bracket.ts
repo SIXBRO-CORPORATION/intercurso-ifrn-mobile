@@ -67,6 +67,8 @@ export interface BracketMatchResponse {
     match_type: MatchType;
     match_category: MatchCategory;
     status: MatchStatus;
+    round_name?: string | null;
+    round_order?: number | null;
 }
 
 export interface BracketGroupTeamResponse {

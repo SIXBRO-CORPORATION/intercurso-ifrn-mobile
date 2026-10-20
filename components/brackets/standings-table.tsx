@@ -9,17 +9,9 @@ interface StandingsTableProps {
     qualifyingSpots?: number;
 }
 
-function sortStandings(teams: BracketGroupTeamResponse[]): BracketGroupTeamResponse[] {
-    return [...teams].sort((a, b) => {
-        if (b.points !== a.points) return b.points - a.points;
-        if (b.goals_difference !== a.goals_difference) return b.goals_difference - a.goals_difference;
-        return b.goals_for - a.goals_for;
-    });
-}
-
 export function StandingsTable({ teams, qualifyingSpots }: StandingsTableProps) {
-    const ordered = sortStandings(teams);
-    const spots = qualifyingSpots ?? Math.ceil(ordered.length / 2);
+    const ordered = teams;
+    const spots = qualifyingSpots ?? 0;
 
     return (
         <View style={styles.card}>

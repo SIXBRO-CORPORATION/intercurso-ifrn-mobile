@@ -8,11 +8,14 @@ import { ThemedText } from '@/components/themed-text';
 import { colors, spacing } from '@/theme';
 import { formatCampusTime, formatMatchClock } from '@/utils/campus-time';
 import type { BracketGroupResponse } from '@/types/bracket';
+import type { ModalityFormat } from '@/types/enums';
 import type { MatchListItemResponse } from '@/types/match-list';
 
 interface GroupBracketProps {
     groups: BracketGroupResponse[];
     matches: MatchListItemResponse[];
+    format: ModalityFormat;
+    qualifyingSpots?: number;
 }
 
 function matchRowProps(match: MatchListItemResponse) {
@@ -32,7 +35,8 @@ function matchRowProps(match: MatchListItemResponse) {
     return { team1, team2, trailing };
 }
 
-export function GroupBracket({ groups, matches }: GroupBracketProps) {
+export function GroupBracket({ groups, matches, format, qualifyingSpots }: GroupBracketProps) {
+    const showQualifying = format === 'GROUP_STAGE_KNOCKOUT';
     const sortedGroups = useMemo(
         () => [...groups].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)),
         [groups]
@@ -69,8 +73,8 @@ export function GroupBracket({ groups, matches }: GroupBracketProps) {
             ) : null}
 
             <View style={styles.section}>
-                <StandingsTable teams={selectedGroup.teams} />
-                <StandingsLegend />
+                <StandingsTable teams={selectedGroup.teams} qualifyingSpots={showQualifying ? qualifyingSpots : undefined} />
+                {showQualifying ? <StandingsLegend /> : null}
             </View>
 
             <View style={styles.section}>

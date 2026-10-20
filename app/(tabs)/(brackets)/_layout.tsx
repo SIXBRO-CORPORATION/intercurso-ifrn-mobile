@@ -13,8 +13,8 @@ export default function BracketsLayout() {
                 headerLargeTitleStyle: { fontFamily: fontFamily.bold, fontSize: 28, color: colors.ink },
             }}
         >
-            <Stack.Screen name="index" options={{ title: 'Chaves' }} />
-            <Stack.Screen name="[modalityId]" options={{ title: 'Chaves', headerLargeTitleEnabled: false }} />
+            <Stack.Screen name="index" options={{ title: '' }} />
+            <Stack.Screen name="[modalityId]" options={{ title: '' }} />
         </Stack>
     );
 }

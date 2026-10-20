@@ -42,6 +42,7 @@ export function BracketsScreen({ initialModalityId }: BracketsScreenProps) {
 
     const modalities = useModalities(seasonId);
     const [selectedModalityId, setSelectedModalityId] = useState<string | undefined>(initialModalityId);
+    const selectedModality = modalities.data?.find((modality) => modality.modality_id === selectedModalityId);
 
     useEffect(() => {
         if (!selectedModalityId && modalities.data && modalities.data.length > 0) {
@@ -195,7 +196,8 @@ export function BracketsScreen({ initialModalityId }: BracketsScreenProps) {
 
         const allMatches = details.data.matches;
         const knockoutMatches = allMatches.filter((match) => match.match_category === 'KNOCKOUT');
-        const showKnockout = bracket.format === 'KNOCKOUT' || knockoutMatches.length > 0;
+        const knockoutStarted = knockoutMatches.some((match) => !!match.team1_id || !!match.team2_id);
+        const showKnockout = bracket.format === 'KNOCKOUT' || knockoutStarted;
 
         if (showKnockout) {
             const matchesToShow = knockoutMatches.length > 0 ? knockoutMatches : allMatches;
@@ -222,11 +224,22 @@ export function BracketsScreen({ initialModalityId }: BracketsScreenProps) {
             );
         }
 
-        return <GroupBracket groups={details.data.groups} matches={matchItems} />;
+        const classifiedPerGroup = details.data.configuration?.classified_per_group;
+        const qualifyingSpots = typeof classifiedPerGroup === 'number' ? classifiedPerGroup : undefined;
+
+        return (
+            <GroupBracket
+                groups={details.data.groups}
+                matches={matchItems}
+                format={bracket.format}
+                qualifyingSpots={qualifyingSpots}
+            />
+        );
     };
 
     return (
         <ScrollView
+            contentInsetAdjustmentBehavior="automatic"
             contentContainerStyle={styles.content}
             refreshControl={
                 <RefreshControl
@@ -240,6 +253,14 @@ export function BracketsScreen({ initialModalityId }: BracketsScreenProps) {
                 />
             }
         >
+            <View style={styles.titleBlock}>
+                <ThemedText variant="largeTitle">Chaves</ThemedText>
+                {selectedModality ? (
+                    <ThemedText variant="body" style={styles.titleSubtitle}>
+                        {selectedModality.name}
+                    </ThemedText>
+                ) : null}
+            </View>
             <View style={styles.header}>{renderModalityRow()}</View>
             {renderContent()}
         </ScrollView>
@@ -250,6 +271,13 @@ const styles = StyleSheet.create({
     content: {
         paddingBottom: spacing.xl,
         gap: spacing.lg,
+    },
+    titleBlock: {
+        gap: spacing.xxs,
+        paddingHorizontal: spacing.md,
+    },
+    titleSubtitle: {
+        color: colors.textSecondary,
     },
     header: {
         gap: spacing.sm,
