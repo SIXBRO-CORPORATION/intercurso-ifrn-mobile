@@ -1,4 +1,26 @@
 import type { CardType, EventType, MatchCategory, MatchStatus, MatchType, PenaltyKickResult } from './enums';
+
+export interface MatchTopScorerResponse {
+    player_id: string;
+    name: string;
+    team_id: string;
+    goals: number;
+}
+
+export interface MatchCardSummaryResponse {
+    yellow: number;
+    red: number;
+}
+
+export interface MatchPenaltyShootoutKickResponse {
+    player_id?: string | null;
+    result: PenaltyKickResult;
+}
+
+export interface MatchPenaltyShootoutResponse {
+    team1: MatchPenaltyShootoutKickResponse[];
+    team2: MatchPenaltyShootoutKickResponse[];
+}
 import type { IsoDateString } from './season';
 
 export interface MatchResponse {
@@ -118,6 +140,10 @@ export interface MatchManagementResponse {
     modality_configuration?: MatchModalityConfigurationResponse | null;
 
     timeline: MatchTimelineEventResponse[];
+
+    top_scorers: MatchTopScorerResponse[];
+    card_summary: MatchCardSummaryResponse;
+    penalty_shootout: MatchPenaltyShootoutResponse;
 
     sets: MatchSetResponse[];
 
