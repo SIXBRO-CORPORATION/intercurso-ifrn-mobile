@@ -5,6 +5,7 @@ import { FilterChips, type FilterChipOption } from '@/components/filter-chips';
 import { FinishedTrailing, LiveTrailing, MatchListRow, ScheduledTrailing } from '@/components/list-row';
 import { StandingsLegend, StandingsTable } from '@/components/brackets/standings-table';
 import { ThemedText } from '@/components/themed-text';
+import { useLiveClock } from '@/components/match/match-helpers';
 import { colors, spacing } from '@/theme';
 import { formatCampusTime, formatMatchClock } from '@/utils/campus-time';
 import type { BracketGroupResponse } from '@/types/bracket';
@@ -16,26 +17,48 @@ interface GroupBracketProps {
     matches: MatchListItemResponse[];
     format: ModalityFormat;
     qualifyingSpots?: number;
+    dataUpdatedAt: number;
 }
 
-function matchRowProps(match: MatchListItemResponse) {
+interface GroupMatchRowProps {
+    match: MatchListItemResponse;
+    dataUpdatedAt: number;
+}
+
+function GroupMatchRow({ match, dataUpdatedAt }: GroupMatchRowProps) {
+    const isLive = match.status === 'IN_PROGRESS';
+
+    const liveSeconds = useLiveClock(
+        match.match_id,
+        match.clock_seconds,
+        isLive && match.clock_running,
+        dataUpdatedAt
+    );
+
     const showScore = match.status !== 'SCHEDULED';
     const team1 = { name: match.team1?.name ?? 'A definir', score: showScore ? match.team1?.score : undefined };
     const team2 = { name: match.team2?.name ?? 'A definir', score: showScore ? match.team2?.score : undefined };
 
     let trailing = null;
-    if (match.status === 'IN_PROGRESS') {
-        trailing = <LiveTrailing minute={formatMatchClock(match.clock_seconds)} />;
+    if (isLive) {
+        trailing = <LiveTrailing minute={formatMatchClock(liveSeconds)} />;
     } else if (match.status === 'FINISHED') {
         trailing = <FinishedTrailing />;
     } else {
         trailing = <ScheduledTrailing time={match.scheduled_date ? formatCampusTime(match.scheduled_date) : '--:--'} />;
     }
 
-    return { team1, team2, trailing };
+    return (
+        <MatchListRow
+            team1={team1}
+            team2={team2}
+            trailing={trailing}
+            onPress={() => router.push(`/match/${match.match_id}`)}
+        />
+    );
 }
 
-export function GroupBracket({ groups, matches, format, qualifyingSpots }: GroupBracketProps) {
+export function GroupBracket({ groups, matches, format, qualifyingSpots, dataUpdatedAt }: GroupBracketProps) {
     const showQualifying = format === 'GROUP_STAGE_KNOCKOUT';
     const sortedGroups = useMemo(
         () => [...groups].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)),
@@ -85,18 +108,9 @@ export function GroupBracket({ groups, matches, format, qualifyingSpots }: Group
                     </ThemedText>
                 ) : (
                     <View style={styles.matchList}>
-                        {groupMatches.map((match) => {
-                            const { team1, team2, trailing } = matchRowProps(match);
-                            return (
-                                <MatchListRow
-                                    key={match.match_id}
-                                    team1={team1}
-                                    team2={team2}
-                                    trailing={trailing}
-                                    onPress={() => router.push(`/match/${match.match_id}`)}
-                                />
-                            );
-                        })}
+                        {groupMatches.map((match) => (
+                            <GroupMatchRow key={match.match_id} match={match} dataUpdatedAt={dataUpdatedAt} />
+                        ))}
                     </View>
                 )}
             </View>

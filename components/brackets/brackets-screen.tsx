@@ -233,6 +233,7 @@ export function BracketsScreen({ initialModalityId }: BracketsScreenProps) {
                 matches={matchItems}
                 format={bracket.format}
                 qualifyingSpots={qualifyingSpots}
+                dataUpdatedAt={matchList.dataUpdatedAt}
             />
         );
     };
