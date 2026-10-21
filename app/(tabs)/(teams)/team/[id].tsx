@@ -1,10 +1,11 @@
 import { useCallback, useRef, useState } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, Share, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Share, StyleSheet, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/button';
 import { LoginPrompt } from '@/components/auth/login-prompt';
 import { BottomSheet, type BottomSheetHandle } from '@/components/overlays/bottom-sheet';
+import { ConfirmDialog } from '@/components/overlays/confirm-dialog';
 import { ErrorState, LoadingState } from '@/components/states/screen-states';
 import { Icon, type IconName } from '@/components/icon';
 import { MemberAvatar, MemberCard } from '@/components/teams/member-card';
@@ -184,11 +185,22 @@ interface DraftHeroProps {
     max?: number;
     canManageInvite: boolean;
     onCopyInvite: () => void;
+    copied: boolean;
     onRegenerateInvite: () => void;
     regenerating: boolean;
 }
 
-function DraftHero({ team, memberCount, min, max, canManageInvite, onCopyInvite, onRegenerateInvite, regenerating }: DraftHeroProps) {
+function DraftHero({
+    team,
+    memberCount,
+    min,
+    max,
+    canManageInvite,
+    onCopyInvite,
+    copied,
+    onRegenerateInvite,
+    regenerating,
+}: DraftHeroProps) {
     const progress = max ? Math.min(memberCount / max, 1) : null;
     const hasActiveToken = !!team.invite_token && team.token_active;
 
@@ -226,7 +238,12 @@ function DraftHero({ team, memberCount, min, max, canManageInvite, onCopyInvite,
             {canManageInvite ? (
                 hasActiveToken ? (
                     <>
-                        <Button title="Copiar link de convite" variant="soft" icon="link" onPress={onCopyInvite} />
+                        <Button
+                            title={copied ? 'Link copiado' : 'Copiar link de convite'}
+                            variant="soft"
+                            icon={copied ? 'check' : 'link'}
+                            onPress={onCopyInvite}
+                        />
                         <Pressable
                             accessibilityRole="button"
                             accessibilityLabel="Gerar novo link de convite"
@@ -282,6 +299,66 @@ function SheetAction({
     );
 }
 
+type ConfirmAction =
+    | { type: 'regenerate' }
+    | { type: 'captain'; member: TeamMember }
+    | { type: 'remove'; member: TeamMember }
+    | { type: 'leave' }
+    | { type: 'delete' }
+    | null;
+
+interface ConfirmDialogContent {
+    title: string;
+    description?: string;
+    confirmLabel: string;
+    tone: 'primary' | 'danger';
+}
+
+function getConfirmDialogContent(action: ConfirmAction, team: TeamDetails | undefined): ConfirmDialogContent | null {
+    if (!action) return null;
+    switch (action.type) {
+        case 'regenerate':
+            return {
+                title: 'Gerar novo convite?',
+                description: 'O link e o código atuais deixam de funcionar. Quem já entrou no time continua no time.',
+                confirmLabel: 'Gerar novo',
+                tone: 'danger',
+            };
+        case 'captain':
+            return {
+                title: 'Definir capitão?',
+                description: `${action.member.name} passa a ser o capitão do time.`,
+                confirmLabel: 'Definir',
+                tone: 'primary',
+            };
+        case 'remove':
+            return {
+                title: 'Remover do time?',
+                description: `${action.member.name} será removido(a) do time.`,
+                confirmLabel: 'Remover',
+                tone: 'danger',
+            };
+        case 'leave':
+            return {
+                title: 'Sair do time?',
+                description: team ? `Você deixa de fazer parte de "${team.name}".` : undefined,
+                confirmLabel: 'Sair',
+                tone: 'danger',
+            };
+        case 'delete':
+            return {
+                title: 'Excluir time?',
+                description: team
+                    ? `"${team.name}" será excluído. Os integrantes saem do time e o convite deixa de funcionar. Essa ação não pode ser desfeita.`
+                    : undefined,
+                confirmLabel: 'Excluir',
+                tone: 'danger',
+            };
+        default:
+            return null;
+    }
+}
+
 function TeamDetailsContent({ teamId }: { teamId: string }) {
     const { user } = useAuth();
     const toast = useToast();
@@ -296,8 +373,12 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
 
     const [activeMember, setActiveMember] = useState<TeamMember | null>(null);
     const [editingAfterRejection, setEditingAfterRejection] = useState(false);
+    const [inviteCopied, setInviteCopied] = useState(false);
+    const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
+    const [confirming, setConfirming] = useState(false);
     const memberSheetRef = useRef<BottomSheetHandle>(null);
     const submitSheetRef = useRef<BottomSheetHandle>(null);
+    const actionsSheetRef = useRef<BottomSheetHandle>(null);
 
     const team = details.data;
 
@@ -329,29 +410,9 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
         if (!team?.invite_token) return;
         const link = buildInviteLink(team.invite_token);
         await Clipboard.setStringAsync(link);
-        toast.success('Link copiado!');
-    }, [team?.invite_token, toast]);
-
-    const handleRegenerateInvite = useCallback(() => {
-        if (!team) return;
-        Alert.alert(
-            'Gerar novo convite?',
-            'O link e o código atuais deixam de funcionar. Quem já entrou no time continua no time.',
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Gerar novo',
-                    style: 'destructive',
-                    onPress: () =>
-                        run(
-                            () => regenerateInvite.mutateAsync({ teamId: team.team_id }),
-                            'Novo convite gerado.',
-                            'Não foi possível gerar um novo convite.'
-                        ),
-                },
-            ]
-        );
-    }, [regenerateInvite, run, team]);
+        setInviteCopied(true);
+        setTimeout(() => setInviteCopied(false), 2000);
+    }, [team?.invite_token]);
 
     const openMemberSheet = useCallback((member: TeamMember) => {
         setActiveMember(member);
@@ -362,88 +423,94 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
         memberSheetRef.current?.dismiss();
     }, []);
 
+    const closeActionsSheet = useCallback(() => {
+        actionsSheetRef.current?.dismiss();
+    }, []);
+
+    const handleRegenerateInvite = useCallback(() => {
+        setConfirmAction({ type: 'regenerate' });
+    }, []);
+
     const confirmCaptain = useCallback(
         (member: TeamMember) => {
-            if (!team) return;
             closeMemberSheet();
-            Alert.alert('Definir capitão?', `${member.name} passa a ser o capitão do time.`, [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Definir',
-                    onPress: () =>
-                        run(
-                            () => selectCaptain.mutateAsync({ teamId: team.team_id, userId: member.user_id }),
-                            `${member.name} é o novo capitão.`,
-                            'Não foi possível definir o capitão.'
-                        ),
-                },
-            ]);
+            setConfirmAction({ type: 'captain', member });
         },
-        [closeMemberSheet, run, selectCaptain, team]
+        [closeMemberSheet]
     );
 
     const confirmRemove = useCallback(
         (member: TeamMember) => {
-            if (!team) return;
             closeMemberSheet();
-            Alert.alert('Remover do time?', `${member.name} será removido(a) do time.`, [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Remover',
-                    style: 'destructive',
-                    onPress: () =>
-                        run(
-                            () => removeMember.mutateAsync({ teamId: team.team_id, userId: member.user_id }),
-                            `${member.name} foi removido(a).`,
-                            'Não foi possível remover o integrante.'
-                        ),
-                },
-            ]);
+            setConfirmAction({ type: 'remove', member });
         },
-        [closeMemberSheet, removeMember, run, team]
+        [closeMemberSheet]
     );
 
     const confirmLeave = useCallback(() => {
-        if (!team) return;
-        Alert.alert('Sair do time?', `Você deixa de fazer parte de "${team.name}".`, [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-                text: 'Sair',
-                style: 'destructive',
-                onPress: async () => {
+        setConfirmAction({ type: 'leave' });
+    }, []);
+
+    const confirmDelete = useCallback(() => {
+        closeActionsSheet();
+        setConfirmAction({ type: 'delete' });
+    }, [closeActionsSheet]);
+
+    const cancelConfirmAction = useCallback(() => {
+        if (confirming) return;
+        setConfirmAction(null);
+    }, [confirming]);
+
+    const handleConfirmAction = useCallback(async () => {
+        if (!confirmAction || !team) return;
+        setConfirming(true);
+        try {
+            switch (confirmAction.type) {
+                case 'regenerate':
+                    await run(
+                        () => regenerateInvite.mutateAsync({ teamId: team.team_id }),
+                        'Novo convite gerado.',
+                        'Não foi possível gerar um novo convite.'
+                    );
+                    break;
+                case 'captain':
+                    await run(
+                        () => selectCaptain.mutateAsync({ teamId: team.team_id, userId: confirmAction.member.user_id }),
+                        `${confirmAction.member.name} é o novo capitão.`,
+                        'Não foi possível definir o capitão.'
+                    );
+                    break;
+                case 'remove':
+                    await run(
+                        () => removeMember.mutateAsync({ teamId: team.team_id, userId: confirmAction.member.user_id }),
+                        `${confirmAction.member.name} foi removido(a).`,
+                        'Não foi possível remover o integrante.'
+                    );
+                    break;
+                case 'leave': {
                     const ok = await run(
                         () => leaveTeam.mutateAsync({ teamId: team.team_id }),
                         'Você saiu do time.',
                         'Não foi possível sair do time.'
                     );
                     if (ok) leaveScreen();
-                },
-            },
-        ]);
-    }, [leaveScreen, leaveTeam, run, team]);
-
-    const confirmDelete = useCallback(() => {
-        if (!team) return;
-        Alert.alert(
-            'Excluir time?',
-            `"${team.name}" será excluído. Os integrantes saem do time e o convite deixa de funcionar. Essa ação não pode ser desfeita.`,
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Excluir',
-                    style: 'destructive',
-                    onPress: async () => {
-                        const ok = await run(
-                            () => deleteTeam.mutateAsync({ teamId: team.team_id }),
-                            'Time excluído.',
-                            'Não foi possível excluir o time.'
-                        );
-                        if (ok) leaveScreen();
-                    },
-                },
-            ]
-        );
-    }, [deleteTeam, leaveScreen, run, team]);
+                    break;
+                }
+                case 'delete': {
+                    const ok = await run(
+                        () => deleteTeam.mutateAsync({ teamId: team.team_id }),
+                        'Time excluído.',
+                        'Não foi possível excluir o time.'
+                    );
+                    if (ok) leaveScreen();
+                    break;
+                }
+            }
+        } finally {
+            setConfirming(false);
+            setConfirmAction(null);
+        }
+    }, [confirmAction, deleteTeam, leaveScreen, leaveTeam, regenerateInvite, removeMember, run, selectCaptain, team]);
 
     const handleConfirmSubmit = useCallback(async () => {
         if (!team) return;
@@ -511,22 +578,24 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
     }
 
     const canShareInvite = isOwner && isDraft && !!team.invite_token && team.token_active;
+    const canManageActions = isOwner && isDraft;
+    const confirmDialogContent = getConfirmDialogContent(confirmAction, team);
 
     return (
         <>
             <Stack.Screen
                 options={{
                     title: team.name,
-                    headerRight: canShareInvite
+                    headerRight: canManageActions
                         ? () => (
                               <Pressable
                                   accessibilityRole="button"
-                                  accessibilityLabel="Compartilhar convite"
-                                  onPress={handleShare}
+                                  accessibilityLabel="Ações da equipe"
+                                  onPress={() => actionsSheetRef.current?.present()}
                                   hitSlop={8}
                                   style={styles.headerAction}
                               >
-                                  <Icon name="share" size={20} color={colors.ink} />
+                                  <Icon name="more" size={20} color={colors.ink} />
                               </Pressable>
                           )
                         : undefined,
@@ -553,6 +622,7 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                         max={max}
                         canManageInvite={isOwner}
                         onCopyInvite={handleCopyInvite}
+                        copied={inviteCopied}
                         onRegenerateInvite={handleRegenerateInvite}
                         regenerating={regenerateInvite.isPending}
                     />
@@ -640,13 +710,6 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                             icon="check"
                             disabled={submitBlockedReason !== null}
                             onPress={() => submitSheetRef.current?.present()}
-                        />
-                        <Button
-                            title="Excluir equipe"
-                            variant="danger"
-                            icon="trash"
-                            loading={deleteTeam.isPending}
-                            onPress={confirmDelete}
                         />
                     </View>
                 ) : null}
@@ -749,6 +812,34 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                     onPress={() => submitSheetRef.current?.dismiss()}
                 />
             </BottomSheet>
+
+            <BottomSheet ref={actionsSheetRef} title="Ações da equipe" snapPoints={['35%']}>
+                <View style={styles.memberSheet}>
+                    {canShareInvite ? (
+                        <SheetAction
+                            icon="share"
+                            label="Compartilhar convite"
+                            onPress={() => {
+                                closeActionsSheet();
+                                handleShare();
+                            }}
+                        />
+                    ) : null}
+                    <SheetAction icon="trash" label="Excluir equipe" tone="danger" onPress={confirmDelete} />
+                    <Button title="Cancelar" variant="neutral" onPress={closeActionsSheet} />
+                </View>
+            </BottomSheet>
+
+            <ConfirmDialog
+                visible={confirmAction !== null}
+                title={confirmDialogContent?.title ?? ''}
+                description={confirmDialogContent?.description}
+                confirmLabel={confirmDialogContent?.confirmLabel}
+                tone={confirmDialogContent?.tone}
+                confirming={confirming}
+                onConfirm={handleConfirmAction}
+                onCancel={cancelConfirmAction}
+            />
         </>
     );
 }

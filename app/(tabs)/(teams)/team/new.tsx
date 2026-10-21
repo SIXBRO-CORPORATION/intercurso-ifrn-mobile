@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Alert, Image, Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { router, Stack } from 'expo-router';
@@ -14,7 +15,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useModalities } from '@/hooks/useModalities';
 import { useActiveSeason } from '@/hooks/useSeasons';
 import { useCreateTeam } from '@/hooks/useTeams';
-import { useToast } from '@/providers/ToastProvider';
 import { ApiError } from '@/types/api';
 import type { TeamPhotoFile, TeamRegisterResponse } from '@/types/team';
 import { GenderLabel, type Gender } from '@/types/enums';
@@ -135,7 +135,8 @@ function ModalityOption({
 }
 
 function SuccessStep({ team }: { team: TeamRegisterResponse }) {
-    const toast = useToast();
+    const insets = useSafeAreaInsets();
+    const [copied, setCopied] = useState(false);
     const inviteLink = team.invite_token ? buildInviteLink(team.invite_token) : null;
 
     const handleShare = async () => {
@@ -148,18 +149,22 @@ function SuccessStep({ team }: { team: TeamRegisterResponse }) {
     const handleCopy = async () => {
         if (!inviteLink) return;
         await Clipboard.setStringAsync(inviteLink);
-        toast.success('Link copiado!');
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
     };
 
     return (
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.successContent}>
+        <ScrollView
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={[styles.successContent, { paddingTop: insets.top + spacing.xl }]}
+        >
             <Stack.Screen options={{ headerShown: false }} />
             <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Fechar"
                 onPress={() => router.back()}
                 hitSlop={8}
-                style={styles.closeButton}
+                style={[styles.closeButton, { top: insets.top + spacing.sm }]}
             >
                 <Icon name="close" size={22} color={colors.ink} />
             </Pressable>
@@ -186,12 +191,12 @@ function SuccessStep({ team }: { team: TeamRegisterResponse }) {
                             </ThemedText>
                             <Pressable
                                 accessibilityRole="button"
-                                accessibilityLabel="Copiar link de convite"
+                                accessibilityLabel={copied ? 'Link copiado' : 'Copiar link de convite'}
                                 hitSlop={8}
                                 onPress={handleCopy}
                                 style={({ pressed }) => [styles.copyButton, { opacity: pressed ? 0.6 : 1 }]}
                             >
-                                <Icon name="copy" size={18} color={colors.primaryDark} />
+                                <Icon name={copied ? 'check' : 'copy'} size={18} color={colors.primaryDark} />
                             </Pressable>
                         </View>
                     </View>
@@ -652,9 +657,9 @@ const styles = StyleSheet.create({
     },
     closeButton: {
         position: 'absolute',
-        top: spacing.xl,
         right: spacing.lg,
         padding: spacing.xs,
+        zIndex: 1,
     },
     centered: {
         textAlign: 'center',
