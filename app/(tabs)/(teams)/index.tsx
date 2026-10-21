@@ -1,4 +1,5 @@
 import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Link, router } from 'expo-router';
 import { Button } from '@/components/button';
 import { LoginPrompt } from '@/components/auth/login-prompt';
@@ -114,6 +115,7 @@ function TeamCard({ team, role }: { team: TeamSummary; role: string }) {
 }
 
 export default function TeamsScreen() {
+    const insets = useSafeAreaInsets();
     const { user, isAuthenticated, isInitializing } = useAuth();
     const activeSeason = useActiveSeason();
     const teams = useTeams(activeSeason.data ? { season_id: activeSeason.data.season_id } : undefined);
@@ -188,46 +190,55 @@ export default function TeamsScreen() {
     };
 
     return (
-        <FlatList
-            data={items}
-            keyExtractor={(item) => item.team_id}
-            renderItem={({ item }) => <TeamCard team={item} role={roleLabel(item, user.user_id)} />}
-            contentInsetAdjustmentBehavior="automatic"
-            contentContainerStyle={[styles.content, items.length === 0 && styles.fill]}
-            ListHeaderComponent={renderHeader}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
-            ListEmptyComponent={renderEmpty}
-            ListFooterComponent={
-                <View style={styles.footer}>
-                    <Button
-                        title="Criar equipe"
-                        icon="plus"
-                        disabled={!canCreate}
-                        onPress={() => router.push('/team/new')}
+        <View style={styles.screen}>
+            <FlatList
+                style={styles.list}
+                data={items}
+                keyExtractor={(item) => item.team_id}
+                renderItem={({ item }) => <TeamCard team={item} role={roleLabel(item, user.user_id)} />}
+                contentInsetAdjustmentBehavior="automatic"
+                contentContainerStyle={[styles.content, items.length === 0 && styles.fill]}
+                ListHeaderComponent={renderHeader}
+                ItemSeparatorComponent={() => <View style={styles.separator} />}
+                ListEmptyComponent={renderEmpty}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={teams.isRefetching}
+                        onRefresh={() => {
+                            teams.refetch();
+                            activeSeason.refetch();
+                        }}
                     />
-                    <Button
-                        title="Entrar com código"
-                        icon="link"
-                        variant="outline"
-                        disabled={!canCreate}
-                        onPress={() => router.push('/join')}
-                    />
-                </View>
-            }
-            refreshControl={
-                <RefreshControl
-                    refreshing={teams.isRefetching}
-                    onRefresh={() => {
-                        teams.refetch();
-                        activeSeason.refetch();
-                    }}
+                }
+            />
+
+            <View style={[styles.actionsBar, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
+                <Button
+                    title="Criar equipe"
+                    icon="plus"
+                    disabled={!canCreate}
+                    onPress={() => router.push('/team/new')}
                 />
-            }
-        />
+                <Button
+                    title="Entrar com código"
+                    icon="link"
+                    variant="outline"
+                    disabled={!canCreate}
+                    onPress={() => router.push('/join')}
+                />
+            </View>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
+    screen: {
+        flex: 1,
+        backgroundColor: colors.background,
+    },
+    list: {
+        flex: 1,
+    },
     content: {
         paddingBottom: spacing.xl,
     },
@@ -337,9 +348,10 @@ const styles = StyleSheet.create({
     muted: {
         color: colors.textSecondary,
     },
-    footer: {
+    actionsBar: {
         gap: spacing.sm,
         paddingHorizontal: spacing.md,
         paddingTop: spacing.md,
+        backgroundColor: colors.background,
     },
 });
