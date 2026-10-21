@@ -448,8 +448,9 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
     );
 
     const confirmLeave = useCallback(() => {
+        closeActionsSheet();
         setConfirmAction({ type: 'leave' });
-    }, []);
+    }, [closeActionsSheet]);
 
     const confirmDelete = useCallback(() => {
         closeActionsSheet();
@@ -578,7 +579,7 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
     }
 
     const canShareInvite = isOwner && isDraft && !!team.invite_token && team.token_active;
-    const canManageActions = isOwner && isDraft;
+    const canManageActions = isDraft && (isOwner || isMember);
     const confirmDialogContent = getConfirmDialogContent(confirmAction, team);
 
     return (
@@ -714,10 +715,6 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                     </View>
                 ) : null}
 
-                {isMember && !isOwner && isDraft ? (
-                    <Button title="Sair do time" variant="danger" loading={leaveTeam.isPending} onPress={confirmLeave} />
-                ) : null}
-
                 {isOwner && team.status === 'REJECTED' && !editingAfterRejection ? (
                     <View style={styles.actions}>
                         <Button title="Voltar para rascunho" icon="edit" onPress={() => setEditingAfterRejection(true)} />
@@ -815,17 +812,23 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
 
             <BottomSheet ref={actionsSheetRef} title="Ações da equipe" snapPoints={['35%']}>
                 <View style={styles.memberSheet}>
-                    {canShareInvite ? (
-                        <SheetAction
-                            icon="share"
-                            label="Compartilhar convite"
-                            onPress={() => {
-                                closeActionsSheet();
-                                handleShare();
-                            }}
-                        />
-                    ) : null}
-                    <SheetAction icon="trash" label="Excluir equipe" tone="danger" onPress={confirmDelete} />
+                    {isOwner ? (
+                        <>
+                            {canShareInvite ? (
+                                <SheetAction
+                                    icon="share"
+                                    label="Compartilhar convite"
+                                    onPress={() => {
+                                        closeActionsSheet();
+                                        handleShare();
+                                    }}
+                                />
+                            ) : null}
+                            <SheetAction icon="trash" label="Excluir equipe" tone="danger" onPress={confirmDelete} />
+                        </>
+                    ) : (
+                        <SheetAction icon="logout" label="Sair do time" tone="danger" onPress={confirmLeave} />
+                    )}
                     <Button title="Cancelar" variant="neutral" onPress={closeActionsSheet} />
                 </View>
             </BottomSheet>
