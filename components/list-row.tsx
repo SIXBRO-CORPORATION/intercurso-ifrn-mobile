@@ -169,7 +169,7 @@ export function ScheduledTrailing({ time, modality }: { time: string; modality?:
 export function FinishedTrailing() {
     return (
         <ThemedText variant="body" style={styles.muted}>
-            Final
+            Finalizada
         </ThemedText>
     );
 }

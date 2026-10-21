@@ -116,7 +116,7 @@ function matchRowProps(match: MatchListItemResponse) {
     } else {
         trailing = (
             <ScheduledTrailing
-                time={match.scheduled_date ? formatCampusTime(match.scheduled_date) : '--:--'}
+                time={match.scheduled_date ? formatCampusTime(match.scheduled_date) : 'Sem data'}
                 modality={match.modality_name ?? undefined}
             />
         );

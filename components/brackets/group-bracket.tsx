@@ -45,7 +45,7 @@ function GroupMatchRow({ match, dataUpdatedAt }: GroupMatchRowProps) {
     } else if (match.status === 'FINISHED') {
         trailing = <FinishedTrailing />;
     } else {
-        trailing = <ScheduledTrailing time={match.scheduled_date ? formatCampusTime(match.scheduled_date) : '--:--'} />;
+        trailing = <ScheduledTrailing time={match.scheduled_date ? formatCampusTime(match.scheduled_date) : 'Sem data'} />;
     }
 
     return (
