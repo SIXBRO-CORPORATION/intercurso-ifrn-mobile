@@ -317,6 +317,26 @@ export default function CreateTeamScreen() {
     const options = modalities.data ?? [];
     const selectedModality = options.find((modality) => modality.modality_id === modalityId) ?? null;
 
+    const handleHeaderBack = () => {
+        if (step === 'details') {
+            setStep('modality');
+        } else {
+            router.back();
+        }
+    };
+
+    const headerBackButton = (
+        <Stack.Screen
+            options={{
+                headerLeft: () => (
+                    <Pressable accessibilityRole="button" accessibilityLabel="Voltar" onPress={handleHeaderBack} hitSlop={8}>
+                        <Icon name="back" size={24} color={colors.ink} />
+                    </Pressable>
+                ),
+            }}
+        />
+    );
+
     const handleSubmit = async () => {
         if (createTeam.isPending || !modalityId) return;
 
@@ -341,6 +361,7 @@ export default function CreateTeamScreen() {
     if (step === 'modality') {
         return (
             <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+                {headerBackButton}
                 <StepProgress step={1} title="Escolha a modalidade" />
                 {season.registration_end_date ? (
                     <ThemedText variant="bodySm" style={styles.muted}>
@@ -381,15 +402,7 @@ export default function CreateTeamScreen() {
 
     return (
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-            <Stack.Screen
-                options={{
-                    headerLeft: () => (
-                        <Pressable accessibilityRole="button" accessibilityLabel="Voltar" onPress={() => setStep('modality')} hitSlop={8}>
-                            <Icon name="back" size={24} color={colors.ink} />
-                        </Pressable>
-                    ),
-                }}
-            />
+            {headerBackButton}
             <StepProgress step={2} title="Dados da equipe" />
 
             <View style={styles.field}>
