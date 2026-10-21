@@ -38,6 +38,8 @@ export interface TeamSummary {
     status: TeamStatus;
     owner_id?: string | null;
     owner_name?: string | null;
+    captain_id?: string | null;
+    max_members?: number | null;
     members_count: number;
     donations_confirmed: number;
     donations_total: number;

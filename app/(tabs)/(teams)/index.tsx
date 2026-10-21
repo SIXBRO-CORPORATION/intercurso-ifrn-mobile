@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { Link, router } from 'expo-router';
 import { Button } from '@/components/button';
@@ -9,15 +8,21 @@ import { TeamStatusBadge } from '@/components/teams/team-status-badge';
 import { TeamAvatar } from '@/components/teams/team-avatar';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
-import { useModalities } from '@/hooks/useModalities';
 import { useActiveSeason } from '@/hooks/useSeasons';
 import { useTeams } from '@/hooks/useTeams';
 import type { TeamSummary } from '@/types/team';
+import { TeamMemberRoleLabel } from '@/types/enums';
 import type { SeasonSummary } from '@/types/season';
 import { colors, radius, shadows, spacing } from '@/theme';
 import { friendlyErrorMessage } from '@/utils/api-error-message';
 import { formatCampusShortDate, formatCampusTime } from '@/utils/campus-time';
 import { isMonitorOrAbove } from '@/utils/permissions';
+
+function roleLabel(team: TeamSummary, userId: string): string {
+    if (team.owner_id === userId) return TeamMemberRoleLabel.OWNER;
+    if (team.captain_id === userId) return TeamMemberRoleLabel.CAPTAIN;
+    return TeamMemberRoleLabel.MEMBER;
+}
 
 function membersLabel(count: number, max: number | null | undefined): string {
     if (max != null) return `${count}/${max} membros`;
@@ -68,16 +73,8 @@ function RegistrationBanner({
     );
 }
 
-function TeamCard({
-    team,
-    isOwner,
-    maxMembers,
-}: {
-    team: TeamSummary;
-    isOwner: boolean;
-    maxMembers: number | null | undefined;
-}) {
-    const role = isOwner ? 'Dono' : 'Membro';
+function TeamCard({ team, role }: { team: TeamSummary; role: string }) {
+    const maxMembers = team.max_members;
     const subtitle = [team.modality_name, role].filter(Boolean).join(' · ');
 
     return (
@@ -121,12 +118,6 @@ export default function TeamsScreen() {
     const activeSeason = useActiveSeason();
     const teams = useTeams(activeSeason.data ? { season_id: activeSeason.data.season_id } : undefined);
 
-    const modalities = useModalities(activeSeason.data?.season_id);
-    const maxMembersByModality = useMemo(
-        () => new Map(modalities.data?.map((m) => [m.modality_id, m.max_members])),
-        [modalities.data]
-    );
-
     if (isInitializing) {
         return <LoadingState label="Carregando…" />;
     }
@@ -144,10 +135,13 @@ export default function TeamsScreen() {
 
     const renderHeader = () => (
         <View style={styles.header}>
-            <View style={styles.headerTop}>
-                <ThemedText variant="body" style={styles.headerSubtitle}>
-                    Minhas equipes
-                </ThemedText>
+            <View style={styles.headerRow}>
+                <View style={styles.titleBlock}>
+                    <ThemedText variant="largeTitle">Equipes</ThemedText>
+                    <ThemedText variant="body" style={styles.titleSubtitle}>
+                        Minhas equipes
+                    </ThemedText>
+                </View>
                 <View style={styles.bellButton}>
                     <Icon name="bell" size={20} color={colors.ink} />
                 </View>
@@ -156,7 +150,9 @@ export default function TeamsScreen() {
             <RegistrationBanner season={activeSeason.data} blockedReason={blockedReason} />
 
             <View style={styles.sectionRow}>
-                <ThemedText variant="heading">Minhas equipes ({items.length})</ThemedText>
+                <ThemedText variant="heading">
+                    {items.length} {items.length === 1 ? 'equipe' : 'equipes'}
+                </ThemedText>
             </View>
 
             {isStaff ? (
@@ -195,13 +191,7 @@ export default function TeamsScreen() {
         <FlatList
             data={items}
             keyExtractor={(item) => item.team_id}
-            renderItem={({ item }) => (
-                <TeamCard
-                    team={item}
-                    isOwner={item.owner_id === user.user_id}
-                    maxMembers={maxMembersByModality.get(item.modality_id)}
-                />
-            )}
+            renderItem={({ item }) => <TeamCard team={item} role={roleLabel(item, user.user_id)} />}
             contentInsetAdjustmentBehavior="automatic"
             contentContainerStyle={[styles.content, items.length === 0 && styles.fill]}
             ListHeaderComponent={renderHeader}
@@ -250,12 +240,16 @@ const styles = StyleSheet.create({
         paddingHorizontal: spacing.md,
         paddingBottom: spacing.sm,
     },
-    headerTop: {
+    headerRow: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         justifyContent: 'space-between',
+        gap: spacing.sm,
     },
-    headerSubtitle: {
+    titleBlock: {
+        gap: 2,
+    },
+    titleSubtitle: {
         color: colors.textSecondary,
     },
     bellButton: {

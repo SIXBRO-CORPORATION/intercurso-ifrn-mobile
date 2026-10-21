@@ -27,6 +27,8 @@ import { buildInviteLink } from '@/utils/team-invite';
 
 const GENDER_BY_MODE: Record<'MALE' | 'FEMALE', Gender> = { MALE: 'M', FEMALE: 'F' };
 
+const TEAM_NAME_MAX_LENGTH = 40;
+
 const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
 const PHOTO_MIME_BY_EXTENSION: Record<string, string> = {
     png: 'image/png',
@@ -59,6 +61,7 @@ function toTeamPhoto(asset: ImagePicker.ImagePickerAsset): { photo?: TeamPhotoFi
 }
 
 function unavailableReason(modality: ModalitySummaryResponse, gender: Gender | null | undefined): string | null {
+    if (!modality.active) return 'Inscrições não abertas.';
     if (modality.gender_mode === 'MIXED') return null;
     if (!gender) return 'Não foi possível confirmar seu gênero no SUAP.';
     if (GENDER_BY_MODE[modality.gender_mode] !== gender) {
@@ -199,7 +202,7 @@ function SuccessStep({ team }: { team: TeamRegisterResponse }) {
                 </>
             ) : (
                 <ThemedText variant="body" style={[styles.centered, styles.muted]}>
-                    O convite desta equipe pode ser gerado a qualquer momento na tela da equipe.
+                    Não foi possível carregar o convite agora. Acesse a tela da equipe para gerar um novo.
                 </ThemedText>
             )}
 
@@ -385,8 +388,7 @@ export default function CreateTeamScreen() {
             <StepProgress step={2} title="Dados da equipe" />
 
             <View style={styles.field}>
-                <ThemedText variant="caption">Foto da equipe (opcional)</ThemedText>
-                <View style={styles.photoRow}>
+                <View style={styles.photoColumn}>
                     <View style={styles.photoWrap}>
                         <Pressable
                             accessibilityRole="button"
@@ -406,19 +408,29 @@ export default function CreateTeamScreen() {
                             </View>
                         ) : null}
                     </View>
+
                     {photo ? (
                         <View style={styles.photoActions}>
                             <Button title="Trocar foto" variant="neutral" size="small" onPress={pickPhoto} />
                             <Button title="Remover" variant="outline" size="small" onPress={() => setPhoto(null)} />
                         </View>
                     ) : (
-                        <ThemedText variant="caption" style={styles.muted}>
-                            PNG, JPG ou WEBP até 5 MB.
-                        </ThemedText>
+                        <>
+                            <ThemedText variant="label" style={styles.photoAddLabel}>
+                                Adicionar logo (opcional)
+                            </ThemedText>
+                            <ThemedText variant="caption" style={styles.muted}>
+                                PNG, JPG ou WEBP até 5 MB.
+                            </ThemedText>
+                        </>
                     )}
                 </View>
                 {errors.photo ? (
-                    <ThemedText variant="caption" accessibilityRole="alert" style={styles.errorText}>
+                    <ThemedText
+                        variant="caption"
+                        accessibilityRole="alert"
+                        style={[styles.errorText, styles.centered]}
+                    >
                         {errors.photo}
                     </ThemedText>
                 ) : null}
@@ -428,7 +440,8 @@ export default function CreateTeamScreen() {
                 label="Nome da equipe"
                 value={name}
                 onChangeText={setName}
-                maxLength={255}
+                maxLength={TEAM_NAME_MAX_LENGTH}
+                showCount
                 placeholder="Ex.: Falcões"
                 hint="Use um nome único para a sua equipe."
                 error={errors.name}
@@ -563,19 +576,18 @@ const styles = StyleSheet.create({
         backgroundColor: colors.primary,
     },
 
-    photoRow: {
-        flexDirection: 'row',
+    photoColumn: {
         alignItems: 'center',
-        gap: spacing.md,
+        gap: spacing.sm,
     },
     photoWrap: {
-        width: 96,
-        height: 96,
+        width: 128,
+        height: 128,
     },
     photo: {
-        width: 96,
-        height: 96,
-        borderRadius: 48,
+        width: 128,
+        height: 128,
+        borderRadius: 64,
         borderCurve: 'continuous',
         borderWidth: 1,
         borderColor: colors.primaryMuted,
@@ -586,11 +598,11 @@ const styles = StyleSheet.create({
     },
     photoAddBadge: {
         position: 'absolute',
-        bottom: -2,
-        right: -2,
-        width: 28,
-        height: 28,
-        borderRadius: 14,
+        bottom: 0,
+        right: 0,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: colors.primary,
@@ -601,8 +613,11 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
     },
+    photoAddLabel: {
+        color: colors.primaryDark,
+    },
     photoActions: {
-        flex: 1,
+        flexDirection: 'row',
         gap: spacing.xs,
     },
 

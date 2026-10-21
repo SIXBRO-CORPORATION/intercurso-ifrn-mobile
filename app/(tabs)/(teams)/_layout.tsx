@@ -5,23 +5,19 @@ export default function TeamsLayout() {
     return (
         <Stack
             screenOptions={{
-                headerLargeTitleEnabled: true,
+                headerLargeTitleEnabled: false,
                 headerShadowVisible: false,
                 headerTintColor: colors.ink,
                 headerStyle: { backgroundColor: colors.background },
                 headerTitleStyle: { fontFamily: fontFamily.bold, fontSize: 20, color: colors.ink },
-                headerLargeTitleStyle: { fontFamily: fontFamily.bold, fontSize: 28, color: colors.ink },
                 headerBackButtonDisplayMode: 'minimal',
             }}
         >
-            <Stack.Screen name="index" options={{ title: 'Equipes' }} />
-            <Stack.Screen name="team/new" options={{ title: 'Criar equipe', headerLargeTitleEnabled: false }} />
-            <Stack.Screen name="team/[id]" options={{ title: 'Equipe', headerLargeTitleEnabled: false }} />
-            <Stack.Screen
-                name="join/index"
-                options={{ title: 'Entrar em uma equipe', headerLargeTitleEnabled: false }}
-            />
-            <Stack.Screen name="join/[token]" options={{ title: 'Convite', headerLargeTitleEnabled: false }} />
+            <Stack.Screen name="index" options={{ title: '' }} />
+            <Stack.Screen name="team/new" options={{ title: 'Criar equipe' }} />
+            <Stack.Screen name="team/[id]" options={{ title: 'Equipe' }} />
+            <Stack.Screen name="join/index" options={{ title: 'Entrar em uma equipe' }} />
+            <Stack.Screen name="join/[token]" options={{ title: 'Convite' }} />
         </Stack>
     );
 }

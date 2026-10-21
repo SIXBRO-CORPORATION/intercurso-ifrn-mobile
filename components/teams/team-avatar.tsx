@@ -1,6 +1,6 @@
 import { Image, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
-import { colors, radius } from '@/theme';
+import { colors } from '@/theme';
 
 interface Tone {
     background: string;
@@ -32,7 +32,7 @@ function toneOf(name: string): Tone {
 }
 
 export function TeamAvatar({ name, photo, size = 48 }: { name: string; photo?: string | null; size?: number }) {
-    const box = { width: size, height: size, borderRadius: radius.md };
+    const box = { width: size, height: size, borderRadius: size / 2 };
 
     if (photo) {
         return (

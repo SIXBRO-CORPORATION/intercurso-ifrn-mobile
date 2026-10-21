@@ -46,8 +46,8 @@ export type TeamStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
 
 export const TeamStatusLabel: Record<TeamStatus, string> = {
     DRAFT: 'Rascunho',
-    SUBMITTED: 'Aprovação Pendente',
-    APPROVED: 'Aprovado',
+    SUBMITTED: 'Aguardando aprovação',
+    APPROVED: 'Aprovada',
     REJECTED: 'Rejeitado',
 };
 

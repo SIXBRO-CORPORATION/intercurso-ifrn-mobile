@@ -7,19 +7,42 @@ interface FormFieldProps extends TextInputProps {
     label: string;
     error?: string;
     hint?: string;
+    showCount?: boolean;
 }
 
-export function FormField({ label, error, hint, style, multiline, onFocus, onBlur, ...inputProps }: FormFieldProps) {
+export function FormField({
+    label,
+    error,
+    hint,
+    showCount,
+    style,
+    multiline,
+    maxLength,
+    value,
+    onFocus,
+    onBlur,
+    ...inputProps
+}: FormFieldProps) {
     const [focused, setFocused] = useState(false);
 
     const borderColor = error ? colors.danger : colors.primary;
     const borderWidth = error || focused ? 2 : 0;
+    const count = typeof value === 'string' ? value.length : 0;
 
     return (
         <View style={styles.wrap}>
-            <ThemedText variant="caption">{label}</ThemedText>
+            <View style={styles.labelRow}>
+                <ThemedText variant="caption">{label}</ThemedText>
+                {showCount && maxLength != null ? (
+                    <ThemedText variant="caption" style={styles.counter}>
+                        {count}/{maxLength}
+                    </ThemedText>
+                ) : null}
+            </View>
             <TextInput
                 {...inputProps}
+                value={value}
+                maxLength={maxLength}
                 accessibilityLabel={label}
                 accessibilityState={{ invalid: !!error }}
                 multiline={multiline}
@@ -54,6 +77,14 @@ export function FormField({ label, error, hint, style, multiline, onFocus, onBlu
 const styles = StyleSheet.create({
     wrap: {
         gap: spacing.xs,
+    },
+    labelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    counter: {
+        color: colors.textSecondary,
     },
     input: {
         minHeight: 48,
