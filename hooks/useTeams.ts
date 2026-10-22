@@ -150,6 +150,18 @@ export function useRejectTeam() {
     });
 }
 
+export function useReturnTeamToDraft() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ teamId }: TeamIdVariables) => teamService.returnTeamToDraft(teamId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.teams.all });
+            queryClient.invalidateQueries({ queryKey: queryKeys.seasons.all });
+        },
+    });
+}
+
 export function useDeleteTeam() {
     const queryClient = useQueryClient();
 

@@ -279,7 +279,7 @@ function TeamManagementContent({ teamId }: { teamId: string }) {
     const handleReject = async (reason: string) => {
         const ok = await run(
             () => rejectTeam.mutateAsync({ teamId: team.team_id, reason }),
-            'Equipe rejeitada e devolvida para rascunho.',
+            'Equipe rejeitada.',
             'Não foi possível rejeitar a equipe.'
         );
         if (ok) rejectSheetRef.current?.dismiss();
@@ -303,7 +303,7 @@ function TeamManagementContent({ teamId }: { teamId: string }) {
                     </ThemedText>
                 </View>
 
-                {team.status === 'DRAFT' && team.rejection_reason ? (
+                {team.status === 'REJECTED' && team.rejection_reason ? (
                     <View style={styles.rejectionBanner}>
                         <ThemedText variant="section" style={styles.rejectionBannerTitle}>
                             Última rejeição

@@ -193,6 +193,13 @@ export interface TeamDeleteResponse {
     team_id: string;
 }
 
+export interface TeamReturnToDraftResponse {
+    team_id: string;
+    name: string;
+    status: TeamStatus;
+    token_active: boolean;
+}
+
 export interface TeamRegenerateInviteResponse {
     team_id: string;
     invite_token: string;

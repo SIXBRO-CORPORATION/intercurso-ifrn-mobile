@@ -19,6 +19,7 @@ import {
     useLeaveTeam,
     useRegenerateInvite,
     useRemoveTeamMember,
+    useReturnTeamToDraft,
     useSelectCaptain,
     useSubmitTeam,
     useTeamDetails,
@@ -349,6 +350,7 @@ type ConfirmAction =
     | { type: 'remove'; member: TeamMember }
     | { type: 'leave' }
     | { type: 'delete' }
+    | { type: 'return-to-draft' }
     | null;
 
 interface ConfirmDialogContent {
@@ -398,6 +400,14 @@ function getConfirmDialogContent(action: ConfirmAction, team: TeamDetails | unde
                 confirmLabel: 'Excluir',
                 tone: 'danger',
             };
+        case 'return-to-draft':
+            return {
+                title: 'Voltar para rascunho?',
+                description:
+                    'O time volta a ficar editável e o convite é reativado. Faça os ajustes necessários e submeta novamente para aprovação.',
+                confirmLabel: 'Voltar para rascunho',
+                tone: 'primary',
+            };
         default:
             return null;
     }
@@ -414,10 +424,10 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
     const leaveTeam = useLeaveTeam();
     const deleteTeam = useDeleteTeam();
     const regenerateInvite = useRegenerateInvite();
+    const returnTeamToDraft = useReturnTeamToDraft();
 
     const [activeMember, setActiveMember] = useState<TeamMember | null>(null);
     const [showAllMembers, setShowAllMembers] = useState(false);
-    const [rejectionAcknowledged, setRejectionAcknowledged] = useState(false);
     const [inviteCopied, setInviteCopied] = useState(false);
     const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
     const [confirming, setConfirming] = useState(false);
@@ -502,6 +512,10 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
         setConfirmAction({ type: 'delete' });
     }, [closeActionsSheet]);
 
+    const confirmReturnToDraft = useCallback(() => {
+        setConfirmAction({ type: 'return-to-draft' });
+    }, []);
+
     const cancelConfirmAction = useCallback(() => {
         if (confirming) return;
         setConfirmAction(null);
@@ -551,12 +565,30 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                     if (ok) leaveScreen();
                     break;
                 }
+                case 'return-to-draft':
+                    await run(
+                        () => returnTeamToDraft.mutateAsync({ teamId: team.team_id }),
+                        'Time devolvido para rascunho.',
+                        'Não foi possível devolver o time para rascunho.'
+                    );
+                    break;
             }
         } finally {
             setConfirming(false);
             setConfirmAction(null);
         }
-    }, [confirmAction, deleteTeam, leaveScreen, leaveTeam, regenerateInvite, removeMember, run, selectCaptain, team]);
+    }, [
+        confirmAction,
+        deleteTeam,
+        leaveScreen,
+        leaveTeam,
+        regenerateInvite,
+        removeMember,
+        returnTeamToDraft,
+        run,
+        selectCaptain,
+        team,
+    ]);
 
     const handleConfirmSubmit = useCallback(async () => {
         if (!team) return;
@@ -593,8 +625,8 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
     const me = user?.user_id;
     const isOwner = !!me && team.owner_id === me;
     const isMember = !!me && team.members.some((member) => member.user_id === me);
-    const isRejectedView = team.status === 'DRAFT' && !!team.rejection_reason && !rejectionAcknowledged;
-    const isDraft = team.status === 'DRAFT' && !isRejectedView;
+    const isRejectedView = team.status === 'REJECTED';
+    const isDraft = team.status === 'DRAFT';
     const memberCount = team.members.length;
     const seasonYear = activeSeason.data?.season_id === team.season_id ? activeSeason.data?.year : undefined;
     const donationsPercent =
@@ -773,7 +805,7 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
 
                 {isOwner && isRejectedView ? (
                     <View style={styles.actions}>
-                        <Button title="Voltar para rascunho" icon="edit" onPress={() => setRejectionAcknowledged(true)} />
+                        <Button title="Voltar para rascunho" icon="edit" onPress={confirmReturnToDraft} />
                     </View>
                 ) : null}
             </ScrollView>

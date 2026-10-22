@@ -5,6 +5,7 @@ import type {
     TeamRegenerateInviteResponse,
     TeamRejectRequest,
     TeamRejectResponse,
+    TeamReturnToDraftResponse,
     TeamConfirmDonationResponse,
     TeamDetails,
     TeamInvitePreview,
@@ -82,6 +83,14 @@ class TeamService {
         const response = await httpClient.patch<TeamRejectResponse>(`${BASE_PATH}/${teamId}/reject`, request);
 
         return unwrap(response.data, 'O backend não retornou os dados da rejeição do time');
+    }
+
+    async returnTeamToDraft(teamId: string): Promise<TeamReturnToDraftResponse> {
+        const response = await httpClient.patch<TeamReturnToDraftResponse>(
+            `${BASE_PATH}/${teamId}/return-to-draft`
+        );
+
+        return unwrap(response.data, 'O backend não retornou os dados do time devolvido para rascunho');
     }
 
     async deleteTeam(teamId: string): Promise<TeamDeleteResponse> {
