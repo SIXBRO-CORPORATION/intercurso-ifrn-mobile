@@ -189,24 +189,36 @@ function ApprovedHero({ team, seasonYear }: { team: TeamDetails; seasonYear?: nu
     );
 }
 
-function RejectionNotice({ team }: { team: TeamDetails }) {
-    if (!team.rejection_reason) return null;
-
+function RejectedHero({ team }: { team: TeamDetails }) {
     return (
-        <View style={styles.reasonCard} accessibilityRole="alert">
-            <View style={styles.reasonHeaderRow}>
-                <Icon name="close" size={16} color={colors.danger} />
-                <ThemedText variant="overline" style={styles.dangerText}>
-                    {team.rejected_at ? `Rejeitada em ${formatCampusDate(team.rejected_at)}` : 'Rejeitada pelo monitor'}
-                </ThemedText>
+        <>
+            <View style={[styles.banner, styles.bannerDanger]}>
+                <View style={styles.bannerIconOnTint}>
+                    <Icon name="close" size={22} color={colors.surface} />
+                </View>
+                <View style={styles.bannerTexts}>
+                    <ThemedText variant="section" style={styles.onPrimaryText}>
+                        Equipe rejeitada
+                    </ThemedText>
+                    {team.rejected_at ? (
+                        <ThemedText variant="bodySm" style={styles.onPrimaryTextMuted}>
+                            Revisado pelo monitor em {formatCampusDate(team.rejected_at)}
+                        </ThemedText>
+                    ) : null}
+                </View>
             </View>
-            <ThemedText variant="body" style={styles.reasonText}>
-                {team.rejection_reason}
-            </ThemedText>
-            <ThemedText variant="bodySm" style={styles.muted}>
-                Ajuste o que for preciso e submeta novamente para o monitor.
-            </ThemedText>
-        </View>
+
+            {team.rejection_reason ? (
+                <View style={styles.reasonCard} accessibilityRole="alert">
+                    <ThemedText variant="overline" style={styles.dangerText}>
+                        Motivo
+                    </ThemedText>
+                    <ThemedText variant="body" style={styles.reasonText}>
+                        {team.rejection_reason}
+                    </ThemedText>
+                </View>
+            ) : null}
+        </>
     );
 }
 
@@ -405,6 +417,7 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
 
     const [activeMember, setActiveMember] = useState<TeamMember | null>(null);
     const [showAllMembers, setShowAllMembers] = useState(false);
+    const [rejectionAcknowledged, setRejectionAcknowledged] = useState(false);
     const [inviteCopied, setInviteCopied] = useState(false);
     const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
     const [confirming, setConfirming] = useState(false);
@@ -557,6 +570,10 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
         }
     }, [run, submitTeam, team]);
 
+    const handleContactMonitor = useCallback(() => {
+        toast.info('Em breve você vai poder falar com o monitor por aqui.');
+    }, [toast]);
+
     if (details.isPending) {
         return <LoadingState label="Carregando time…" />;
     }
@@ -579,7 +596,8 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
     const me = user?.user_id;
     const isOwner = !!me && team.owner_id === me;
     const isMember = !!me && team.members.some((member) => member.user_id === me);
-    const isDraft = team.status === 'DRAFT';
+    const isRejectedView = team.status === 'DRAFT' && !!team.rejection_reason && !rejectionAcknowledged;
+    const isDraft = team.status === 'DRAFT' && !isRejectedView;
     const memberCount = team.members.length;
     const seasonYear = activeSeason.data?.season_id === team.season_id ? activeSeason.data?.year : undefined;
     const donationsPercent =
@@ -596,9 +614,6 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
     const membersLabel = membersRange ? `${memberCount} (${membersRange})` : String(memberCount);
     const genderRule = team.gender_mode ? formatGenderRule(team) : null;
 
-    // can_submit/submit_blocked_reason vêm prontos do backend (GET /team/{id}), que já
-    // valida também a janela de inscrição (registration_start_date/registration_end_date) —
-    // regra que o front não tinha como checar sozinho.
     const submitBlockedReason = !team.can_submit ? team.submit_blocked_reason ?? null : null;
 
     const canShareInvite = isOwner && isDraft && !!team.invite_token && team.token_active;
@@ -638,21 +653,20 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                     />
                 }
             >
-                {isDraft ? (
-                    <>
-                        <DraftHero
-                            team={team}
-                            memberCount={memberCount}
-                            min={min}
-                            max={max}
-                            canManageInvite={isOwner}
-                            onCopyInvite={handleCopyInvite}
-                            copied={inviteCopied}
-                            onRegenerateInvite={handleRegenerateInvite}
-                            regenerating={regenerateInvite.isPending}
-                        />
-                        <RejectionNotice team={team} />
-                    </>
+                {isRejectedView ? (
+                    <RejectedHero team={team} />
+                ) : isDraft ? (
+                    <DraftHero
+                        team={team}
+                        memberCount={memberCount}
+                        min={min}
+                        max={max}
+                        canManageInvite={isOwner}
+                        onCopyInvite={handleCopyInvite}
+                        copied={inviteCopied}
+                        onRegenerateInvite={handleRegenerateInvite}
+                        regenerating={regenerateInvite.isPending}
+                    />
                 ) : team.status === 'SUBMITTED' ? (
                     <SubmittedHero team={team} />
                 ) : (
@@ -760,6 +774,12 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                     </View>
                 ) : null}
 
+                {isOwner && isRejectedView ? (
+                    <View style={styles.actions}>
+                        <Button title="Voltar para rascunho" icon="edit" onPress={() => setRejectionAcknowledged(true)} />
+                        <Button title="Falar com o monitor" variant="neutral" onPress={handleContactMonitor} />
+                    </View>
+                ) : null}
             </ScrollView>
 
             <BottomSheet ref={memberSheetRef} onDismiss={() => setActiveMember(null)} snapPoints={['40%']}>
@@ -1029,11 +1049,6 @@ const styles = StyleSheet.create({
         borderRadius: radius.lg,
         borderCurve: 'continuous',
         backgroundColor: colors.dangerSoft,
-    },
-    reasonHeaderRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.xxs,
     },
     reasonText: {
         color: colors.ink,
