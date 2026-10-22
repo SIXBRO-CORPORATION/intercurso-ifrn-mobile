@@ -570,9 +570,6 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
         }
     }, [run, submitTeam, team]);
 
-    const handleContactMonitor = useCallback(() => {
-        toast.info('Em breve você vai poder falar com o monitor por aqui.');
-    }, [toast]);
 
     if (details.isPending) {
         return <LoadingState label="Carregando time…" />;
@@ -777,7 +774,6 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                 {isOwner && isRejectedView ? (
                     <View style={styles.actions}>
                         <Button title="Voltar para rascunho" icon="edit" onPress={() => setRejectionAcknowledged(true)} />
-                        <Button title="Falar com o monitor" variant="neutral" onPress={handleContactMonitor} />
                     </View>
                 ) : null}
             </ScrollView>
