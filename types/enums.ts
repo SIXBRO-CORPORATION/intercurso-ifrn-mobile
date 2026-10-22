@@ -62,7 +62,7 @@ export const TeamMemberRoleLabel: Record<TeamMemberRole, string> = {
 export type DonationStatus = 'PENDING_DONATION' | 'DONATION_CONFIRMED';
 
 export const DonationStatusLabel: Record<DonationStatus, string> = {
-    PENDING_DONATION: 'Aguardando doação',
+    PENDING_DONATION: 'Doação pendente',
     DONATION_CONFIRMED: 'Doação confirmada',
 };
 

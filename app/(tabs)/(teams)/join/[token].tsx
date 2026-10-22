@@ -88,6 +88,20 @@ function DonationBanner() {
     );
 }
 
+function CloseButton({ onPress }: { onPress: () => void }) {
+    return (
+        <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Fechar"
+            onPress={onPress}
+            hitSlop={8}
+            style={styles.closeButton}
+        >
+            <Icon name="close" size={22} color={colors.ink} />
+        </Pressable>
+    );
+}
+
 export default function JoinTeamScreen() {
     const { token } = useLocalSearchParams<{ token: string }>();
     const toast = useToast();
@@ -98,27 +112,49 @@ export default function JoinTeamScreen() {
 
     const handleClose = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
+    const screenHeader = <Stack.Screen options={{ headerShown: false }} />;
+
     if (isInitializing) {
-        return <LoadingState label="Carregando…" />;
+        return (
+            <>
+                {screenHeader}
+                <LoadingState label="Carregando…" />
+            </>
+        );
     }
 
     if (!isAuthenticated) {
-        return <LoginPrompt message="Entre com sua conta SUAP para ver o convite e entrar no time." />;
+        return (
+            <>
+                {screenHeader}
+                <LoginPrompt message="Entre com sua conta SUAP para ver o convite e entrar no time." />
+            </>
+        );
     }
 
     if (preview.isPending) {
-        return <LoadingState label="Carregando convite…" />;
+        return (
+            <>
+                {screenHeader}
+                <CloseButton onPress={handleClose} />
+                <LoadingState label="Carregando convite…" />
+            </>
+        );
     }
 
     if (preview.isError) {
         const clientError = preview.error instanceof ApiError && preview.error.status >= 400 && preview.error.status < 500;
         return (
-            <ErrorState
-                title="Convite indisponível"
-                description={friendlyErrorMessage(preview.error, 'Não foi possível carregar o convite.')}
-                onRetry={clientError ? undefined : () => preview.refetch()}
-                retrying={preview.isRefetching}
-            />
+            <>
+                {screenHeader}
+                <CloseButton onPress={handleClose} />
+                <ErrorState
+                    title="Convite indisponível"
+                    description={friendlyErrorMessage(preview.error, 'Não foi possível carregar o convite.')}
+                    onRetry={clientError ? undefined : () => preview.refetch()}
+                    retrying={preview.isRefetching}
+                />
+            </>
         );
     }
 
@@ -147,16 +183,8 @@ export default function JoinTeamScreen() {
 
     return (
         <ScrollView contentContainerStyle={styles.content}>
-            <Stack.Screen options={{ headerShown: false }} />
-            <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Fechar"
-                onPress={handleClose}
-                hitSlop={8}
-                style={styles.closeButton}
-            >
-                <Icon name="close" size={22} color={colors.ink} />
-            </Pressable>
+            {screenHeader}
+            <CloseButton onPress={handleClose} />
 
             <ThemedText variant="overline" style={styles.inviteLabel}>
                 Você foi convidado

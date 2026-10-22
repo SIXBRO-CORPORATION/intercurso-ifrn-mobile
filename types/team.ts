@@ -1,4 +1,12 @@
-import type { DonationStatus, Gender, ModalityGenderMode, TeamMemberRole, TeamStatus } from './enums';
+import type {
+    DonationStatus,
+    Gender,
+    MatchStatus,
+    MatchType,
+    ModalityGenderMode,
+    TeamMemberRole,
+    TeamStatus,
+} from './enums';
 
 export interface TeamListFilters {
     status?: TeamStatus;
@@ -53,6 +61,7 @@ export interface TeamMember {
     role: TeamMemberRole;
     donation_status: DonationStatus;
     gender?: Gender | null;
+    joined_at?: string | null;
 }
 
 export interface TeamModalityRules {
@@ -61,6 +70,23 @@ export interface TeamModalityRules {
     gender_mode?: ModalityGenderMode | null;
     min_male_members?: number | null;
     min_female_members?: number | null;
+}
+
+export interface TeamNextMatchTeam {
+    team_id: string;
+    name: string;
+    photo?: string | null;
+}
+
+export interface TeamNextMatch {
+    match_id: string;
+    bracket_id: string;
+    group_name?: string | null;
+    match_type: MatchType;
+    status: MatchStatus;
+    scheduled_date?: string | null;
+    team1?: TeamNextMatchTeam | null;
+    team2?: TeamNextMatchTeam | null;
 }
 
 export interface TeamDetails extends TeamModalityRules {
@@ -84,6 +110,9 @@ export interface TeamDetails extends TeamModalityRules {
     members: TeamMember[];
     donations_confirmed: number;
     donations_total: number;
+    can_submit: boolean;
+    submit_blocked_reason?: string | null;
+    next_match?: TeamNextMatch | null;
 }
 
 export interface TeamInvitePreview extends TeamModalityRules {

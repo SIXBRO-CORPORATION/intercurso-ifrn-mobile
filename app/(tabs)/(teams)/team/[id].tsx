@@ -28,10 +28,12 @@ import { TeamMemberRoleLabel, type TeamStatus } from '@/types/enums';
 import type { TeamDetails, TeamMember } from '@/types/team';
 import { colors, radius, spacing } from '@/theme';
 import { friendlyErrorMessage } from '@/utils/api-error-message';
-import { formatCampusDate, formatCampusDateTime } from '@/utils/campus-time';
+import { formatCampusDate, formatCampusDateTime, formatCampusShortDate } from '@/utils/campus-time';
 import { formatGenderRule, formatMembersRange } from '@/utils/modality-gender';
 import { describeMissingQuota, getGenderQuota } from '@/utils/team-gender-quota';
 import { buildInviteLink } from '@/utils/team-invite';
+
+const APPROVED_MEMBERS_PREVIEW_COUNT = 4;
 
 function plural(count: number, one: string, many: string): string {
     return `${count} ${count === 1 ? one : many}`;
@@ -125,56 +127,86 @@ function SubmittedHero({ team }: { team: TeamDetails }) {
     );
 }
 
-function ApprovedHero({ team, seasonYear }: { team: TeamDetails; seasonYear?: number }) {
+function NextMatchCard({ team, nextMatch }: { team: TeamDetails; nextMatch: NonNullable<TeamDetails['next_match']> }) {
+    const opponent =
+        nextMatch.team1?.team_id === team.team_id ? nextMatch.team2 : nextMatch.team1;
+    const self = nextMatch.team1?.team_id === team.team_id ? nextMatch.team1 : nextMatch.team2;
+
     return (
-        <View style={[styles.banner, styles.bannerSuccess]}>
-            <View style={styles.bannerIconOnTint}>
-                <Icon name="check" size={22} color={colors.surface} />
-            </View>
-            <View style={styles.bannerTexts}>
-                <ThemedText variant="section" style={styles.onPrimaryText}>
-                    Equipe aprovada!
+        <View style={styles.nextMatchCard}>
+            {nextMatch.group_name ? (
+                <ThemedText variant="overline" style={styles.muted}>
+                    {nextMatch.group_name}
                 </ThemedText>
-                <ThemedText variant="bodySm" style={styles.onPrimaryTextMuted}>
-                    {seasonYear
-                        ? `Você está dentro do Intercurso ${seasonYear}.`
-                        : `"${team.name}" está confirmada para a temporada.`}
+            ) : null}
+            <View style={styles.nextMatchRow}>
+                <View style={styles.nextMatchTeam}>
+                    <TeamAvatar name={self?.name ?? team.name} photo={self?.photo} size={40} />
+                    <ThemedText variant="bodySm" numberOfLines={1} style={styles.nextMatchTeamName}>
+                        {self?.name ?? team.name}
+                    </ThemedText>
+                </View>
+                <ThemedText variant="section" style={styles.muted}>
+                    vs
                 </ThemedText>
+                <View style={styles.nextMatchTeam}>
+                    <TeamAvatar name={opponent?.name ?? 'A definir'} photo={opponent?.photo} size={40} />
+                    <ThemedText variant="bodySm" numberOfLines={1} style={styles.nextMatchTeamName}>
+                        {opponent?.name ?? 'A definir'}
+                    </ThemedText>
+                </View>
             </View>
+            {nextMatch.scheduled_date ? (
+                <ThemedText variant="bodySm" style={styles.muted}>
+                    {formatCampusDateTime(nextMatch.scheduled_date)}
+                </ThemedText>
+            ) : null}
         </View>
     );
 }
 
-function RejectedHero({ team }: { team: TeamDetails }) {
+function ApprovedHero({ team, seasonYear }: { team: TeamDetails; seasonYear?: number }) {
     return (
         <>
-            <View style={[styles.banner, styles.bannerDanger]}>
+            <View style={[styles.banner, styles.bannerSuccess]}>
                 <View style={styles.bannerIconOnTint}>
-                    <Icon name="close" size={22} color={colors.surface} />
+                    <Icon name="check" size={22} color={colors.surface} />
                 </View>
                 <View style={styles.bannerTexts}>
                     <ThemedText variant="section" style={styles.onPrimaryText}>
-                        Equipe rejeitada
+                        Equipe aprovada!
                     </ThemedText>
-                    {team.rejected_at ? (
-                        <ThemedText variant="bodySm" style={styles.onPrimaryTextMuted}>
-                            Revisado pelo monitor em {formatCampusDate(team.rejected_at)}
-                        </ThemedText>
-                    ) : null}
+                    <ThemedText variant="bodySm" style={styles.onPrimaryTextMuted}>
+                        {seasonYear
+                            ? `Você está dentro do Intercurso ${seasonYear}.`
+                            : `"${team.name}" está confirmada para a temporada.`}
+                    </ThemedText>
                 </View>
             </View>
 
-            {team.rejection_reason ? (
-                <View style={styles.reasonCard} accessibilityRole="alert">
-                    <ThemedText variant="overline" style={styles.dangerText}>
-                        Motivo
-                    </ThemedText>
-                    <ThemedText variant="body" style={styles.reasonText}>
-                        {team.rejection_reason}
-                    </ThemedText>
-                </View>
-            ) : null}
+            {team.next_match ? <NextMatchCard team={team} nextMatch={team.next_match} /> : null}
         </>
+    );
+}
+
+function RejectionNotice({ team }: { team: TeamDetails }) {
+    if (!team.rejection_reason) return null;
+
+    return (
+        <View style={styles.reasonCard} accessibilityRole="alert">
+            <View style={styles.reasonHeaderRow}>
+                <Icon name="close" size={16} color={colors.danger} />
+                <ThemedText variant="overline" style={styles.dangerText}>
+                    {team.rejected_at ? `Rejeitada em ${formatCampusDate(team.rejected_at)}` : 'Rejeitada pelo monitor'}
+                </ThemedText>
+            </View>
+            <ThemedText variant="body" style={styles.reasonText}>
+                {team.rejection_reason}
+            </ThemedText>
+            <ThemedText variant="bodySm" style={styles.muted}>
+                Ajuste o que for preciso e submeta novamente para o monitor.
+            </ThemedText>
+        </View>
     );
 }
 
@@ -372,7 +404,7 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
     const regenerateInvite = useRegenerateInvite();
 
     const [activeMember, setActiveMember] = useState<TeamMember | null>(null);
-    const [editingAfterRejection, setEditingAfterRejection] = useState(false);
+    const [showAllMembers, setShowAllMembers] = useState(false);
     const [inviteCopied, setInviteCopied] = useState(false);
     const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
     const [confirming, setConfirming] = useState(false);
@@ -521,14 +553,9 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
             'Não foi possível submeter o time.'
         );
         if (ok) {
-            setEditingAfterRejection(false);
             submitSheetRef.current?.dismiss();
         }
     }, [run, submitTeam, team]);
-
-    const handleContactMonitor = useCallback(() => {
-        toast.info('Em breve você vai poder falar com o monitor por aqui.');
-    }, [toast]);
 
     if (details.isPending) {
         return <LoadingState label="Carregando time…" />;
@@ -552,11 +579,11 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
     const me = user?.user_id;
     const isOwner = !!me && team.owner_id === me;
     const isMember = !!me && team.members.some((member) => member.user_id === me);
-    const isDraft = team.status === 'DRAFT' || (team.status === 'REJECTED' && editingAfterRejection);
+    const isDraft = team.status === 'DRAFT';
     const memberCount = team.members.length;
-    const registrationOpen =
-        activeSeason.data?.status === 'REGISTRATION_OPEN' && activeSeason.data.season_id === team.season_id;
     const seasonYear = activeSeason.data?.season_id === team.season_id ? activeSeason.data?.year : undefined;
+    const donationsPercent =
+        team.donations_total > 0 ? Math.round((team.donations_confirmed / team.donations_total) * 100) : null;
 
     const min = team.min_members ?? undefined;
     const max = team.max_members ?? undefined;
@@ -569,14 +596,10 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
     const membersLabel = membersRange ? `${memberCount} (${membersRange})` : String(memberCount);
     const genderRule = team.gender_mode ? formatGenderRule(team) : null;
 
-    let submitBlockedReason: string | null = null;
-    if (!registrationOpen) {
-        submitBlockedReason = 'Período de inscrições encerrado. Não é mais possível submeter times.';
-    } else if (missing > 0) {
-        submitBlockedReason = `Faltam ${plural(missing, 'integrante', 'integrantes')} para o mínimo de ${min}.`;
-    } else if (quotaMessage) {
-        submitBlockedReason = quotaMessage;
-    }
+    // can_submit/submit_blocked_reason vêm prontos do backend (GET /team/{id}), que já
+    // valida também a janela de inscrição (registration_start_date/registration_end_date) —
+    // regra que o front não tinha como checar sozinho.
+    const submitBlockedReason = !team.can_submit ? team.submit_blocked_reason ?? null : null;
 
     const canShareInvite = isOwner && isDraft && !!team.invite_token && team.token_active;
     const canManageActions = isDraft && (isOwner || isMember);
@@ -616,23 +639,24 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                 }
             >
                 {isDraft ? (
-                    <DraftHero
-                        team={team}
-                        memberCount={memberCount}
-                        min={min}
-                        max={max}
-                        canManageInvite={isOwner}
-                        onCopyInvite={handleCopyInvite}
-                        copied={inviteCopied}
-                        onRegenerateInvite={handleRegenerateInvite}
-                        regenerating={regenerateInvite.isPending}
-                    />
+                    <>
+                        <DraftHero
+                            team={team}
+                            memberCount={memberCount}
+                            min={min}
+                            max={max}
+                            canManageInvite={isOwner}
+                            onCopyInvite={handleCopyInvite}
+                            copied={inviteCopied}
+                            onRegenerateInvite={handleRegenerateInvite}
+                            regenerating={regenerateInvite.isPending}
+                        />
+                        <RejectionNotice team={team} />
+                    </>
                 ) : team.status === 'SUBMITTED' ? (
                     <SubmittedHero team={team} />
-                ) : team.status === 'APPROVED' ? (
-                    <ApprovedHero team={team} seasonYear={seasonYear} />
                 ) : (
-                    <RejectedHero team={team} />
+                    <ApprovedHero team={team} seasonYear={seasonYear} />
                 )}
 
                 {genderRule ? (
@@ -660,6 +684,12 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                                 Ver chaves
                             </ThemedText>
                         </Pressable>
+                    ) : team.status === 'SUBMITTED' && donationsPercent !== null ? (
+                        <View style={styles.donationBadge}>
+                            <ThemedText variant="caption" style={styles.warningText}>
+                                {`${donationsPercent}% das doações`}
+                            </ThemedText>
+                        </View>
                     ) : null}
                 </View>
 
@@ -683,7 +713,10 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                 ) : null}
 
                 <View style={styles.membersList}>
-                    {team.members.map((member) => (
+                    {(team.status === 'APPROVED' && !showAllMembers
+                        ? team.members.slice(0, APPROVED_MEMBERS_PREVIEW_COUNT)
+                        : team.members
+                    ).map((member) => (
                         <MemberCard
                             key={member.user_id}
                             name={member.name}
@@ -693,6 +726,18 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                             onPress={isOwner && isDraft ? () => openMemberSheet(member) : undefined}
                         />
                     ))}
+                    {team.status === 'APPROVED' && !showAllMembers && memberCount > APPROVED_MEMBERS_PREVIEW_COUNT ? (
+                        <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`Ver mais ${memberCount - APPROVED_MEMBERS_PREVIEW_COUNT} integrantes`}
+                            onPress={() => setShowAllMembers(true)}
+                            hitSlop={8}
+                        >
+                            <ThemedText variant="section" style={styles.link}>
+                                {`+ ${memberCount - APPROVED_MEMBERS_PREVIEW_COUNT} integrantes`}
+                            </ThemedText>
+                        </Pressable>
+                    ) : null}
                 </View>
 
                 {team.status === 'SUBMITTED' ? (
@@ -715,12 +760,6 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                     </View>
                 ) : null}
 
-                {isOwner && team.status === 'REJECTED' && !editingAfterRejection ? (
-                    <View style={styles.actions}>
-                        <Button title="Voltar para rascunho" icon="edit" onPress={() => setEditingAfterRejection(true)} />
-                        <Button title="Falar com o monitor" variant="neutral" onPress={handleContactMonitor} />
-                    </View>
-                ) : null}
             </ScrollView>
 
             <BottomSheet ref={memberSheetRef} onDismiss={() => setActiveMember(null)} snapPoints={['40%']}>
@@ -733,7 +772,9 @@ function TeamDetailsContent({ teamId }: { teamId: string }) {
                                     {activeMember.name}
                                 </ThemedText>
                                 <ThemedText variant="body" style={styles.muted}>
-                                    {TeamMemberRoleLabel[activeMember.role]}
+                                    {activeMember.joined_at
+                                        ? `${TeamMemberRoleLabel[activeMember.role]} · entrou em ${formatCampusShortDate(activeMember.joined_at)}`
+                                        : TeamMemberRoleLabel[activeMember.role]}
                                 </ThemedText>
                             </View>
                         </View>
@@ -989,8 +1030,20 @@ const styles = StyleSheet.create({
         borderCurve: 'continuous',
         backgroundColor: colors.dangerSoft,
     },
+    reasonHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xxs,
+    },
     reasonText: {
         color: colors.ink,
+    },
+    donationBadge: {
+        paddingHorizontal: spacing.sm,
+        paddingVertical: spacing.xxs,
+        borderRadius: radius.pill,
+        borderCurve: 'continuous',
+        backgroundColor: colors.warningSoft,
     },
 
     timelineCard: {
@@ -1039,6 +1092,30 @@ const styles = StyleSheet.create({
     },
     membersList: {
         gap: spacing.sm,
+    },
+
+    nextMatchCard: {
+        gap: spacing.sm,
+        padding: spacing.md,
+        borderRadius: radius.xl,
+        borderCurve: 'continuous',
+        borderWidth: 1,
+        borderColor: colors.border,
+        backgroundColor: colors.surface,
+    },
+    nextMatchRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: spacing.sm,
+    },
+    nextMatchTeam: {
+        flex: 1,
+        alignItems: 'center',
+        gap: spacing.xxs,
+    },
+    nextMatchTeamName: {
+        textAlign: 'center',
     },
 
     infoBanner: {
