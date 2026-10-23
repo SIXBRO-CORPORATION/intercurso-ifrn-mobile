@@ -14,7 +14,7 @@ export default function ProfileLayout() {
                 headerBackButtonDisplayMode: 'minimal',
             }}
         >
-            <Stack.Screen name="index" options={{ title: 'Perfil' }} />
+            <Stack.Screen name="index" options={{ title: '' }} />
         </Stack>
     );
 }

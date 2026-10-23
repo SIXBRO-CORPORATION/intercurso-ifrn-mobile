@@ -12,9 +12,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/providers/ToastProvider';
 import { colors, radius, spacing } from '@/theme';
 import { UserRoleLabel } from '@/types/enums';
+import { formatCampusLabel } from '@/utils/campus-label';
 
 const APP_NAME = Constants.expoConfig?.name ?? 'Intercurso IFRN';
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
+
+const APP_DISPLAY_NAME = 'Intercurso 2026';
 
 const AVATAR_SIZE = 96;
 const MENU_ICON_SIZE = 40;
@@ -50,10 +53,12 @@ export default function ProfileScreen() {
         return <LoginPrompt message="Entre com sua conta SUAP para ver seu perfil." />;
     }
 
-    const subtitle = [UserRoleLabel[user.role], user.campus].filter(Boolean).join(' · ');
+    const subtitle = [UserRoleLabel[user.role], formatCampusLabel(user.campus)].filter(Boolean).join(' · ');
 
     return (
         <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
+            <ThemedText variant="largeTitle">Perfil</ThemedText>
+
             <View style={styles.identityCard}>
                 <View style={styles.avatarWrap}>
                     <View style={styles.avatar}>
@@ -110,7 +115,7 @@ export default function ProfileScreen() {
             />
 
             <ThemedText variant="caption" style={styles.footer}>
-                {APP_NAME} · v{APP_VERSION}
+                {APP_DISPLAY_NAME} · v{APP_VERSION}
             </ThemedText>
         </ScrollView>
     );

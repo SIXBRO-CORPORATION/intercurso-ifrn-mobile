@@ -48,7 +48,6 @@ export function LoginPrompt({ message, title = 'Entre para participar', icon = '
 
             <View style={styles.actions}>
                 <Button title="Entrar com SUAP" icon="lock" loading={isLoading} onPress={handleLogin} />
-                <Button title="Continuar como visitante" variant="outline" disabled />
             </View>
         </View>
     );
