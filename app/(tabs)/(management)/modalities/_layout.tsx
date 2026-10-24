@@ -8,7 +8,10 @@ export default function ModalitiesLayout() {
             screenOptions={{
                 headerLargeTitleEnabled: true,
                 headerShadowVisible: false,
-                headerTitleStyle: { color: colors.label, fontFamily: fontFamily.display },
+                headerTintColor: colors.ink,
+                headerStyle: { backgroundColor: colors.background },
+                headerTitleStyle: { fontFamily: fontFamily.bold, fontSize: 20, color: colors.ink },
+                headerLargeTitleStyle: { fontFamily: fontFamily.bold, fontSize: 28, color: colors.ink },
                 headerBackButtonDisplayMode: 'minimal',
                 headerRight: () => <HeaderAddButton href="/modalities/create" label="Criar modalidade" />,
             }}
@@ -18,9 +21,8 @@ export default function ModalitiesLayout() {
                 name="create"
                 options={{
                     title: 'Nova modalidade',
-                    presentation: 'formSheet',
-                    sheetGrabberVisible: true,
-                    sheetAllowedDetents: [0.9, 1],
+                    presentation: 'modal',
+                    animation: 'slide_from_bottom',
                     headerLeft: () => <CancelButton />,
                     headerRight: undefined,
                 }}

@@ -8,7 +8,7 @@ import { Stepper } from '@/components/form/stepper';
 import { ListRow } from '@/components/list-row';
 import { ThemedText } from '@/components/themed-text';
 import { useCreateModality } from '@/hooks/useModalities';
-import { friendlyErrorMessage } from '@/utils/api-error-message';
+import { friendlyErrorMessage, fieldErrors } from '@/utils/api-error-message';
 import { ModalityGenderModeLabel, ScoreTypeLabel, type ModalityGenderMode, type ScoreType } from '@/types/enums';
 import type { ModalityCreateRequest } from '@/types/modality';
 import { colors, spacing } from '@/theme';
@@ -99,6 +99,17 @@ export default function CreateModalityScreen() {
             await createModality.mutateAsync(request);
             router.back();
         } catch (error) {
+            const backendErrors = fieldErrors(error);
+            const mapped: Errors = {};
+            if (backendErrors?.name) mapped.name = backendErrors.name;
+            const quotaMessage = backendErrors?.max_members ?? backendErrors?.min_members;
+            if (quotaMessage) mapped.minFemale = quotaMessage;
+
+            if (Object.keys(mapped).length > 0) {
+                setErrors({ ...nextErrors, ...mapped });
+                return;
+            }
+
             setSubmitError(friendlyErrorMessage(error, 'Não foi possível criar a modalidade.'));
         }
     };
@@ -185,24 +196,6 @@ export default function CreateModalityScreen() {
                 Configuração da partida
             </ThemedText>
 
-            <ListRow
-                title="Número de períodos"
-                emphasis="regular"
-                trailing={<Stepper value={periods} onChange={setPeriods} min={1} accessibilityLabel="Número de períodos" />}
-            />
-            <ListRow
-                title="Duração do período (min)"
-                emphasis="regular"
-                trailing={
-                    <Stepper
-                        value={periodDuration}
-                        onChange={setPeriodDuration}
-                        min={1}
-                        accessibilityLabel="Duração do período em minutos"
-                    />
-                }
-            />
-
             <View style={styles.field}>
                 <ThemedText variant="caption">Sistema de pontuação</ThemedText>
                 <Segmented options={SCORE_OPTIONS} value={scoreType} onChange={setScoreType} />
@@ -247,7 +240,29 @@ export default function CreateModalityScreen() {
                         }
                     />
                 </>
-            ) : null}
+            ) : (
+                <>
+                    <ListRow
+                        title="Número de períodos"
+                        emphasis="regular"
+                        trailing={
+                            <Stepper value={periods} onChange={setPeriods} min={1} accessibilityLabel="Número de períodos" />
+                        }
+                    />
+                    <ListRow
+                        title="Duração do período (min)"
+                        emphasis="regular"
+                        trailing={
+                            <Stepper
+                                value={periodDuration}
+                                onChange={setPeriodDuration}
+                                min={1}
+                                accessibilityLabel="Duração do período em minutos"
+                            />
+                        }
+                    />
+                </>
+            )}
 
             {submitError ? (
                 <ThemedText variant="caption" accessibilityRole="alert" style={styles.errorText}>

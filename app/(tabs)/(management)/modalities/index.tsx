@@ -35,6 +35,13 @@ function GenderPill({ mode, muted }: { mode: ModalityGenderMode; muted: boolean 
 
 function configLabel(modality: ModalitySummaryResponse): string {
     const scoreLabel = ScoreTypeLabel[modality.score_type];
+
+    if (modality.score_type === 'SETS') {
+        if (modality.sets_to_win == null) return scoreLabel;
+        const sets = modality.sets_to_win === 1 ? '1 set' : `${modality.sets_to_win} sets`;
+        return `${sets} · ${scoreLabel}`;
+    }
+
     const periods = modality.num_periods === 1 ? '1 período' : `${modality.num_periods} períodos`;
     return `${periods} · ${modality.period_durations_minutes} min · ${scoreLabel}`;
 }

@@ -12,4 +12,7 @@ export interface ModalitySummaryResponse {
     num_periods: number;
     period_durations_minutes: number;
     score_type: ScoreType;
+    points_per_set?: number | null;
+    final_set_points?: number | null;
+    sets_to_win?: number | null;
 }

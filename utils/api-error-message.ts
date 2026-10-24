@@ -11,15 +11,29 @@ function fieldLabel(location: string): string {
     return FIELD_LABELS[field] ?? field;
 }
 
-export function validationMessage(response: Pick<ApiResponse<unknown>, 'data'> | undefined): string | null {
+function rawFieldErrors(response: Pick<ApiResponse<unknown>, 'data'> | undefined): Record<string, string> | null {
     const errors = response?.data;
     if (!errors || typeof errors !== 'object' || Array.isArray(errors)) return null;
 
-    const lines = Object.entries(errors as Record<string, unknown>)
-        .filter((entry): entry is [string, string] => typeof entry[1] === 'string')
-        .map(([location, message]) => `${fieldLabel(location)}: ${message}`);
+    const entries = Object.entries(errors as Record<string, unknown>).filter(
+        (entry): entry is [string, string] => typeof entry[1] === 'string'
+    );
+    return entries.length > 0 ? Object.fromEntries(entries) : null;
+}
 
+export function validationMessage(response: Pick<ApiResponse<unknown>, 'data'> | undefined): string | null {
+    const errors = rawFieldErrors(response);
+    if (!errors) return null;
+
+    const lines = Object.entries(errors).map(([location, message]) => `${fieldLabel(location)}: ${message}`);
     return lines.length > 0 ? lines.join('\n') : null;
+}
+
+export function fieldErrors(error: unknown): Record<string, string> | null {
+    if (error instanceof ApiError && (error.code === 'VALIDATION_ERROR' || error.code === 'BUSINESS_ERROR')) {
+        return rawFieldErrors(error.data);
+    }
+    return null;
 }
 
 export function friendlyErrorMessage(error: unknown, fallback: string): string {
@@ -27,7 +41,7 @@ export function friendlyErrorMessage(error: unknown, fallback: string): string {
         if (error.status === 0) {
             return 'Sem conexão. Verifique sua internet e tente de novo.';
         }
-        if (error.code === 'VALIDATION_ERROR') {
+        if (error.code === 'VALIDATION_ERROR' || error.code === 'BUSINESS_ERROR') {
             const details = validationMessage(error.data);
             if (details) return details;
         }

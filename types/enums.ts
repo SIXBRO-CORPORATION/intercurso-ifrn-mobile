@@ -16,9 +16,9 @@ export const GenderLabel: Record<Gender, string> = {
 export type ModalityGenderMode = 'MALE' | 'FEMALE' | 'MIXED';
 
 export const ModalityGenderModeLabel: Record<ModalityGenderMode, string> = {
-    MALE: 'Masculina',
-    FEMALE: 'Feminina',
-    MIXED: 'Mista',
+    MALE: 'Masculino',
+    FEMALE: 'Feminino',
+    MIXED: 'Misto',
 };
 
 export type ModalityFormat =
