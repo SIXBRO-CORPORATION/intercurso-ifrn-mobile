@@ -21,6 +21,7 @@ export default function ModalitiesLayout() {
                 name="create"
                 options={{
                     title: 'Nova modalidade',
+                    headerTitleAlign: 'center',
                     presentation: 'modal',
                     animation: 'slide_from_bottom',
                     headerLeft: () => <CancelButton />,
