@@ -102,7 +102,7 @@ function EditDatesForm({ season, mode }: { season: SeasonDetails; mode: Mode }) 
                     value={end}
                     onChange={setEnd}
                     minimumDate={new Date()}
-                    hint="Inclui o dia inteiro, no horário de Natal."
+                    hint="Inclui o dia inteiro, no horário de Brasília."
                     error={errors.end}
                 />
             ) : null}

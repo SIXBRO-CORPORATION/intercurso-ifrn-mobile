@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { Button } from '@/components/button';
@@ -13,6 +13,8 @@ interface ConfirmDialogProps {
     cancelLabel?: string;
     tone?: 'primary' | 'danger';
     confirming?: boolean;
+    confirmDisabled?: boolean;
+    children?: ReactNode;
     onConfirm: () => void;
     onCancel: () => void;
 }
@@ -25,6 +27,8 @@ export function ConfirmDialog({
     cancelLabel = 'Cancelar',
     tone = 'primary',
     confirming = false,
+    confirmDisabled = false,
+    children,
     onConfirm,
     onCancel,
 }: ConfirmDialogProps) {
@@ -67,12 +71,14 @@ export function ConfirmDialog({
                             {description}
                         </ThemedText>
                     ) : null}
+                    {children}
                     <View style={styles.actions}>
                         <Button
                             title={confirmLabel}
                             variant={tone === 'danger' ? 'danger' : 'primary'}
                             onPress={onConfirm}
                             loading={confirming}
+                            disabled={confirmDisabled}
                         />
                         <Button title={cancelLabel} variant="neutral" onPress={onCancel} disabled={confirming} />
                     </View>

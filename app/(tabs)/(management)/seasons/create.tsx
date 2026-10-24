@@ -10,7 +10,7 @@ import { Stepper } from '@/components/form/stepper';
 import { Icon } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
 import { useAllModalities } from '@/hooks/useModalities';
-import { useCreateSeason, useSeasons } from '@/hooks/useSeasons';
+import { useActiveSeason, useCreateSeason } from '@/hooks/useSeasons';
 import { friendlyErrorMessage } from '@/utils/api-error-message';
 import type { SeasonCreateRequest, SeasonRulesDocumentFile } from '@/types/season';
 import { colors, radius, spacing } from '@/theme';
@@ -18,6 +18,7 @@ import { getCampusYear, pickerDateTimeToIso } from '@/utils/campus-time';
 
 const MIN_YEAR = 2000;
 const MAX_YEAR = 2100;
+const VISIBLE_MODALITIES = 6;
 const DEFAULT_WINDOW_DAYS = 10;
 const MAX_RULES_DOCUMENT_BYTES = 10 * 1024 * 1024;
 const RULES_DOCUMENT_TYPES = [
@@ -36,8 +37,8 @@ function formatFileSize(bytes: number): string {
 export default function CreateSeasonScreen() {
     const modalities = useAllModalities();
     const createSeason = useCreateSeason();
-    const seasons = useSeasons();
-    const activeSeason = seasons.data?.find((season) => season.active);
+    const activeSeasonQuery = useActiveSeason();
+    const activeSeason = activeSeasonQuery.data;
 
     const [name, setName] = useState('');
     const [year, setYear] = useState(getCampusYear());
@@ -50,6 +51,7 @@ export default function CreateSeasonScreen() {
     const [rulesDocumentSize, setRulesDocumentSize] = useState<number | null>(null);
     const [errors, setErrors] = useState<Errors>({});
     const [submitError, setSubmitError] = useState<string | null>(null);
+    const [modalitiesExpanded, setModalitiesExpanded] = useState(false);
 
     const toggleModality = (id: string) =>
         setModalityIds((current) => (current.includes(id) ? current.filter((x) => x !== id) : [...current, id]));
@@ -140,9 +142,18 @@ export default function CreateSeasonScreen() {
             );
         }
 
+        const ordered = [...options].sort((a, b) => {
+            const aSelected = modalityIds.includes(a.modality_id) ? 0 : 1;
+            const bSelected = modalityIds.includes(b.modality_id) ? 0 : 1;
+            return aSelected - bSelected;
+        });
+        const hasOverflow = !modalitiesExpanded && ordered.length > VISIBLE_MODALITIES;
+        const visible = hasOverflow ? ordered.slice(0, VISIBLE_MODALITIES) : ordered;
+        const hiddenCount = ordered.length - visible.length;
+
         return (
             <View style={styles.chips}>
-                {options.map((modality) => {
+                {visible.map((modality) => {
                     const selected = modalityIds.includes(modality.modality_id);
                     return (
                         <Pressable
@@ -159,6 +170,16 @@ export default function CreateSeasonScreen() {
                         </Pressable>
                     );
                 })}
+                {hiddenCount > 0 ? (
+                    <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Mostrar mais ${hiddenCount} modalidades`}
+                        onPress={() => setModalitiesExpanded(true)}
+                        style={[styles.chip, { backgroundColor: colors.field }]}
+                    >
+                        <ThemedText variant="label">+ {hiddenCount}</ThemedText>
+                    </Pressable>
+                ) : null}
             </View>
         );
     };

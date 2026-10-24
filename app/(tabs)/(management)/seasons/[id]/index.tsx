@@ -1,14 +1,18 @@
-import { Alert, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/button';
+import { FormField } from '@/components/form/form-field';
+import { Icon } from '@/components/icon';
 import { LinkRow, Section } from '@/components/management/section';
 import { ManagementGuard } from '@/components/management/management-guard';
 import { SeasonStatusBadge } from '@/components/management/season-status-badge';
+import { ConfirmDialog } from '@/components/overlays/confirm-dialog';
 import { ErrorState, LoadingState } from '@/components/states/screen-states';
 import { ThemedText } from '@/components/themed-text';
 import { useBracketsBySeason } from '@/hooks/useBrackets';
 import { useAllModalities } from '@/hooks/useModalities';
-import { useCloseSeasonRegistration, useSeasonDetails } from '@/hooks/useSeasons';
+import { useCloseSeasonRegistration, useFinishSeason, useSeasonDetails } from '@/hooks/useSeasons';
 import { ApiError } from '@/types/api';
 import { BracketStatusLabel, type SeasonStatus } from '@/types/enums';
 import type { BracketSummaryResponse } from '@/types/bracket';
@@ -66,20 +70,17 @@ function RegistrationActions({ season }: { season: SeasonDetails }) {
     const has = (action: SeasonDetails['available_actions'][number]) => season.available_actions.includes(action);
     const base = `/seasons/${season.season_id}`;
     const canEditDates = has('edit_registration_dates') || has('edit_registration_end_date');
+    const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
 
-    const confirmClose = () =>
-        Alert.alert(
-            'Encerrar inscrições agora?',
-            'Nenhum novo time poderá ser criado ou submetido. Você pode reabrir as inscrições depois.',
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Encerrar',
-                    style: 'destructive',
-                    onPress: () => closeRegistration.mutate({ seasonId: season.season_id }),
-                },
-            ]
-        );
+    const handleClose = async () => {
+        try {
+            await closeRegistration.mutateAsync({ seasonId: season.season_id });
+            setCloseConfirmOpen(false);
+        } catch {
+            // Erro fica visível via closeRegistration.isError logo abaixo;
+            // o diálogo continua aberto para o monitor tentar de novo.
+        }
+    };
 
     return (
         <View style={styles.actions}>
@@ -89,7 +90,7 @@ function RegistrationActions({ season }: { season: SeasonDetails }) {
                     variant="warning"
                     icon="clock"
                     loading={closeRegistration.isPending}
-                    onPress={confirmClose}
+                    onPress={() => setCloseConfirmOpen(true)}
                 />
             ) : null}
             {has('reopen_registration') ? (
@@ -123,22 +124,60 @@ function RegistrationActions({ season }: { season: SeasonDetails }) {
                     {friendlyErrorMessage(closeRegistration.error, 'Não foi possível encerrar as inscrições.')}
                 </ThemedText>
             ) : null}
+
+            <ConfirmDialog
+                visible={closeConfirmOpen}
+                title="Encerrar inscrições agora?"
+                description="Nenhum novo time poderá ser criado ou submetido. Você pode reabrir as inscrições depois."
+                confirmLabel="Encerrar"
+                tone="danger"
+                confirming={closeRegistration.isPending}
+                onConfirm={handleClose}
+                onCancel={() => setCloseConfirmOpen(false)}
+            />
         </View>
     );
 }
 
 function FinishSection({ season, brackets }: { season: SeasonDetails; brackets: BracketSummaryResponse[] | undefined }) {
-    if (season.status !== 'IN_PROGRESS') return null;
+    const finish = useFinishSeason();
+    const [open, setOpen] = useState(false);
+    const [confirmation, setConfirmation] = useState('');
+    const [submitError, setSubmitError] = useState<string | null>(null);
 
+    if (season.status !== 'IN_PROGRESS') return null;
+    
+    const canFinish = season.available_actions.includes('finish_season');
     const pending = brackets
         ? brackets.reduce((sum, bracket) => sum + (bracket.total_matches - bracket.finished_matches), 0)
         : null;
-    const blockedReason =
-        pending === null
-            ? 'Carregando partidas para verificar pendências…'
-            : pending > 0
-              ? `Ainda há ${pending} ${pending === 1 ? 'partida' : 'partidas'} sem encerrar.`
-              : null;
+    const blockedReason = canFinish
+        ? null
+        : pending === null
+          ? 'Carregando partidas para verificar pendências…'
+          : pending > 0
+            ? `Ainda há ${pending} ${pending === 1 ? 'partida' : 'partidas'} sem encerrar.`
+            : 'Ainda não é possível finalizar esta temporada.';
+
+    const matches = confirmation === season.name;
+
+    const openDialog = () => {
+        setConfirmation('');
+        setSubmitError(null);
+        setOpen(true);
+    };
+
+    const handleConfirm = async () => {
+        if (!matches || finish.isPending) return;
+        setSubmitError(null);
+
+        try {
+            await finish.mutateAsync({ seasonId: season.season_id, request: { confirmation_name: confirmation } });
+            setOpen(false);
+        } catch (error) {
+            setSubmitError(friendlyErrorMessage(error, 'Não foi possível finalizar a temporada.'));
+        }
+    };
 
     return (
         <Section title="Finalizar temporada">
@@ -146,12 +185,34 @@ function FinishSection({ season, brackets }: { season: SeasonDetails; brackets: 
                 Ação irreversível. Encerra a temporada e desativa todos os convites de equipes.
             </ThemedText>
             {blockedReason ? <ThemedText variant="caption">{blockedReason}</ThemedText> : null}
-            <Button
-                title="Finalizar temporada"
-                variant="danger"
-                disabled={blockedReason !== null}
-                onPress={() => router.push(`/seasons/${season.season_id}/finish` as never)}
-            />
+            <Button title="Finalizar temporada" variant="danger" disabled={!canFinish} onPress={openDialog} />
+
+            <ConfirmDialog
+                visible={open}
+                title="Finalizar temporada?"
+                description="Todas as atividades serão encerradas e os convites de equipe, desativados. Essa ação não pode ser desfeita."
+                confirmLabel="Finalizar temporada"
+                tone="danger"
+                confirming={finish.isPending}
+                confirmDisabled={!matches}
+                onConfirm={handleConfirm}
+                onCancel={() => setOpen(false)}
+            >
+                <FormField
+                    label={`Digite “${season.name}” para confirmar`}
+                    value={confirmation}
+                    onChangeText={setConfirmation}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    placeholder={season.name}
+                    error={confirmation.length > 0 && !matches ? 'O nome precisa ser idêntico ao da temporada.' : undefined}
+                />
+                {submitError ? (
+                    <ThemedText variant="caption" accessibilityRole="alert" style={styles.errorText}>
+                        {submitError}
+                    </ThemedText>
+                ) : null}
+            </ConfirmDialog>
         </Section>
     );
 }
@@ -182,6 +243,9 @@ function SeasonDetailsContent({ seasonId }: { seasonId: string }) {
     }
 
     const season = details.data;
+    const canEditDates =
+        season.available_actions.includes('edit_registration_dates') ||
+        season.available_actions.includes('edit_registration_end_date');
     const modalityNames = new Map<string, string>([
         ...(brackets.data ?? []).map((item) => [item.modality_id, item.modality_name ?? ''] as const),
         ...(modalities.data ?? []).map((item) => [item.modality_id, item.name] as const),
@@ -196,7 +260,31 @@ function SeasonDetailsContent({ seasonId }: { seasonId: string }) {
 
     return (
         <>
-            <Stack.Screen options={{ title: season.name }} />
+            <Stack.Screen
+                options={{
+                    title: season.name,
+                    headerRight: canEditDates
+                        ? () => (
+                              <Pressable
+                                  accessibilityRole="button"
+                                  accessibilityLabel="Editar datas da temporada"
+                                  hitSlop={8}
+                                  onPress={() => {
+                                      const mode = season.available_actions.includes('edit_registration_dates')
+                                          ? 'both'
+                                          : 'end';
+                                      router.push({
+                                          pathname: `/seasons/${season.season_id}/edit-dates` as never,
+                                          params: { mode },
+                                      });
+                                  }}
+                              >
+                                  <Icon name="edit" size={22} color={colors.ink} />
+                              </Pressable>
+                          )
+                        : undefined,
+                }}
+            />
             <ScrollView
                 contentInsetAdjustmentBehavior="automatic"
                 contentContainerStyle={styles.content}

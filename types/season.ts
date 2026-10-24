@@ -7,7 +7,8 @@ export type SeasonAction =
     | 'postpone_opening'
     | 'edit_registration_end_date'
     | 'close_registration_early'
-    | 'reopen_registration';
+    | 'reopen_registration'
+    | 'finish_season';
 
 export interface SeasonListFilters {
     status?: SeasonStatus;
