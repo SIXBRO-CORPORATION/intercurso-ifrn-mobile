@@ -37,7 +37,6 @@ export function ManagementCard({ title, subtitle, href, icon }: ManagementCardPr
                                 </ThemedText>
                             ) : null}
                         </View>
-                        <Icon name="chev_r" size={20} color={colors.textMuted} />
                     </View>
                 )}
             </Pressable>

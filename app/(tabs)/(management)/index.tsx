@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Button } from '@/components/button';
 import { Icon } from '@/components/icon';
-import { MatchListRow } from '@/components/list-row';
+import { ListRowIcon, MatchListRow } from '@/components/list-row';
 import { ManagementCard } from '@/components/management/management-card';
 import { ManagementGuard } from '@/components/management/management-guard';
 import { LoadingState } from '@/components/states/screen-states';
@@ -17,6 +17,7 @@ import { useTeams } from '@/hooks/useTeams';
 import { ApiError } from '@/types/api';
 import { SeasonStatusLabel } from '@/types/enums';
 import { colors, radius, shadows, spacing } from '@/theme';
+import { formatCampusTime } from '@/utils/campus-time';
 import type { MatchListItemResponse } from '@/types/match-list';
 
 const NO_ACTIVE_SEASON_STATUS = 400;
@@ -29,6 +30,7 @@ function ActiveSeasonCard() {
     if (season.isPending) {
         return (
             <View style={[styles.heroCard, styles.heroFallback]}>
+                <ActivityIndicator color={colors.primary} />
                 <ThemedText variant="body" style={styles.heroFallbackText}>
                     Carregando temporada…
                 </ThemedText>
@@ -61,6 +63,13 @@ function ActiveSeasonCard() {
                 <ThemedText variant="body" style={styles.heroFallbackText}>
                     Não foi possível carregar a temporada ativa.
                 </ThemedText>
+                <Button
+                    title="Tentar de novo"
+                    variant="outline"
+                    size="compact"
+                    onPress={() => season.refetch()}
+                    loading={season.isRefetching}
+                />
             </View>
         );
     }
@@ -116,8 +125,8 @@ function ActiveSeasonCard() {
     );
 }
 
-function PendingTeamsBanner() {
-    const pendingTeams = useTeams({ status: 'SUBMITTED' });
+function PendingTeamsBanner({ seasonId }: { seasonId?: string }) {
+    const pendingTeams = useTeams({ status: 'SUBMITTED', season_id: seasonId });
     const total = pendingTeams.data?.length ?? 0;
 
     if (pendingTeams.isPending || pendingTeams.isError || total === 0) {
@@ -125,24 +134,35 @@ function PendingTeamsBanner() {
     }
 
     return (
-        <Button
-            title={`${total} equipe${total === 1 ? '' : 's'} aguardando`}
-            variant="warning"
-            icon="clock"
+        <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${total} equipe${total === 1 ? '' : 's'} aguardando, toque para revisar e aprovar`}
             onPress={() => router.push('/(management-teams)/teams')}
-        />
+            style={({ pressed }) => [styles.pendingBanner, { opacity: pressed ? 0.7 : 1 }]}
+        >
+            <ListRowIcon background={colors.warning} size={40}>
+                <Icon name="clock" size={20} color={colors.surface} />
+            </ListRowIcon>
+            <View style={styles.pendingBannerTexts}>
+                <ThemedText variant="section">{`${total} equipe${total === 1 ? '' : 's'} aguardando`}</ThemedText>
+                <ThemedText variant="bodySm" style={styles.pendingBannerSubtitle}>
+                    Toque para revisar e aprovar
+                </ThemedText>
+            </View>
+            <Icon name="chev_r" size={20} color={colors.warningText} />
+        </Pressable>
     );
 }
 
 function UpcomingMatches({ seasonId }: { seasonId: string }) {
-    const list = useMatchList({ seasonId }, !!seasonId);
+    const list = useMatchList({ seasonId, status: 'SCHEDULED' }, !!seasonId);
     const startMatch = useStartMatch();
     const [startingMatchId, setStartingMatchId] = useState<string | undefined>(undefined);
 
     const matches: MatchListItemResponse[] = list.data?.pages.flatMap((page) => page.items) ?? [];
-    const upcoming = matches.filter((match) => match.status === 'SCHEDULED').slice(0, UPCOMING_MATCHES_LIMIT);
+    const upcoming = matches.slice(0, UPCOMING_MATCHES_LIMIT);
 
-    if (list.isPending || upcoming.length === 0) {
+    if (list.isPending) {
         return null;
     }
 
@@ -163,31 +183,44 @@ function UpcomingMatches({ seasonId }: { seasonId: string }) {
         <View style={styles.section}>
             <View style={styles.sectionHeader}>
                 <ThemedText variant="heading">Próximas partidas</ThemedText>
-                <ThemedText
-                    variant="body"
-                    style={styles.sectionAction}
-                    onPress={() => router.push('/(management-matches)/matches')}
-                >
-                    Ver todas
+                {upcoming.length > 0 ? (
+                    <ThemedText
+                        variant="body"
+                        style={styles.sectionAction}
+                        onPress={() => router.push('/(management-matches)/matches')}
+                    >
+                        Ver todas
+                    </ThemedText>
+                ) : null}
+            </View>
+            {upcoming.length === 0 ? (
+                <ThemedText variant="body" style={styles.emptyMatchesText}>
+                    Nenhuma partida agendada ainda.
                 </ThemedText>
-            </View>
-            <View style={styles.matchList}>
-                {upcoming.map((match) => (
-                    <MatchListRow
-                        key={match.match_id}
-                        team1={{ name: match.team1?.name ?? 'A definir' }}
-                        team2={{ name: match.team2?.name ?? 'A definir' }}
-                        trailing={
-                            <Button
-                                title="Iniciar"
-                                size="small"
-                                loading={startingMatchId === match.match_id}
-                                onPress={() => handleStart(match)}
-                            />
-                        }
-                    />
-                ))}
-            </View>
+            ) : (
+                <View style={styles.matchList}>
+                    {upcoming.map((match) => (
+                        <MatchListRow
+                            key={match.match_id}
+                            team1={{ name: match.team1?.name ?? 'A definir' }}
+                            team2={{ name: match.team2?.name ?? 'A definir' }}
+                            trailing={
+                                <View style={styles.matchTrailing}>
+                                    <ThemedText variant="section">
+                                        {match.scheduled_date ? formatCampusTime(match.scheduled_date) : 'Sem data'}
+                                    </ThemedText>
+                                    <Button
+                                        title="Iniciar"
+                                        size="small"
+                                        loading={startingMatchId === match.match_id}
+                                        onPress={() => handleStart(match)}
+                                    />
+                                </View>
+                            }
+                        />
+                    ))}
+                </View>
+            )}
         </View>
     );
 }
@@ -207,14 +240,10 @@ function ManagementHub() {
                         Olá, {user?.name?.split(' ')[0] ?? 'Monitor'}
                     </ThemedText>
                 </View>
-                <View style={styles.bellButton}>
-                    <Icon name="bell" size={20} color={colors.ink} />
-                    <View style={styles.bellDot} />
-                </View>
             </View>
 
             <ActiveSeasonCard />
-            <PendingTeamsBanner />
+            <PendingTeamsBanner seasonId={activeSeason.data?.season_id} />
 
             <View style={styles.cardsRow}>
                 <View style={styles.cardsRowItem}>
@@ -271,25 +300,6 @@ const styles = StyleSheet.create({
     },
     headerSubtitle: {
         color: colors.textSecondary,
-    },
-    bellButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: colors.field,
-    },
-    bellDot: {
-        position: 'absolute',
-        top: 10,
-        right: 11,
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: colors.danger,
-        borderWidth: 1.5,
-        borderColor: colors.field,
     },
     heroCard: {
         borderRadius: radius.xl,
@@ -357,6 +367,27 @@ const styles = StyleSheet.create({
         marginHorizontal: spacing.md,
         backgroundColor: 'rgba(255,255,255,0.3)',
     },
+    pendingBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
+        padding: spacing.md,
+        borderRadius: radius.xl,
+        borderCurve: 'continuous',
+        backgroundColor: colors.warningSoft,
+    },
+    pendingBannerTexts: {
+        flex: 1,
+        gap: 2,
+    },
+    pendingBannerSubtitle: {
+        color: colors.warningText,
+    },
+    matchTrailing: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+    },
     cardsRow: {
         flexDirection: 'row',
         gap: spacing.md,
@@ -378,5 +409,9 @@ const styles = StyleSheet.create({
     },
     matchList: {
         gap: spacing.sm,
+    },
+    emptyMatchesText: {
+        color: colors.textSecondary,
+        paddingHorizontal: spacing.xs,
     },
 });
