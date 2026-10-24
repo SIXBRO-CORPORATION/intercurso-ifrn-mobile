@@ -60,7 +60,7 @@ Todo arquivo de rota do projeto aparece em alguma linha acima. Se, ao longo do Q
 | A5 | Entrar via convite + ciclo de vida da equipe | Aluno/Visitante | Concluído — ver `docs/qa/a05-entrar-via-convite-ciclo-vida-equipe.md` | Concluído — ver `docs/qa/a05-entrar-via-convite-ciclo-vida-equipe.md` |
 | A6 | Perfil | Aluno/Visitante | Concluído — ver `docs/qa/a06-perfil-aluno.md` | Concluído — ver `docs/qa/a06-perfil-aluno.md` |
 | M1 | Painel | Monitor | Concluído — ver `docs/qa/m01-painel.md` | Concluído — ver `docs/qa/m01-painel.md` |
-| M2 | Temporadas | Monitor | Não iniciado | Não iniciado |
+| M2 | Temporadas | Monitor | Concluído — ver `docs/qa/m02-temporadas.md` | Concluído — ver `docs/qa/m02-temporadas.md` |
 | M3 | Modalidades | Monitor | Não iniciado | Não iniciado |
 | M4 | Equipes (gerenciar/aprovar/rejeitar) | Monitor | Não iniciado | Não iniciado |
 | M5 | Chaveamento + Chaves | Monitor | Não iniciado | Não iniciado |
