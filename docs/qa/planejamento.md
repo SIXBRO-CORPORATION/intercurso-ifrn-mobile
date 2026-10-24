@@ -62,7 +62,7 @@ Todo arquivo de rota do projeto aparece em alguma linha acima. Se, ao longo do Q
 | M1 | Painel | Monitor | Concluído — ver `docs/qa/m01-painel.md` | Concluído — ver `docs/qa/m01-painel.md` |
 | M2 | Temporadas | Monitor | Concluído — ver `docs/qa/m02-temporadas.md` | Concluído — ver `docs/qa/m02-temporadas.md` |
 | M3 | Modalidades | Monitor | Concluído — ver `docs/qa/m03-modalidades.md` | Concluído — ver `docs/qa/m03-modalidades.md` |
-| M4 | Equipes (gerenciar/aprovar/rejeitar) | Monitor | Não iniciado | Não iniciado |
+| M4 | Equipes (gerenciar/aprovar/rejeitar) | Monitor | Concluído — ver `docs/qa/m04-equipes-gerenciar-aprovar-rejeitar.md` | Concluído — ver `docs/qa/m04-equipes-gerenciar-aprovar-rejeitar.md` |
 | M5 | Chaveamento + Chaves | Monitor | Não iniciado | Não iniciado |
 | M6 | Partidas (lista + editar) | Monitor | Não iniciado | Não iniciado |
 | M7 | Partida ao vivo (painel do monitor) | Monitor | Não iniciado | Não iniciado |
@@ -96,6 +96,8 @@ O campo de data usado nas telas de agendar/editar partida, quando configurado s�
 
 ### G5 — Tab bar (navegação principal)
 `app/(tabs)/_layout.tsx` não pertence a um fluxo específico porque está presente em todos eles. Ainda assim precisa de uma verificação própria, feita na primeira sessão de QA que tocar nela (registrar em `docs/qa/g05-tabbar.md`): ícones e rótulos corretos para cada papel (aluno/visitante vs. monitor), aba ativa destacada corretamente, comportamento ao trocar de aba durante carregamento/erro de uma tela, e consistência do conjunto de abas com o que o guia de estilo define para navegação (`docs/00_guia-de-estilo/00_guia-de-estilo_3-navegacao-icones-movimento.png`).
+
+**Status:** parcialmente feita — `docs/qa/g05-tabbar.md` foi criado na sessão do M4 (primeira a chegar numa tela do monitor com protótipo de rodapé completo) e cobre só o conjunto de abas do **monitor** (achado: ícone errado na aba "Partidas"). O conjunto de abas do **aluno/visitante** ainda não foi verificado por nenhuma sessão A1–A6 — a próxima sessão que tocar o lado aluno deve completar `g05-tabbar.md` com essa checagem antes de considerar G5 encerrada.
 
 ### G6 — Rotas de infraestrutura
 `app/+not-found.tsx` (tela de rota inexistente) e `app/+native-intent.ts` (tratamento de deep link/intent nativo) não têm protótipo dedicado, mas fazem parte do app e devem ser verificadas em algum momento do QA (sugestão: durante A1, por serem acionadas antes/independente de login): testar o que acontece ao abrir uma URL/rota inválida dentro do app e ao abrir o app via um link de convite externo (`(teams)/join/[token].tsx`) para confirmar que o `native-intent` redireciona corretamente.
