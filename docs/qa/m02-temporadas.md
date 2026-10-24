@@ -36,7 +36,7 @@
 | 15 | `seasons/[id]/edit-dates.tsx` | Revisão completa do formulário (sem protótipo dedicado, conforme item "Revisar também" do planejamento): os campos, hint e erros seguem os mesmos componentes (`DateField`, `FormField`, `Button`) e tokens já usados em outras telas revisadas no app — nenhuma divergência de token encontrada além do item 12/13 acima. | Não reproduzido | — |
 
 ### Observações adicionais (fora dos pontos pré-notados)
-- `seasons/[id]/reopen.tsx` não tem protótipo dedicado nem foi citado no planejamento além de "revisar o detalhe da temporada por completo" indiretamente — mesma observação do item 15 acima: nenhuma divergência de token própria encontrada, além dos itens 12/13 já listados (compartilhados com `edit-dates.tsx`).
+- `seasons/[id]/reopen.tsx` não tem protótipo dedicado nem foi citado no planejamento além de "revisar o detalhe da temporada por completo" indiretamente — mesma observação do item 15 acima: nenhuma divergência de token própria encontrada, além dos itens 12/13 já listados (compartilhados com `edit-dates.tsx`). R: Mas o botão deveria existir, siga o padrão de estilo utilizado atualmente e implemente
 - `seasons/[id]/finish.tsx` guarda uma checagem própria de `details.data.status !== 'IN_PROGRESS'` (mostra `EmptyState` "Temporada não está em andamento" se o status mudou enquanto o monitor navegava até aqui, ex.: por deep link ou tela desatualizada). É uma proteção de rota razoável e não conflita com o protótipo (que não cobre esse estado de borda).
 - Não foi encontrado nenhum uso de `Alert.alert` em `create.tsx`, `edit-dates.tsx`, `finish.tsx` ou `reopen.tsx` — G2 neste fluxo está isolado ao ponto já citado no item 9 (`[id]/index.tsx`).
 
