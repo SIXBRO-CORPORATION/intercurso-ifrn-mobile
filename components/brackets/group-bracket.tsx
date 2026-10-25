@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
-import { FilterChips, type FilterChipOption } from '@/components/filter-chips';
+import { Segmented } from '@/components/form/segmented';
 import { FinishedTrailing, LiveTrailing, MatchListRow, ScheduledTrailing } from '@/components/list-row';
 import { StandingsLegend, StandingsTable } from '@/components/brackets/standings-table';
 import { ThemedText } from '@/components/themed-text';
@@ -75,7 +75,7 @@ export function GroupBracket({ groups, matches, format, qualifyingSpots, dataUpd
         );
     }
 
-    const groupOptions: FilterChipOption<string>[] = sortedGroups.map((group) => ({
+    const groupOptions = sortedGroups.map((group) => ({
         value: group.group_id,
         label: group.name,
     }));
@@ -87,12 +87,7 @@ export function GroupBracket({ groups, matches, format, qualifyingSpots, dataUpd
     return (
         <View style={styles.wrapper}>
             {sortedGroups.length > 1 ? (
-                <FilterChips
-                    accessibilityLabel="Selecionar grupo"
-                    options={groupOptions}
-                    selected={selectedGroup.group_id}
-                    onSelect={setSelectedGroupId}
-                />
+                <Segmented options={groupOptions} value={selectedGroup.group_id} onChange={setSelectedGroupId} />
             ) : null}
 
             <View style={styles.section}>

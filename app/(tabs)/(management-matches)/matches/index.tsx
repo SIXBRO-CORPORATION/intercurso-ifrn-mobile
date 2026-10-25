@@ -165,7 +165,7 @@ function MonitorMatchesContent({ seasonId }: { seasonId: string }) {
         modalityId === ALL_MODALITIES
             ? null
             : (modalities.data ?? []).find((modality) => modality.modality_id === modalityId)?.name;
-    
+
     const header = (
         <View style={styles.header}>
             <View style={styles.headerRow}>

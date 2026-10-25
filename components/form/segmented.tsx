@@ -65,7 +65,7 @@ export function Segmented<T extends string>({ options, value, onChange, disabled
                         style={[styles.segment, !isReady && selected && styles.segmentFallback]}
                         hitSlop={4}
                     >
-                        <ThemedText variant="label" style={selected ? styles.labelSelected : styles.label}>
+                        <ThemedText variant="label" numberOfLines={1} style={selected ? styles.labelSelected : styles.label}>
                             {option.label}
                         </ThemedText>
                     </Pressable>
