@@ -135,7 +135,7 @@ function EditMatchForm({ seasonId, match }: { seasonId: string; match: MatchPubl
     const eligibleTeams = (teams.data ?? []).filter((team) => team.modality_id === match.modality_id);
     const team1Options = eligibleTeams.filter((team) => team.team_id !== team2?.team_id);
     const team2Options = eligibleTeams.filter((team) => team.team_id !== team1?.team_id);
-    
+
     const handleSave = async () => {
         const request: MatchUpdateRequest = {
             team1_id: team1?.team_id ?? null,

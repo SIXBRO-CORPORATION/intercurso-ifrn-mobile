@@ -25,13 +25,24 @@ export function Segmented<T extends string>({ options, value, onChange, disabled
     const selectedIndex = Math.max(0, options.findIndex((option) => option.value === value));
     const segmentWidth = trackWidth > 0 ? (trackWidth - TRACK_PADDING * 2) / (options.length || 1) : 0;
 
+    const isReady = trackWidth > 0;
+
     const handleLayout = (event: LayoutChangeEvent) => {
-        setTrackWidth(event.nativeEvent.layout.width);
+        const width = event.nativeEvent.layout.width;
+        if (width === trackWidth) return;
+
+        if (trackWidth === 0 && width > 0) {
+            const initialSegmentWidth = (width - TRACK_PADDING * 2) / (options.length || 1);
+            indicatorX.value = initialSegmentWidth * selectedIndex;
+        }
+
+        setTrackWidth(width);
     };
 
     useEffect(() => {
+        if (!isReady) return;
         indicatorX.value = withTiming(segmentWidth * selectedIndex, { duration: motion.base, easing: motion.easing });
-    }, [segmentWidth, selectedIndex, indicatorX]);
+    }, [isReady, segmentWidth, selectedIndex, indicatorX]);
 
     const indicatorStyle = useAnimatedStyle(() => ({
         width: segmentWidth,
@@ -40,7 +51,7 @@ export function Segmented<T extends string>({ options, value, onChange, disabled
 
     return (
         <View style={[styles.track, disabled && styles.disabled]} onLayout={handleLayout}>
-            {trackWidth > 0 ? <Animated.View style={[styles.indicator, indicatorStyle]} /> : null}
+            {isReady ? <Animated.View style={[styles.indicator, indicatorStyle]} /> : null}
             {options.map((option, index) => {
                 const selected = index === selectedIndex;
                 return (
@@ -51,7 +62,7 @@ export function Segmented<T extends string>({ options, value, onChange, disabled
                         accessibilityState={{ selected, disabled }}
                         disabled={disabled}
                         onPress={() => onChange(option.value)}
-                        style={styles.segment}
+                        style={[styles.segment, !isReady && selected && styles.segmentFallback]}
                         hitSlop={4}
                     >
                         <ThemedText variant="label" style={selected ? styles.labelSelected : styles.label}>
@@ -85,6 +96,10 @@ const styles = StyleSheet.create({
         paddingVertical: spacing.xs,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    segmentFallback: {
+        borderRadius: radius.pill,
+        backgroundColor: colors.primary,
     },
     label: {
         color: colors.textSecondary,

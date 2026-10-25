@@ -54,6 +54,10 @@ function matchDateLabel(match: MatchListItemResponse): string {
     return `${day} · ${formatCampusTime(match.scheduled_date)}`;
 }
 
+function MatchSeparator() {
+    return <View style={styles.separator} />;
+}
+
 function MatchRow({ seasonId, match }: { seasonId: string; match: MatchListItemResponse }) {
     const isScheduled = match.status === 'SCHEDULED';
     const isLive = match.status === 'IN_PROGRESS';
@@ -161,8 +165,8 @@ function MonitorMatchesContent({ seasonId }: { seasonId: string }) {
         modalityId === ALL_MODALITIES
             ? null
             : (modalities.data ?? []).find((modality) => modality.modality_id === modalityId)?.name;
-
-    const renderHeader = () => (
+    
+    const header = (
         <View style={styles.header}>
             <View style={styles.headerRow}>
                 <View style={styles.titleBlock}>
@@ -223,9 +227,9 @@ function MonitorMatchesContent({ seasonId }: { seasonId: string }) {
                 renderItem={({ item }) => <MatchRow seasonId={seasonId} match={item} />}
                 contentInsetAdjustmentBehavior="automatic"
                 contentContainerStyle={[styles.content, matches.length === 0 && styles.fill]}
-                ItemSeparatorComponent={() => <View style={styles.separator} />}
-                ListHeaderComponent={renderHeader}
-                ListEmptyComponent={renderEmpty}
+                ItemSeparatorComponent={MatchSeparator}
+                ListHeaderComponent={header}
+                ListEmptyComponent={renderEmpty()}
                 refreshControl={
                     <RefreshControl
                         refreshing={list.isRefetching && !list.isFetchingNextPage}
