@@ -66,7 +66,7 @@ Todo arquivo de rota do projeto aparece em alguma linha acima. Se, ao longo do Q
 | M5 | Chaveamento + Chaves | Monitor | Concluído — ver `docs/qa/m05-chaveamento-chaves.md` | Concluído — ver `docs/qa/m05-chaveamento-chaves.md` |
 | M6 | Partidas (lista + editar) | Monitor | Concluído — ver `docs/qa/m06-partidas.md` | Concluído — ver `docs/qa/m06-partidas.md` |
 | M7 | Partida ao vivo (painel do monitor) | Monitor | Concluído — ver `docs/qa/m07-partida-ao-vivo.md` | Concluído — ver `docs/qa/m07-partida-ao-vivo.md` |
-| M8 | Perfil | Monitor | Não iniciado | Não iniciado |
+| M8 | Perfil | Monitor | Concluído — ver `docs/qa/m08-perfil-monitor.md` | Concluído — ver `docs/qa/m08-perfil-monitor.md` |
 
 Atualize o status para `Em andamento` / `Concluído` conforme as sessões forem rodando. `Concluído` só deve ser marcado quando o relatório do fluxo já existir em `docs/qa/`.
 
@@ -391,3 +391,5 @@ O QA é considerado concluído quando:
 3. As dúvidas de produto registradas (badge de equipes aguardando, campos de modalidade por tipo de pontuação, reabertura de inscrições, confirmação/re-sorteio de times após início da temporada) tiverem sido levadas para decisão de produto antes de virarem item de correção.
 
 A fase seguinte (correção) usará os relatórios de `docs/qa/` como backlog, priorizando por severidade.
+
+**Status do critério 1 (14/14 fluxos):** atingido com o relatório de M8. Critérios 2 e 3 não foram reavaliados nesta sessão — antes de declarar o QA encerrado, alguém precisa passar pelos 15 relatórios e conferir se todo ponto pré-notado tem veredito, e levar as dúvidas de produto ainda sem resposta (ver cada relatório individual) para decisão.
