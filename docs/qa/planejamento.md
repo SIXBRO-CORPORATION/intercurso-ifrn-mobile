@@ -64,7 +64,7 @@ Todo arquivo de rota do projeto aparece em alguma linha acima. Se, ao longo do Q
 | M3 | Modalidades | Monitor | Concluído — ver `docs/qa/m03-modalidades.md` | Concluído — ver `docs/qa/m03-modalidades.md` |
 | M4 | Equipes (gerenciar/aprovar/rejeitar) | Monitor | Concluído — ver `docs/qa/m04-equipes-gerenciar-aprovar-rejeitar.md` | Concluído — ver `docs/qa/m04-equipes-gerenciar-aprovar-rejeitar.md` |
 | M5 | Chaveamento + Chaves | Monitor | Concluído — ver `docs/qa/m05-chaveamento-chaves.md` | Concluído — ver `docs/qa/m05-chaveamento-chaves.md` |
-| M6 | Partidas (lista + editar) | Monitor | Não iniciado | Não iniciado |
+| M6 | Partidas (lista + editar) | Monitor | Concluído — ver `docs/qa/m06-partidas.md` | Concluído — ver `docs/qa/m06-partidas.md` |
 | M7 | Partida ao vivo (painel do monitor) | Monitor | Não iniciado | Não iniciado |
 | M8 | Perfil | Monitor | Não iniciado | Não iniciado |
 
