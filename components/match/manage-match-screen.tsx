@@ -1,7 +1,6 @@
 import { useRef, useState, type RefObject } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
-import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/button';
 import { Icon } from '@/components/icon';
 import { DateField } from '@/components/form/date-field';
@@ -24,7 +23,6 @@ import type { TeamSummary } from '@/types/team';
 import { colors, fontFamily, radius, spacing } from '@/theme';
 import { friendlyErrorMessage } from '@/utils/api-error-message';
 import { isoToPickerDateTime, pickerDateTimeToIso } from '@/utils/campus-time';
-import { queryKeys } from '@/utils/query-keys';
 
 function matchRoundLabel(match: { match_type: MatchType; match_category: MatchCategory }): string {
     if (match.match_type !== 'REGULAR') return MatchTypeLabel[match.match_type];
@@ -118,7 +116,6 @@ function TeamField({ label, team, onPress }: { label: string; team: SelectedTeam
 
 function EditMatchForm({ seasonId, match }: { seasonId: string; match: MatchPublicResponse }) {
     const toast = useToast();
-    const queryClient = useQueryClient();
     const updateMatch = useUpdateMatch();
     const deleteMatch = useDeleteMatch();
     const teams = useTeams({ status: 'APPROVED', season_id: seasonId });
@@ -138,11 +135,7 @@ function EditMatchForm({ seasonId, match }: { seasonId: string; match: MatchPubl
     const eligibleTeams = (teams.data ?? []).filter((team) => team.modality_id === match.modality_id);
     const team1Options = eligibleTeams.filter((team) => team.team_id !== team2?.team_id);
     const team2Options = eligibleTeams.filter((team) => team.team_id !== team1?.team_id);
-
-    const invalidateMatch = () => {
-        queryClient.invalidateQueries({ queryKey: queryKeys.matches.all });
-    };
-
+    
     const handleSave = async () => {
         const request: MatchUpdateRequest = {
             team1_id: team1?.team_id ?? null,
@@ -152,7 +145,6 @@ function EditMatchForm({ seasonId, match }: { seasonId: string; match: MatchPubl
 
         try {
             await updateMatch.mutateAsync({ matchId: match.match_id, request });
-            invalidateMatch();
             toast.success('Partida atualizada.');
             router.back();
         } catch (error) {
@@ -163,7 +155,6 @@ function EditMatchForm({ seasonId, match }: { seasonId: string; match: MatchPubl
     const handleDelete = async () => {
         try {
             await deleteMatch.mutateAsync(match.match_id);
-            invalidateMatch();
             setDeleteOpen(false);
             toast.success('Partida excluída.');
             router.back();

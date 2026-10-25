@@ -52,7 +52,7 @@ export function DateField({ label, value, onChange, minimumDate, error, hint, mo
                                 value={value}
                                 minimumDate={minimumDate}
                                 accentColor={colors.primary}
-                                onValueChange={(_, date) => onChange(showTime ? mergeDateAndTime(date, value) : date)}
+                                onValueChange={(_, date) => onChange(mergeDateAndTime(date, value))}
                                 style={styles.iosPicker}
                             />
                         ) : null}
@@ -85,11 +85,10 @@ export function DateField({ label, value, onChange, minimumDate, error, hint, mo
                                 minimumDate={minimumDate}
                                 accentColor={colors.primary}
                                 onValueChange={(_, date) => {
+                                    onChange(mergeDateAndTime(date, value));
                                     if (showTime) {
-                                        onChange(mergeDateAndTime(date, value));
                                         setAndroidStep('time');
                                     } else {
-                                        onChange(date);
                                         setAndroidStep('closed');
                                     }
                                 }}

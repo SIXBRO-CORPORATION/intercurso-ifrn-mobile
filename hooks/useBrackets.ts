@@ -78,6 +78,9 @@ export function useUpdateMatch() {
         mutationFn: ({ matchId, request }: UpdateMatchVariables) =>
             bracketService.updateMatch(matchId, request),
         onSuccess: () => {
+            // Mesmo padrão das mutations de partida em hooks/useMatches.ts: invalida
+            // os dois caches, não só o de chaveamento (QA m06, achado 2 da Fase 2).
+            queryClient.invalidateQueries({ queryKey: queryKeys.matches.all });
             queryClient.invalidateQueries({ queryKey: queryKeys.brackets.all });
         },
     });
@@ -89,6 +92,7 @@ export function useDeleteMatch() {
     return useMutation({
         mutationFn: (matchId: string) => bracketService.deleteMatch(matchId),
         onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.matches.all });
             queryClient.invalidateQueries({ queryKey: queryKeys.brackets.all });
         },
     });
