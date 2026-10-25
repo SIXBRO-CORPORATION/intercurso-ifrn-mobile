@@ -65,7 +65,7 @@ Todo arquivo de rota do projeto aparece em alguma linha acima. Se, ao longo do Q
 | M4 | Equipes (gerenciar/aprovar/rejeitar) | Monitor | Concluído — ver `docs/qa/m04-equipes-gerenciar-aprovar-rejeitar.md` | Concluído — ver `docs/qa/m04-equipes-gerenciar-aprovar-rejeitar.md` |
 | M5 | Chaveamento + Chaves | Monitor | Concluído — ver `docs/qa/m05-chaveamento-chaves.md` | Concluído — ver `docs/qa/m05-chaveamento-chaves.md` |
 | M6 | Partidas (lista + editar) | Monitor | Concluído — ver `docs/qa/m06-partidas.md` | Concluído — ver `docs/qa/m06-partidas.md` |
-| M7 | Partida ao vivo (painel do monitor) | Monitor | Não iniciado | Não iniciado |
+| M7 | Partida ao vivo (painel do monitor) | Monitor | Concluído — ver `docs/qa/m07-partida-ao-vivo.md` | Concluído — ver `docs/qa/m07-partida-ao-vivo.md` |
 | M8 | Perfil | Monitor | Não iniciado | Não iniciado |
 
 Atualize o status para `Em andamento` / `Concluído` conforme as sessões forem rodando. `Concluído` só deve ser marcado quando o relatório do fluxo já existir em `docs/qa/`.
