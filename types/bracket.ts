@@ -16,6 +16,8 @@ export interface BracketConfigSuggestionResponse {
     team_count: number;
     byes_estimated: number;
     suggested_configuration: BracketConfiguration;
+    total_matches_estimated: number;
+    matches_by_round: number[];
 }
 
 export interface BracketCreateRequest {

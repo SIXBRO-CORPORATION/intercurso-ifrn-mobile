@@ -11,6 +11,7 @@ import type {
 export interface TeamListFilters {
     status?: TeamStatus;
     season_id?: string;
+    modality_id?: string;
 }
 
 export interface TeamPhotoFile {

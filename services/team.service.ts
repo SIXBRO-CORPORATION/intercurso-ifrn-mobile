@@ -52,6 +52,9 @@ class TeamService {
         if (filters?.season_id) {
             params.set('season_id', filters.season_id);
         }
+        if (filters?.modality_id) {
+            params.set('modality_id', filters.modality_id);
+        }
 
         const query = params.toString();
         const endpoint = query ? `${BASE_PATH}/?${query}` : `${BASE_PATH}/`;
