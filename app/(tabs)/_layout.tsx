@@ -56,7 +56,7 @@ export default function TabsLayout() {
                                 <TabButton icon="bracket" label="Chaves" />
                             </TabTrigger>
                             <TabTrigger name="matches" href="/(management-matches)/matches" asChild>
-                                <TabButton icon="calendar" label="Partidas" />
+                                <TabButton icon="ball" label="Partidas" />
                             </TabTrigger>
                             <TabTrigger name="profile" href="/profile" asChild>
                                 <TabButton icon="user" label="Perfil" />

@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 import {
     BottomSheetBackdrop,
     BottomSheetModal,
-    BottomSheetView,
+    BottomSheetScrollView,
     type BottomSheetBackdropProps,
     type BottomSheetModal as BottomSheetModalRef,
 } from '@gorhom/bottom-sheet';
@@ -48,7 +48,7 @@ export const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(
                 handleStyle={styles.handleContainer}
                 backgroundStyle={styles.sheet}
             >
-                <BottomSheetView style={styles.content}>
+                <BottomSheetScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
                     {title ? (
                         <ThemedText variant="title" style={styles.title}>
                             {title}
@@ -60,7 +60,7 @@ export const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(
                         </ThemedText>
                     ) : null}
                     {children}
-                </BottomSheetView>
+                </BottomSheetScrollView>
             </BottomSheetModal>
         );
     }

@@ -112,6 +112,8 @@ export interface TeamDetails extends TeamModalityRules {
     donations_total: number;
     can_submit: boolean;
     submit_blocked_reason?: string | null;
+    can_approve: boolean;
+    approve_blocked_reason?: string | null;
     next_match?: TeamNextMatch | null;
 }
 

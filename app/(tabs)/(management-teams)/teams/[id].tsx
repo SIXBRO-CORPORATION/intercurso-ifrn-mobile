@@ -1,9 +1,10 @@
 import { useRef, useState, type RefObject } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { Button } from '@/components/button';
 import { BottomSheet, type BottomSheetHandle } from '@/components/overlays/bottom-sheet';
+import { ConfirmDialog } from '@/components/overlays/confirm-dialog';
 import { Icon } from '@/components/icon';
 import { ManagementGuard } from '@/components/management/management-guard';
 import { ErrorState, LoadingState } from '@/components/states/screen-states';
@@ -38,6 +39,21 @@ const REJECTION_PRESETS = [
 
 function plural(count: number, one: string, many: string): string {
     return `${count} ${count === 1 ? one : many}`;
+}
+
+function TeamHeaderTitle({ name, subtitle }: { name: string; subtitle: string | null }) {
+    return (
+        <View style={styles.headerTitle}>
+            <ThemedText variant="section" numberOfLines={1} style={styles.headerTitleText}>
+                {name}
+            </ThemedText>
+            {subtitle ? (
+                <ThemedText variant="caption" numberOfLines={1}>
+                    {subtitle}
+                </ThemedText>
+            ) : null}
+        </View>
+    );
 }
 
 function DonationSummaryCard({ confirmed, total }: { confirmed: number; total: number }) {
@@ -188,6 +204,8 @@ function RejectSheet({
     );
 }
 
+type ConfirmAction = { type: 'donation'; member: TeamMember } | { type: 'approve' } | null;
+
 function TeamManagementContent({ teamId }: { teamId: string }) {
     const toast = useToast();
     const details = useTeamDetails(teamId);
@@ -195,6 +213,8 @@ function TeamManagementContent({ teamId }: { teamId: string }) {
     const approveTeam = useApproveTeam();
     const rejectTeam = useRejectTeam();
     const [confirmingUserId, setConfirmingUserId] = useState<string | null>(null);
+    const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
+    const [confirming, setConfirming] = useState(false);
     const rejectSheetRef = useRef<BottomSheetHandle>(null);
 
     if (details.isPending) {
@@ -218,15 +238,9 @@ function TeamManagementContent({ teamId }: { teamId: string }) {
     const showDonations = team.status !== 'DRAFT';
     const quota = getGenderQuota(team, team.members);
     const quotaMessage = quota && !quota.satisfied ? describeMissingQuota(quota) : null;
-    const canApprove =
-        team.status === 'SUBMITTED' && pending.length === 0 && team.members.length > 0 && quota?.satisfied !== false;
 
-    let approveHint: string | null = null;
-    if (team.status === 'SUBMITTED' && pending.length > 0) {
-        approveHint = `Faltam ${plural(pending.length, 'doação', 'doações')} para poder aprovar.`;
-    } else if (team.status === 'SUBMITTED' && quotaMessage) {
-        approveHint = `${quotaMessage} Não é possível aprovar até que a cota seja atendida.`;
-    }
+    const canApprove = team.can_approve;
+    const approveHint = team.status === 'SUBMITTED' ? (team.approve_blocked_reason ?? null) : null;
 
     const membersRange = formatMembersRange(team.min_members, team.max_members);
     const genderRule = team.gender_mode ? formatGenderRule(team) : null;
@@ -243,38 +257,48 @@ function TeamManagementContent({ teamId }: { teamId: string }) {
         }
     };
 
-    const handleConfirmDonation = (member: TeamMember) =>
-        Alert.alert('Confirmar doação?', `Confirmar a doação de ${member.name}? Não é possível desfazer.`, [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-                text: 'Confirmar',
-                onPress: async () => {
-                    setConfirmingUserId(member.user_id);
-                    await run(
-                        () => confirmDonation.mutateAsync({ teamId: team.team_id, userId: member.user_id }),
-                        pending.length === 1
-                            ? 'Todas as doações confirmadas. A equipe já pode ser aprovada.'
-                            : `Doação de ${member.name} confirmada.`,
-                        'Não foi possível confirmar a doação.'
-                    );
-                    setConfirmingUserId(null);
-                },
-            },
-        ]);
+    const handleConfirmDonation = (member: TeamMember) => setConfirmAction({ type: 'donation', member });
+    const askApprove = () => setConfirmAction({ type: 'approve' });
 
-    const askApprove = () =>
-        Alert.alert('Aprovar equipe?', `"${team.name}" será liberada para competir.`, [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-                text: 'Aprovar',
-                onPress: () =>
-                    run(
-                        () => approveTeam.mutateAsync({ teamId: team.team_id }),
-                        'Equipe aprovada.',
-                        'Não foi possível aprovar a equipe.'
-                    ),
-            },
-        ]);
+    const cancelConfirmAction = () => {
+        if (confirming) return;
+        setConfirmAction(null);
+    };
+
+    const runConfirmAction = async () => {
+        if (!confirmAction) return;
+        setConfirming(true);
+        try {
+            if (confirmAction.type === 'donation') {
+                const member = confirmAction.member;
+                setConfirmingUserId(member.user_id);
+                await run(
+                    () => confirmDonation.mutateAsync({ teamId: team.team_id, userId: member.user_id }),
+                    pending.length === 1
+                        ? 'Todas as doações confirmadas. A equipe já pode ser aprovada.'
+                        : `Doação de ${member.name} confirmada.`,
+                    'Não foi possível confirmar a doação.'
+                );
+                setConfirmingUserId(null);
+            } else {
+                await run(
+                    () => approveTeam.mutateAsync({ teamId: team.team_id }),
+                    'Equipe aprovada.',
+                    'Não foi possível aprovar a equipe.'
+                );
+            }
+        } finally {
+            setConfirming(false);
+            setConfirmAction(null);
+        }
+    };
+
+    const confirmDialogTitle = confirmAction?.type === 'donation' ? 'Confirmar doação?' : 'Aprovar equipe?';
+    const confirmDialogDescription =
+        confirmAction?.type === 'donation'
+            ? `Confirmar a doação de ${confirmAction.member.name}? Não é possível desfazer.`
+            : `"${team.name}" será liberada para competir.`;
+    const confirmDialogLabel = confirmAction?.type === 'donation' ? 'Confirmar' : 'Aprovar';
 
     const handleReject = async (reason: string) => {
         const ok = await run(
@@ -287,16 +311,23 @@ function TeamManagementContent({ teamId }: { teamId: string }) {
 
     return (
         <>
-            <Stack.Screen options={{ title: team.name }} />
+            <Stack.Screen
+                options={{
+                    title: team.name,
+                    headerTitle: () => (
+                        <TeamHeaderTitle
+                            name={team.name}
+                            subtitle={[team.modality_name ?? 'Modalidade', submittedLabel].filter(Boolean).join(' · ')}
+                        />
+                    ),
+                }}
+            />
             <ScrollView
                 contentInsetAdjustmentBehavior="automatic"
                 contentContainerStyle={styles.content}
                 refreshControl={<RefreshControl refreshing={details.isRefetching} onRefresh={() => details.refetch()} />}
             >
                 <View style={styles.hero}>
-                    <ThemedText variant="bodySm" style={styles.heroSubtitle}>
-                        {[team.modality_name ?? 'Modalidade', submittedLabel].filter(Boolean).join(' · ')}
-                    </ThemedText>
                     {team.status !== 'SUBMITTED' ? <TeamStatusBadge status={team.status} /> : null}
                     <ThemedText variant="bodySm" style={styles.heroCopy}>
                         {STATUS_COPY[team.status]}
@@ -383,6 +414,16 @@ function TeamManagementContent({ teamId }: { teamId: string }) {
             </ScrollView>
 
             <RejectSheet sheetRef={rejectSheetRef} loading={rejectTeam.isPending} onConfirm={handleReject} />
+
+            <ConfirmDialog
+                visible={confirmAction !== null}
+                title={confirmDialogTitle}
+                description={confirmDialogDescription}
+                confirmLabel={confirmDialogLabel}
+                confirming={confirming}
+                onConfirm={runConfirmAction}
+                onCancel={cancelConfirmAction}
+            />
         </>
     );
 }
@@ -398,6 +439,12 @@ export default function TeamManagementScreen() {
 }
 
 const styles = StyleSheet.create({
+    headerTitle: {
+        alignItems: 'center',
+    },
+    headerTitleText: {
+        maxWidth: 220,
+    },
     content: {
         padding: spacing.md,
         paddingBottom: spacing.xl,

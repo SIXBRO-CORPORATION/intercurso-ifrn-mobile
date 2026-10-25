@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
 import { Link } from 'expo-router';
 import { FilterChips, type FilterChipOption } from '@/components/filter-chips';
+import { Icon } from '@/components/icon';
 import { ManagementGuard } from '@/components/management/management-guard';
 import { EmptyState, ErrorState, LoadingState } from '@/components/states/screen-states';
 import { TeamAvatar } from '@/components/teams/team-avatar';
@@ -17,7 +18,7 @@ const ALL = 'all';
 
 type StatusFilter = 'all' | TeamStatus;
 
-const STATUS_ORDER: TeamStatus[] = ['SUBMITTED', 'APPROVED', 'REJECTED', 'DRAFT'];
+const STATUS_ORDER: TeamStatus[] = ['SUBMITTED', 'APPROVED', 'REJECTED'];
 
 const STATUS_FILTER_LABEL: Record<TeamStatus, string> = {
     SUBMITTED: 'Pendentes',
@@ -120,6 +121,8 @@ function TeamsManagementContent({ defaultSeasonId }: { defaultSeasonId: string }
     const seasons = useSeasons();
     const [status, setStatus] = useState<StatusFilter>('SUBMITTED');
     const [seasonId, setSeasonId] = useState<string>(defaultSeasonId);
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [search, setSearch] = useState('');
 
     const teams = useTeams({
         status: status === ALL ? undefined : status,
@@ -143,6 +146,12 @@ function TeamsManagementContent({ defaultSeasonId }: { defaultSeasonId: string }
         });
     }, [teams.data]);
 
+    const query = search.trim().toLowerCase();
+    const visibleItems = useMemo(
+        () => (query ? items.filter((team) => team.name.toLowerCase().includes(query)) : items),
+        [items, query]
+    );
+
     const statusOptionsWithCount = useMemo(
         () =>
             STATUS_OPTIONS.map((option) =>
@@ -151,14 +160,41 @@ function TeamsManagementContent({ defaultSeasonId }: { defaultSeasonId: string }
         [items.length, status]
     );
 
+    const toggleSearch = () => {
+        setSearchOpen((open) => !open);
+        setSearch('');
+    };
+
     const renderHeader = () => (
         <View style={styles.header}>
-            <View style={styles.titleBlock}>
-                <ThemedText variant="largeTitle">Equipes</ThemedText>
-                <ThemedText variant="body" style={styles.titleSubtitle}>
-                    Gerenciamento
-                </ThemedText>
+            <View style={styles.titleRow}>
+                <View style={styles.titleBlock}>
+                    <ThemedText variant="largeTitle">Equipes</ThemedText>
+                    <ThemedText variant="body" style={styles.titleSubtitle}>
+                        Gerenciamento
+                    </ThemedText>
+                </View>
+                <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={searchOpen ? 'Fechar busca' : 'Buscar equipe'}
+                    onPress={toggleSearch}
+                    style={({ pressed }) => [styles.searchButton, { opacity: pressed ? 0.7 : 1 }]}
+                >
+                    <Icon name={searchOpen ? 'close' : 'search'} size={18} color={colors.ink} />
+                </Pressable>
             </View>
+
+            {searchOpen ? (
+                <TextInput
+                    value={search}
+                    onChangeText={setSearch}
+                    autoFocus
+                    placeholder="Buscar equipe pelo nome"
+                    placeholderTextColor={colors.textMuted}
+                    accessibilityLabel="Buscar equipe pelo nome"
+                    style={styles.searchInput}
+                />
+            ) : null}
 
             <View style={styles.filters}>
                 <FilterChips
@@ -179,7 +215,8 @@ function TeamsManagementContent({ defaultSeasonId }: { defaultSeasonId: string }
 
             {!teams.isPending && !teams.isError ? (
                 <ThemedText variant="bodySm" style={styles.countLine}>
-                    {items.length} {items.length === 1 ? 'equipe' : 'equipes'} {STATUS_COUNT_LABEL[status]}
+                    {visibleItems.length} {visibleItems.length === 1 ? 'equipe' : 'equipes'}{' '}
+                    {query ? `encontrada${visibleItems.length === 1 ? '' : 's'} para "${search.trim()}"` : STATUS_COUNT_LABEL[status]}
                 </ThemedText>
             ) : null}
         </View>
@@ -201,6 +238,15 @@ function TeamsManagementContent({ defaultSeasonId }: { defaultSeasonId: string }
             );
         }
 
+        if (query) {
+            return (
+                <EmptyState
+                    title="Nenhuma equipe encontrada"
+                    description={`Nenhum resultado para "${search.trim()}". Tente outro nome.`}
+                />
+            );
+        }
+
         return (
             <EmptyState
                 title={`Nenhuma equipe ${STATUS_COUNT_LABEL[status]}`}
@@ -211,11 +257,11 @@ function TeamsManagementContent({ defaultSeasonId }: { defaultSeasonId: string }
 
     return (
         <FlatList
-            data={items}
+            data={visibleItems}
             keyExtractor={(item) => item.team_id}
             renderItem={({ item }) => <TeamRow team={item} />}
             contentInsetAdjustmentBehavior="automatic"
-            contentContainerStyle={[styles.content, items.length === 0 && styles.fill]}
+            contentContainerStyle={[styles.content, visibleItems.length === 0 && styles.fill]}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
             ListHeaderComponent={renderHeader}
             ListEmptyComponent={renderEmpty}
@@ -256,12 +302,34 @@ const styles = StyleSheet.create({
         paddingBottom: spacing.md,
         marginHorizontal: -spacing.md,
     },
-    titleBlock: {
+    titleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
         paddingHorizontal: spacing.md,
+    },
+    titleBlock: {
         gap: 2,
     },
     titleSubtitle: {
         color: colors.textSecondary,
+    },
+    searchButton: {
+        width: 40,
+        height: 40,
+        borderRadius: radius.pill,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.field,
+    },
+    searchInput: {
+        marginHorizontal: spacing.md,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm,
+        borderRadius: radius.md,
+        borderCurve: 'continuous',
+        backgroundColor: colors.field,
+        color: colors.ink,
     },
     filters: {
         gap: spacing.sm,
