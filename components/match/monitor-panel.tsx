@@ -1,10 +1,11 @@
 import { useRef, useState, type RefObject } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Button } from '@/components/button';
 import { Icon } from '@/components/icon';
 import { ListRow, ListRowIcon } from '@/components/list-row';
 import { Section } from '@/components/management/section';
+import { Segmented } from '@/components/form/segmented';
 import { BottomSheet, type BottomSheetHandle } from '@/components/overlays/bottom-sheet';
 import { ConfirmDialog } from '@/components/overlays/confirm-dialog';
 import { MemberAvatar } from '@/components/teams/member-card';
@@ -26,19 +27,12 @@ import {
 } from '@/hooks/useMatches';
 import { useToast } from '@/providers/ToastProvider';
 import type { MatchPublicPlayerResponse, MatchPublicResponse } from '@/types/match';
-import { EventTypeLabel, type CardType, type PenaltyKickResult } from '@/types/enums';
+import type { CardType, PenaltyKickResult } from '@/types/enums';
 import { colors, radius, shadows, spacing } from '@/theme';
 import { friendlyErrorMessage } from '@/utils/api-error-message';
-import { expelledPlayerIds, playerName, teamName } from './match-helpers';
+import { clockLabel, eventDeletionPreview, expelledPlayerIds, cautionedPlayerIds, playerName, teamName } from './match-helpers';
 
 const EMPTY_EXPELLED: ReadonlySet<string> = new Set();
-
-function clockLabel(totalSeconds: number): string {
-    const safe = Math.max(0, Math.floor(totalSeconds));
-    const minutes = Math.floor(safe / 60);
-    const seconds = safe % 60;
-    return `${minutes}'${seconds < 10 ? `0${seconds}` : seconds}`;
-}
 
 function undoPreview(match: MatchPublicResponse): { title: string; description: string } {
     const last = match.timeline[match.timeline.length - 1];
@@ -48,22 +42,7 @@ function undoPreview(match: MatchPublicResponse): { title: string; description: 
             description: 'O último evento registrado nesta partida será removido.',
         };
     }
-
-    const who = playerName(match, last.player_id);
-    const time = clockLabel(last.clock_seconds);
-    const base = `${EventTypeLabel[last.event_type]}${who ? ` de ${who}` : ''} aos ${time}`;
-
-    const isScoreEvent = last.event_type === 'GOAL' || last.event_type === 'POINT';
-    if (isScoreEvent && last.team_id) {
-        const nextTeam1 = last.team_id === match.team1.team_id ? match.team1.score - 1 : match.team1.score;
-        const nextTeam2 = last.team_id === match.team2.team_id ? match.team2.score - 1 : match.team2.score;
-        return {
-            title: 'Desfazer evento?',
-            description: `Desfazer ${base}? O placar será atualizado para ${Math.max(0, nextTeam1)} × ${Math.max(0, nextTeam2)}.`,
-        };
-    }
-
-    return { title: 'Desfazer evento?', description: `Desfazer ${base}?` };
+    return eventDeletionPreview(match, last);
 }
 
 interface PenaltyKickRow {
@@ -101,21 +80,33 @@ function penaltyKickRows(match: MatchPublicResponse): PenaltyKickRow[] {
 function PlayerPill({
     player,
     expelled,
+    cautioned,
     disabled,
     onPress,
 }: {
     player: MatchPublicPlayerResponse;
     expelled: boolean;
+    cautioned?: boolean;
     disabled?: boolean;
     onPress?: () => void;
 }) {
     const pill = (
-        <View style={[styles.playerPill, expelled && styles.playerPillExpelled]}>
+        <View
+            style={[
+                styles.playerPill,
+                cautioned && !expelled && styles.playerPillCautioned,
+                expelled && styles.playerPillExpelled,
+            ]}
+        >
             <MemberAvatar name={player.name} size={32} />
             <ThemedText variant="body" numberOfLines={1} style={styles.playerPillName}>
                 {player.name}
             </ThemedText>
-            {expelled ? <Icon name="card" size={14} color={colors.danger} /> : null}
+            {expelled ? (
+                <Icon name="card" size={14} color={colors.danger} />
+            ) : cautioned ? (
+                <Icon name="card" size={14} color={colors.warningText} />
+            ) : null}
         </View>
     );
 
@@ -141,6 +132,8 @@ function PlayersList({
     teamName,
     pointLabel = 'Gol',
     expelled = EMPTY_EXPELLED,
+    cautioned = EMPTY_EXPELLED,
+    clockSeconds,
     disabled = false,
     readOnly = false,
     onGoal,
@@ -150,6 +143,8 @@ function PlayersList({
     teamName?: string;
     pointLabel?: string;
     expelled?: ReadonlySet<string>;
+    cautioned?: ReadonlySet<string>;
+    clockSeconds?: number;
     disabled?: boolean;
     readOnly?: boolean;
     onGoal?: (playerId: string) => void;
@@ -187,6 +182,7 @@ function PlayersList({
                             key={player.user_id}
                             player={player}
                             expelled={expelled.has(player.user_id)}
+                            cautioned={cautioned.has(player.user_id)}
                             disabled={disabled}
                             onPress={readOnly ? undefined : () => openFor(player)}
                         />
@@ -205,7 +201,10 @@ function PlayersList({
                                         {selected.name}
                                     </ThemedText>
                                     <ThemedText variant="body" style={styles.sheetHeaderSubtitle} numberOfLines={1}>
-                                        {teamName ? `${teamName} · registrando evento` : 'Registrando evento'}
+                                        {(() => {
+                                            const at = clockSeconds != null ? ` aos ${clockLabel(clockSeconds)}` : '';
+                                            return teamName ? `${teamName} · registrando${at}` : `Registrando${at}`;
+                                        })()}
                                     </ThemedText>
                                 </View>
                             </View>
@@ -574,7 +573,11 @@ function InProgressPanel({ match }: { match: MatchPublicResponse }) {
     const undoLastEvent = useUndoLastMatchEvent();
 
     const [undoConfirmOpen, setUndoConfirmOpen] = useState(false);
+    const [selectedTeamId, setSelectedTeamId] = useState(match.team1.team_id);
     const finishSheetRef = useRef<BottomSheetHandle>(null);
+
+    type PendingAction = 'endPeriod' | 'endSet' | 'endPenaltyShootout' | 'startPenaltyShootout' | null;
+    const [pendingAction, setPendingAction] = useState<PendingAction>(null);
 
     const run = async (action: () => Promise<unknown>, successMessage: string | undefined, fallbackError: string) => {
         try {
@@ -588,44 +591,41 @@ function InProgressPanel({ match }: { match: MatchPublicResponse }) {
     const isVolleyball = match.modality_configuration?.score_type === 'SETS';
     const pointLabel = match.modality_configuration?.score_type === 'GOALS' ? 'Gol' : 'Ponto';
     const expelled = expelledPlayerIds(match);
+    const cautioned = cautionedPlayerIds(match);
 
-    const confirmEndPeriod = () =>
-        Alert.alert('Encerrar período?', `Finalizar o ${match.current_period}º período.`, [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-                text: 'Encerrar',
-                onPress: () =>
-                    run(
-                        () => endPeriod.mutateAsync({ matchId: match.match_id }),
-                        'Período encerrado.',
-                        'Não foi possível encerrar o período.'
-                    ),
-            },
-        ]);
+    const confirmEndPeriod = () => setPendingAction('endPeriod');
+    const confirmEndSet = () => setPendingAction('endSet');
+    const confirmEndPenaltyShootout = () => setPendingAction('endPenaltyShootout');
+    const confirmStartPenaltyShootout = () => setPendingAction('startPenaltyShootout');
 
-    const confirmEndSet = () =>
-        Alert.alert('Encerrar set?', 'O set atual será registrado no histórico da partida.', [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-                text: 'Encerrar',
-                onPress: () =>
-                    run(() => endSet.mutateAsync({ matchId: match.match_id }), 'Set encerrado.', 'Não foi possível encerrar o set.'),
-            },
-        ]);
+    const pendingActionBusy =
+        endPeriod.isPending || endSet.isPending || endPenaltyShootout.isPending || startPenaltyShootout.isPending;
 
-    const confirmEndPenaltyShootout = () =>
-        Alert.alert('Encerrar disputa de pênaltis?', 'A disputa será encerrada com o placar atual.', [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-                text: 'Encerrar',
-                onPress: () =>
-                    run(
-                        () => endPenaltyShootout.mutateAsync({ matchId: match.match_id }),
-                        'Disputa de pênaltis encerrada.',
-                        'Não foi possível encerrar a disputa de pênaltis.'
-                    ),
-            },
-        ]);
+    const handlePendingActionConfirm = () => {
+        if (pendingAction === 'endPeriod') {
+            run(
+                () => endPeriod.mutateAsync({ matchId: match.match_id }),
+                'Período encerrado.',
+                'Não foi possível encerrar o período.'
+            ).finally(() => setPendingAction(null));
+        } else if (pendingAction === 'endSet') {
+            run(() => endSet.mutateAsync({ matchId: match.match_id }), 'Set encerrado.', 'Não foi possível encerrar o set.').finally(
+                () => setPendingAction(null)
+            );
+        } else if (pendingAction === 'endPenaltyShootout') {
+            run(
+                () => endPenaltyShootout.mutateAsync({ matchId: match.match_id }),
+                'Disputa de pênaltis encerrada.',
+                'Não foi possível encerrar a disputa de pênaltis.'
+            ).finally(() => setPendingAction(null));
+        } else if (pendingAction === 'startPenaltyShootout') {
+            run(
+                () => startPenaltyShootout.mutateAsync({ matchId: match.match_id }),
+                'Disputa de pênaltis iniciada.',
+                'Não foi possível iniciar a disputa de pênaltis.'
+            ).finally(() => setPendingAction(null));
+        }
+    };
 
     const handleUndo = async () => {
         try {
@@ -648,6 +648,19 @@ function InProgressPanel({ match }: { match: MatchPublicResponse }) {
     };
 
     const undoDialog = undoPreview(match);
+
+    const pendingActionCopy: Record<Exclude<PendingAction, null>, { title: string; description: string }> = {
+        endPeriod: { title: 'Fim do tempo?', description: `Finalizar o ${match.current_period}º período.` },
+        endSet: { title: 'Encerrar set?', description: 'O set atual será registrado no histórico da partida.' },
+        endPenaltyShootout: {
+            title: 'Encerrar disputa de pênaltis?',
+            description: 'A disputa será encerrada com o placar atual.',
+        },
+        startPenaltyShootout: {
+            title: 'Iniciar disputa de pênaltis?',
+            description: 'A partida está empatada e vai para a disputa de pênaltis.',
+        },
+    };
 
     return (
         <>
@@ -673,16 +686,7 @@ function InProgressPanel({ match }: { match: MatchPublicResponse }) {
                                   )
                         }
                     />
-                    {isVolleyball ? (
-                        <Button
-                            title="Encerrar set"
-                            variant="neutral"
-                            size="small"
-                            icon="flag"
-                            loading={endSet.isPending}
-                            onPress={confirmEndSet}
-                        />
-                    ) : (
+                    {isVolleyball ? null : (
                         <>
                             <Button
                                 title="Iniciar período"
@@ -699,12 +703,21 @@ function InProgressPanel({ match }: { match: MatchPublicResponse }) {
                                 }
                             />
                             <Button
-                                title="Encerrar período"
+                                title="Fim do tempo"
                                 variant="neutral"
                                 size="small"
                                 icon="clock"
                                 loading={endPeriod.isPending}
                                 onPress={confirmEndPeriod}
+                            />
+                            <Button
+                                title="Desfazer"
+                                variant="neutral"
+                                size="small"
+                                icon="undo"
+                                disabled={match.timeline.length === 0}
+                                loading={undoLastEvent.isPending}
+                                onPress={() => setUndoConfirmOpen(true)}
                             />
                         </>
                     )}
@@ -752,65 +765,79 @@ function InProgressPanel({ match }: { match: MatchPublicResponse }) {
                 </Section>
             ) : (
                 <Section title="Jogadores">
-                    <PlayersList
-                        players={match.team1_players}
-                        teamName={match.team1.name}
-                        pointLabel={pointLabel}
-                        expelled={expelled}
-                        disabled={registerGoal.isPending || registerCard.isPending}
-                        onGoal={(playerId) =>
-                            run(
-                                () =>
-                                    registerGoal.mutateAsync({
-                                        matchId: match.match_id,
-                                        request: { team_id: match.team1.team_id, player_id: playerId },
-                                    }),
-                                undefined,
-                                `Não foi possível registrar o ${pointLabel.toLowerCase()}.`
-                            )
-                        }
-                        onCard={(playerId, cardType) =>
-                            run(
-                                () =>
-                                    registerCard.mutateAsync({
-                                        matchId: match.match_id,
-                                        request: { team_id: match.team1.team_id, player_id: playerId, card_type: cardType },
-                                    }),
-                                undefined,
-                                'Não foi possível registrar o cartão.'
-                            )
-                        }
+                    <Segmented
+                        options={[
+                            { label: match.team1.name, value: match.team1.team_id },
+                            { label: match.team2.name, value: match.team2.team_id },
+                        ]}
+                        value={selectedTeamId}
+                        onChange={setSelectedTeamId}
                     />
-                    <View style={styles.playersDivider} />
-                    <PlayersList
-                        players={match.team2_players}
-                        teamName={match.team2.name}
-                        pointLabel={pointLabel}
-                        expelled={expelled}
-                        disabled={registerGoal.isPending || registerCard.isPending}
-                        onGoal={(playerId) =>
-                            run(
-                                () =>
-                                    registerGoal.mutateAsync({
-                                        matchId: match.match_id,
-                                        request: { team_id: match.team2.team_id, player_id: playerId },
-                                    }),
-                                undefined,
-                                `Não foi possível registrar o ${pointLabel.toLowerCase()}.`
-                            )
-                        }
-                        onCard={(playerId, cardType) =>
-                            run(
-                                () =>
-                                    registerCard.mutateAsync({
-                                        matchId: match.match_id,
-                                        request: { team_id: match.team2.team_id, player_id: playerId, card_type: cardType },
-                                    }),
-                                undefined,
-                                'Não foi possível registrar o cartão.'
-                            )
-                        }
-                    />
+                    {selectedTeamId === match.team1.team_id ? (
+                        <PlayersList
+                            players={match.team1_players}
+                            teamName={match.team1.name}
+                            pointLabel={pointLabel}
+                            expelled={expelled}
+                            cautioned={cautioned}
+                            clockSeconds={match.clock_seconds}
+                            disabled={registerGoal.isPending || registerCard.isPending}
+                            onGoal={(playerId) =>
+                                run(
+                                    () =>
+                                        registerGoal.mutateAsync({
+                                            matchId: match.match_id,
+                                            request: { team_id: match.team1.team_id, player_id: playerId },
+                                        }),
+                                    undefined,
+                                    `Não foi possível registrar o ${pointLabel.toLowerCase()}.`
+                                )
+                            }
+                            onCard={(playerId, cardType) =>
+                                run(
+                                    () =>
+                                        registerCard.mutateAsync({
+                                            matchId: match.match_id,
+                                            request: { team_id: match.team1.team_id, player_id: playerId, card_type: cardType },
+                                        }),
+                                    undefined,
+                                    'Não foi possível registrar o cartão.'
+                                )
+                            }
+                        />
+                    ) : (
+                        <PlayersList
+                            players={match.team2_players}
+                            teamName={match.team2.name}
+                            pointLabel={pointLabel}
+                            expelled={expelled}
+                            cautioned={cautioned}
+                            clockSeconds={match.clock_seconds}
+                            disabled={registerGoal.isPending || registerCard.isPending}
+                            onGoal={(playerId) =>
+                                run(
+                                    () =>
+                                        registerGoal.mutateAsync({
+                                            matchId: match.match_id,
+                                            request: { team_id: match.team2.team_id, player_id: playerId },
+                                        }),
+                                    undefined,
+                                    `Não foi possível registrar o ${pointLabel.toLowerCase()}.`
+                                )
+                            }
+                            onCard={(playerId, cardType) =>
+                                run(
+                                    () =>
+                                        registerCard.mutateAsync({
+                                            matchId: match.match_id,
+                                            request: { team_id: match.team2.team_id, player_id: playerId, card_type: cardType },
+                                        }),
+                                    undefined,
+                                    'Não foi possível registrar o cartão.'
+                                )
+                            }
+                        />
+                    )}
                 </Section>
             )}
 
@@ -818,6 +845,14 @@ function InProgressPanel({ match }: { match: MatchPublicResponse }) {
                 <Section title="Disputa de pênaltis">
                     {match.penalty_shootout_active ? (
                         <>
+                            <View style={styles.officialScoreRow}>
+                                <ThemedText variant="overline" style={styles.officialScoreLabel}>
+                                    Placar oficial
+                                </ThemedText>
+                                <ThemedText variant="body">
+                                    {match.team1.name} {match.team1.score} × {match.team2.score} {match.team2.name}
+                                </ThemedText>
+                            </View>
                             <PenaltyScoreTally match={match} />
                             <View style={styles.penaltyTeamsRow}>
                                 <PenaltyTeamActions
@@ -868,13 +903,7 @@ function InProgressPanel({ match }: { match: MatchPublicResponse }) {
                             variant="neutral"
                             icon="shuffle"
                             loading={startPenaltyShootout.isPending}
-                            onPress={() =>
-                                run(
-                                    () => startPenaltyShootout.mutateAsync({ matchId: match.match_id }),
-                                    'Disputa de pênaltis iniciada.',
-                                    'Não foi possível iniciar a disputa de pênaltis.'
-                                )
-                            }
+                            onPress={confirmStartPenaltyShootout}
                         />
                     )}
                 </Section>
@@ -882,16 +911,8 @@ function InProgressPanel({ match }: { match: MatchPublicResponse }) {
 
             <Section title="Outras ações">
                 <Button
-                    title="Desfazer último evento"
-                    variant="outline"
-                    icon="undo"
-                    disabled={match.timeline.length === 0}
-                    loading={undoLastEvent.isPending}
-                    onPress={() => setUndoConfirmOpen(true)}
-                />
-                <Button
                     title="Finalizar partida"
-                    variant="danger"
+                    variant="dark"
                     icon="flag"
                     loading={finishMatch.isPending}
                     onPress={() => finishSheetRef.current?.present()}
@@ -908,6 +929,18 @@ function InProgressPanel({ match }: { match: MatchPublicResponse }) {
                 confirming={undoLastEvent.isPending}
                 onConfirm={handleUndo}
                 onCancel={() => setUndoConfirmOpen(false)}
+            />
+
+            <ConfirmDialog
+                visible={pendingAction !== null}
+                title={pendingAction ? pendingActionCopy[pendingAction].title : ''}
+                description={pendingAction ? pendingActionCopy[pendingAction].description : ''}
+                confirmLabel="Confirmar"
+                cancelLabel="Cancelar"
+                tone={pendingAction === 'startPenaltyShootout' ? 'primary' : 'danger'}
+                confirming={pendingActionBusy}
+                onConfirm={handlePendingActionConfirm}
+                onCancel={() => setPendingAction(null)}
             />
 
             <FinishMatchSheet
@@ -961,9 +994,6 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         paddingVertical: spacing.sm,
     },
-    playersDivider: {
-        height: spacing.sm,
-    },
     playersGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -985,6 +1015,21 @@ const styles = StyleSheet.create({
     },
     playerPillExpelled: {
         backgroundColor: colors.dangerSoft,
+    },
+    playerPillCautioned: {
+        backgroundColor: colors.warningSoft,
+    },
+    officialScoreRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: spacing.sm,
+        paddingVertical: spacing.xs,
+        borderRadius: radius.md,
+        backgroundColor: colors.field,
+    },
+    officialScoreLabel: {
+        color: colors.textSecondary,
     },
     playerPillName: {
         flex: 1,

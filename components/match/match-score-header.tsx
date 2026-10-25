@@ -1,5 +1,4 @@
 import { StyleSheet, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
 import type { MatchPublicResponse } from '@/types/match';
@@ -34,11 +33,12 @@ function StatusPill({ label, dotted = false }: { label: string; dotted?: boolean
 
 function HeaderRow({ match }: { match: MatchPublicResponse }) {
     if (match.status === 'IN_PROGRESS') {
+        const isSets = match.modality_configuration?.score_type === 'SETS';
         return (
             <View style={styles.headerRow}>
                 <StatusPill label="AO VIVO" dotted />
                 <ThemedText variant="body" style={styles.headerRight}>
-                    {match.current_period}º tempo
+                    {isSets ? `Set ${match.current_period}` : `${match.current_period}º tempo`}
                 </ThemedText>
             </View>
         );
@@ -106,6 +106,8 @@ export function MatchScoreHeader({
     const isFinished = match.status === 'FINISHED';
     const showScore = match.status !== 'SCHEDULED';
     const penaltyResult = match.penalty_result;
+    const isSets = match.modality_configuration?.score_type === 'SETS';
+    const showSetsTally = isSets && isLive && (match.team1.sets_won != null || match.team2.sets_won != null);
 
     const liveSeconds = useLiveClock(
         match.match_id,
@@ -115,12 +117,7 @@ export function MatchScoreHeader({
     );
 
     return (
-        <LinearGradient
-            colors={colors.gradientPrimary}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.card}
-        >
+        <View style={styles.card}>
             <HeaderRow match={match} />
 
             <View style={styles.teamsRow}>
@@ -160,6 +157,14 @@ export function MatchScoreHeader({
                         </View>
                     ) : null}
 
+                    {showSetsTally ? (
+                        <View style={styles.setsTallyPill}>
+                            <ThemedText variant="overline" style={styles.clockLabel}>
+                                Sets {match.team1.sets_won ?? 0} – {match.team2.sets_won ?? 0}
+                            </ThemedText>
+                        </View>
+                    ) : null}
+
                     {isLive ? (
                         <View style={styles.clockPill} accessibilityLabel={`Relógio: ${formatMatchClock(liveSeconds)}`}>
                             <View style={styles.statusDot} />
@@ -175,7 +180,7 @@ export function MatchScoreHeader({
                     isWinner={isFinished && !!match.winner_id && match.winner_id === match.team2.team_id}
                 />
             </View>
-        </LinearGradient>
+        </View>
     );
 }
 
@@ -187,6 +192,13 @@ const styles = StyleSheet.create({
         borderCurve: 'continuous',
         boxShadow: shadows.card,
         alignItems: 'center',
+        backgroundColor: colors.ink,
+    },
+    setsTallyPill: {
+        paddingHorizontal: spacing.sm,
+        paddingVertical: spacing.xxs,
+        borderRadius: radius.pill,
+        backgroundColor: TRANSLUCENT,
     },
     headerRow: {
         flexDirection: 'row',

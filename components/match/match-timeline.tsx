@@ -1,14 +1,20 @@
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Icon, type IconName } from '@/components/icon';
 import { ListRow, ListRowIcon } from '@/components/list-row';
 import { Segmented } from '@/components/form/segmented';
+import { ConfirmDialog } from '@/components/overlays/confirm-dialog';
 import { TeamAvatar } from '@/components/teams/team-avatar';
 import { ThemedText } from '@/components/themed-text';
+import { useDeleteMatchEvent } from '@/hooks/useMatches';
+import { useToast } from '@/providers/ToastProvider';
 import type { MatchPublicResponse, MatchTimelineEventResponse } from '@/types/match';
 import { EventTypeLabel, MatchCategoryLabel, type EventType } from '@/types/enums';
 import { colors, radius, spacing } from '@/theme';
+import { friendlyErrorMessage } from '@/utils/api-error-message';
 import {
+    eventDeletionPreview,
+    isEventCorrectable,
     matchCardCounts,
     penaltyShootoutKicks,
     playerName,
@@ -91,11 +97,20 @@ function MatchDetailsList({ match }: { match: MatchPublicResponse }) {
     );
 }
 
-function TimelineRow({ event, match }: { event: MatchTimelineEventResponse; match: MatchPublicResponse }) {
+function TimelineRow({
+    event,
+    match,
+    onDelete,
+}: {
+    event: MatchTimelineEventResponse;
+    match: MatchPublicResponse;
+    onDelete?: (event: MatchTimelineEventResponse) => void;
+}) {
     const presentation = EVENT_PRESENTATION[event.event_type];
     const title = [EventTypeLabel[event.event_type], playerName(match, event.player_id)]
         .filter((part): part is string => Boolean(part))
         .join(' · ');
+    const deletable = onDelete && isEventCorrectable(event.event_type);
 
     return (
         <ListRow
@@ -107,9 +122,22 @@ function TimelineRow({ event, match }: { event: MatchTimelineEventResponse; matc
             title={title}
             subtitle={teamName(match, event.team_id)}
             trailing={
-                <ThemedText variant="section" style={styles.eventClock}>
-                    {eventMinuteLabel(event.clock_seconds)}
-                </ThemedText>
+                <View style={styles.eventTrailing}>
+                    <ThemedText variant="section" style={styles.eventClock}>
+                        {eventMinuteLabel(event.clock_seconds)}
+                    </ThemedText>
+                    {deletable ? (
+                        <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`Desfazer ${title}`}
+                            hitSlop={8}
+                            onPress={() => onDelete?.(event)}
+                            style={styles.eventDeleteButton}
+                        >
+                            <Icon name="trash" size={16} color={colors.danger} />
+                        </Pressable>
+                    ) : null}
+                </View>
             }
         />
     );
@@ -117,6 +145,33 @@ function TimelineRow({ event, match }: { event: MatchTimelineEventResponse; matc
 
 function LiveTimeline({ match }: { match: MatchPublicResponse }) {
     const [tab, setTab] = useState<LiveTab>('lances');
+    const [pendingDelete, setPendingDelete] = useState<MatchTimelineEventResponse | null>(null);
+    const toast = useToast();
+    const deleteEvent = useDeleteMatchEvent();
+
+    const handleConfirmDelete = async () => {
+        if (!pendingDelete) return;
+        try {
+            const updated = await deleteEvent.mutateAsync({ matchId: match.match_id, eventId: pendingDelete.event_id });
+            setPendingDelete(null);
+            if (updated.reactivated_player_id) {
+                toast.info('Um jogador foi reativado (a expulsão associada a este evento foi desfeita).');
+            } else {
+                toast.success('Evento desfeito.');
+            }
+            if (updated.correction_alert) {
+                toast.error(
+                    `Correção crítica: placar mudou de ${updated.correction_alert.previous_score} para ` +
+                        `${updated.correction_alert.corrected_score} (${updated.correction_alert.current_status}). ` +
+                        'Verifique o chaveamento e notifique os alunos.'
+                );
+            }
+        } catch (error) {
+            toast.error(friendlyErrorMessage(error, 'Não foi possível desfazer o evento.'));
+        }
+    };
+
+    const dialog = pendingDelete ? eventDeletionPreview(match, pendingDelete) : null;
 
     return (
         <View style={styles.liveContainer}>
@@ -133,7 +188,7 @@ function LiveTimeline({ match }: { match: MatchPublicResponse }) {
                 match.timeline.length > 0 ? (
                     <View style={styles.rows}>
                         {match.timeline.map((event) => (
-                            <TimelineRow key={event.event_id} event={event} match={match} />
+                            <TimelineRow key={event.event_id} event={event} match={match} onDelete={setPendingDelete} />
                         ))}
                     </View>
                 ) : (
@@ -144,6 +199,18 @@ function LiveTimeline({ match }: { match: MatchPublicResponse }) {
             ) : (
                 <MatchDetailsList match={match} />
             )}
+
+            <ConfirmDialog
+                visible={pendingDelete !== null}
+                title={dialog?.title ?? ''}
+                description={dialog?.description ?? ''}
+                confirmLabel="Confirmar"
+                cancelLabel="Cancelar"
+                tone="danger"
+                confirming={deleteEvent.isPending}
+                onConfirm={handleConfirmDelete}
+                onCancel={() => setPendingDelete(null)}
+            />
         </View>
     );
 }
@@ -313,6 +380,14 @@ const styles = StyleSheet.create({
     },
     eventClock: {
         fontVariant: ['tabular-nums'],
+    },
+    eventTrailing: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+    },
+    eventDeleteButton: {
+        padding: spacing.xxs,
     },
     penaltyCard: {
         gap: spacing.sm,

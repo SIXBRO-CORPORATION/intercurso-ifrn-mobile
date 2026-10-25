@@ -274,7 +274,28 @@ export function ManageMatchScreenContent({
 
     return (
         <>
-            <Stack.Screen options={{ title: 'Gerenciar partida' }} />
+            <Stack.Screen
+                options={{
+                    title: 'Gerenciar partida',
+                    headerRight:
+                        match.status === 'SCHEDULED'
+                            ? () => (
+                                  <Pressable
+                                      accessibilityRole="button"
+                                      accessibilityLabel="Editar partida"
+                                      hitSlop={8}
+                                      onPress={() =>
+                                          router.push(`/seasons/${seasonId}/bracket/match/${matchId}?view=edit`)
+                                      }
+                                  >
+                                      <ThemedText variant="section" style={{ color: colors.primary }}>
+                                          Editar
+                                      </ThemedText>
+                                  </Pressable>
+                              )
+                            : undefined,
+                }}
+            />
             <ScrollView
                 contentInsetAdjustmentBehavior="automatic"
                 contentContainerStyle={styles.content}
