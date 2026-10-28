@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "265197831627",
+    "project_id": "intercurso-app",
+    "storage_bucket": "intercurso-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:265197831627:android:ab21d2a54bab4c8a3aa24e",
+        "android_client_info": {
+          "package_name": "com.sixbro.intercursoifrn"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBthVYUiejxluZ-EHqKmUw77QrkocQWe1o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
