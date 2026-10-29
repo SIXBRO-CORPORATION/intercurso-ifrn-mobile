@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import { FlatList, type ListRenderItemInfo, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { Link, router } from 'expo-router';
 import { Button } from '@/components/button';
 import { FilterChips, type FilterChipOption } from '@/components/filter-chips';
@@ -58,7 +58,7 @@ function MatchSeparator() {
     return <View style={styles.separator} />;
 }
 
-function MatchRow({ seasonId, match }: { seasonId: string; match: MatchListItemResponse }) {
+const MatchRow = memo(function MatchRow({ seasonId, match }: { seasonId: string; match: MatchListItemResponse }) {
     const isScheduled = match.status === 'SCHEDULED';
     const isLive = match.status === 'IN_PROGRESS';
     const team1Name = match.team1?.name ?? 'A definir';
@@ -137,7 +137,7 @@ function MatchRow({ seasonId, match }: { seasonId: string; match: MatchListItemR
             </Pressable>
         </Link>
     );
-}
+});
 
 function MonitorMatchesContent({ seasonId }: { seasonId: string }) {
     const modalities = useAllModalities();
@@ -219,12 +219,17 @@ function MonitorMatchesContent({ seasonId }: { seasonId: string }) {
         );
     };
 
+    const renderItem = useCallback(
+        ({ item }: ListRenderItemInfo<MatchListItemResponse>) => <MatchRow seasonId={seasonId} match={item} />,
+        [seasonId]
+    );
+
     return (
         <>
             <FlatList
                 data={matches}
                 keyExtractor={(item) => item.match_id}
-                renderItem={({ item }) => <MatchRow seasonId={seasonId} match={item} />}
+                renderItem={renderItem}
                 contentInsetAdjustmentBehavior="automatic"
                 contentContainerStyle={[styles.content, matches.length === 0 && styles.fill]}
                 ItemSeparatorComponent={MatchSeparator}

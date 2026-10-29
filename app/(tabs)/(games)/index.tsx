@@ -1,5 +1,11 @@
-import { useMemo, useState } from 'react';
-import { RefreshControl, SectionList, StyleSheet, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import {
+    RefreshControl,
+    SectionList,
+    StyleSheet,
+    View,
+    type SectionListRenderItem,
+} from 'react-native';
 import { router } from 'expo-router';
 import { Button } from '@/components/button';
 import { FilterChips, type FilterChipOption } from '@/components/filter-chips';
@@ -157,6 +163,25 @@ export default function GamesScreen() {
         ...(modalities.data ?? []).map((m) => ({ value: m.modality_id, label: m.name })),
     ];
 
+    const renderItem: SectionListRenderItem<MatchListItemResponse, GameSection> = useCallback(
+        ({ item, index, section }) => {
+            if (section.kind === 'live' && index === 0) {
+                return <MatchCard match={item} dataUpdatedAt={list.dataUpdatedAt} />;
+            }
+
+            const { team1, team2, trailing } = matchRowProps(item);
+            return (
+                <MatchListRow
+                    team1={team1}
+                    team2={team2}
+                    trailing={trailing}
+                    onPress={() => router.push(`/match/${item.match_id}`)}
+                />
+            );
+        },
+        [list.dataUpdatedAt]
+    );
+
     if (season.isPending) {
         return <LoadingState label="Carregando temporada…" />;
     }
@@ -268,21 +293,7 @@ export default function GamesScreen() {
                     ) : null}
                 </View>
             )}
-            renderItem={({ item, index, section }) => {
-                if (section.kind === 'live' && index === 0) {
-                    return <MatchCard match={item} dataUpdatedAt={list.dataUpdatedAt} />;
-                }
-
-                const { team1, team2, trailing } = matchRowProps(item);
-                return (
-                    <MatchListRow
-                        team1={team1}
-                        team2={team2}
-                        trailing={trailing}
-                        onPress={() => router.push(`/match/${item.match_id}`)}
-                    />
-                );
-            }}
+            renderItem={renderItem}
             contentInsetAdjustmentBehavior="automatic"
             contentContainerStyle={[styles.content, sections.length === 0 && styles.contentFill]}
             ItemSeparatorComponent={() => <View style={styles.separator} />}

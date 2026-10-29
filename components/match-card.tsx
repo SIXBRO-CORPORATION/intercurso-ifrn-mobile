@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Link } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -40,7 +41,7 @@ function TeamColumn({ team, align }: { team: MatchTeamResponse | null | undefine
     );
 }
 
-export function MatchCard({ match, dataUpdatedAt }: MatchCardProps) {
+export const MatchCard = memo(function MatchCard({ match, dataUpdatedAt }: MatchCardProps) {
     const isLive = match.status === 'IN_PROGRESS';
     const isFinished = match.status === 'FINISHED';
     const showScore = match.status !== 'SCHEDULED';
@@ -131,7 +132,7 @@ export function MatchCard({ match, dataUpdatedAt }: MatchCardProps) {
             </Pressable>
         </Link>
     );
-}
+});
 
 const styles = StyleSheet.create({
     card: {

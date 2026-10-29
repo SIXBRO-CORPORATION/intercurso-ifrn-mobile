@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { memo, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { TeamAvatar } from '@/components/teams/team-avatar';
 import { ThemedText } from '@/components/themed-text';
@@ -105,7 +105,13 @@ function TeamLine({ team }: { team: MatchListRowTeam }) {
     );
 }
 
-export function MatchListRow({ team1, team2, trailing, onPress, accessibilityLabel }: MatchListRowProps) {
+export const MatchListRow = memo(function MatchListRow({
+    team1,
+    team2,
+    trailing,
+    onPress,
+    accessibilityLabel,
+}: MatchListRowProps) {
     const content = (
         <>
             <View style={styles.teams}>
@@ -131,7 +137,7 @@ export function MatchListRow({ team1, team2, trailing, onPress, accessibilityLab
             {content}
         </Pressable>
     );
-}
+});
 
 // Presets prontos para a coluna da direita do MatchListRow. Quem usa só
 // formata o texto (minuto, horário, modalidade) — nenhuma lógica de partida

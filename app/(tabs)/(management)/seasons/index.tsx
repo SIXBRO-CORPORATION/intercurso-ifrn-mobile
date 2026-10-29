@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { memo, useCallback, useState } from 'react';
+import { FlatList, type ListRenderItemInfo, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { Link, router } from 'expo-router';
 import { FilterChips, type FilterChipOption } from '@/components/filter-chips';
 import { Icon } from '@/components/icon';
@@ -49,7 +49,7 @@ function registrationLabel(season: SeasonSummary): string {
     return 'Sem prazo de inscrição';
 }
 
-function SeasonRow({ season }: { season: SeasonSummary }) {
+const SeasonRow = memo(function SeasonRow({ season }: { season: SeasonSummary }) {
     return (
         <Link href={`/seasons/${season.season_id}`} asChild>
             <Pressable
@@ -85,7 +85,7 @@ function SeasonRow({ season }: { season: SeasonSummary }) {
             </Pressable>
         </Link>
     );
-}
+});
 
 export default function SeasonsScreen() {
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
@@ -137,11 +137,16 @@ export default function SeasonsScreen() {
         );
     };
 
+    const renderItem = useCallback(
+        ({ item }: ListRenderItemInfo<SeasonSummary>) => <SeasonRow season={item} />,
+        []
+    );
+
     return (
         <FlatList
             data={items}
             keyExtractor={(item) => item.season_id}
-            renderItem={({ item }) => <SeasonRow season={item} />}
+            renderItem={renderItem}
             contentInsetAdjustmentBehavior="automatic"
             contentContainerStyle={[styles.content, items.length === 0 && styles.fill]}
             ItemSeparatorComponent={() => <View style={styles.separator} />}

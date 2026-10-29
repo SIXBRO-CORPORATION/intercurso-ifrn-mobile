@@ -1,4 +1,5 @@
-import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { memo, useCallback } from 'react';
+import { FlatList, type ListRenderItemInfo, RefreshControl, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { Icon } from '@/components/icon';
 import { ListRowIcon } from '@/components/list-row';
@@ -46,7 +47,7 @@ function configLabel(modality: ModalitySummaryResponse): string {
     return `${periods} · ${modality.period_durations_minutes} min · ${scoreLabel}`;
 }
 
-function ModalityRow({ modality }: { modality: ModalitySummaryResponse }) {
+const ModalityRow = memo(function ModalityRow({ modality }: { modality: ModalitySummaryResponse }) {
     const toast = useToast();
     const updateActive = useUpdateModalityActive();
     const members = formatMembers(modality);
@@ -97,7 +98,7 @@ function ModalityRow({ modality }: { modality: ModalitySummaryResponse }) {
             />
         </View>
     );
-}
+});
 
 export default function ModalitiesScreen() {
     const modalities = useModalitiesAdmin();
@@ -129,11 +130,16 @@ export default function ModalitiesScreen() {
         );
     };
 
+    const renderItem = useCallback(
+        ({ item }: ListRenderItemInfo<ModalitySummaryResponse>) => <ModalityRow modality={item} />,
+        []
+    );
+
     return (
         <FlatList
             data={items}
             keyExtractor={(item) => item.modality_id}
-            renderItem={({ item }) => <ModalityRow modality={item} />}
+            renderItem={renderItem}
             contentInsetAdjustmentBehavior="automatic"
             contentContainerStyle={[styles.content, items.length === 0 && styles.fill]}
             ItemSeparatorComponent={() => <View style={styles.separator} />}

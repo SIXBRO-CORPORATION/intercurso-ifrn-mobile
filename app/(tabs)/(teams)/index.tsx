@@ -1,4 +1,5 @@
-import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { memo, useCallback } from 'react';
+import { FlatList, type ListRenderItemInfo, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Link, router } from 'expo-router';
 import { Button } from '@/components/button';
@@ -74,7 +75,7 @@ function RegistrationBanner({
     );
 }
 
-function TeamCard({ team, role }: { team: TeamSummary; role: string }) {
+const TeamCard = memo(function TeamCard({ team, role }: { team: TeamSummary; role: string }) {
     const maxMembers = team.max_members;
     const subtitle = [team.modality_name, role].filter(Boolean).join(' · ');
 
@@ -112,13 +113,19 @@ function TeamCard({ team, role }: { team: TeamSummary; role: string }) {
             </Pressable>
         </Link>
     );
-}
+});
 
 export default function TeamsScreen() {
     const insets = useSafeAreaInsets();
     const { user, isAuthenticated, isInitializing } = useAuth();
     const activeSeason = useActiveSeason();
     const teams = useTeams(activeSeason.data ? { season_id: activeSeason.data.season_id } : undefined);
+
+    const renderItem = useCallback(
+        ({ item }: ListRenderItemInfo<TeamSummary>) =>
+            user ? <TeamCard team={item} role={roleLabel(item, user.user_id)} /> : null,
+        [user]
+    );
 
     if (isInitializing) {
         return <LoadingState label="Carregando…" />;
@@ -195,7 +202,7 @@ export default function TeamsScreen() {
                 style={styles.list}
                 data={items}
                 keyExtractor={(item) => item.team_id}
-                renderItem={({ item }) => <TeamCard team={item} role={roleLabel(item, user.user_id)} />}
+                renderItem={renderItem}
                 contentInsetAdjustmentBehavior="automatic"
                 contentContainerStyle={[styles.content, items.length === 0 && styles.fill]}
                 ListHeaderComponent={renderHeader}

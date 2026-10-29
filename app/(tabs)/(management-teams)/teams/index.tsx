@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
+import { memo, useCallback, useMemo, useState } from 'react';
+import { FlatList, type ListRenderItemInfo, Pressable, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
 import { Link } from 'expo-router';
 import { FilterChips, type FilterChipOption } from '@/components/filter-chips';
 import { Icon } from '@/components/icon';
@@ -76,7 +76,7 @@ function DonationProgress({ confirmed, total }: { confirmed: number; total: numb
     );
 }
 
-function TeamRow({ team }: { team: TeamSummary }) {
+const TeamRow = memo(function TeamRow({ team }: { team: TeamSummary }) {
     const subtitle = team.modality_name ?? 'Modalidade';
     const ownerLine = [team.owner_name ? `Dono: ${team.owner_name}` : null, `${team.members_count} membros`]
         .filter(Boolean)
@@ -115,7 +115,7 @@ function TeamRow({ team }: { team: TeamSummary }) {
             </Pressable>
         </Link>
     );
-}
+});
 
 function TeamsManagementContent({ defaultSeasonId }: { defaultSeasonId: string }) {
     const seasons = useSeasons();
@@ -255,11 +255,16 @@ function TeamsManagementContent({ defaultSeasonId }: { defaultSeasonId: string }
         );
     };
 
+    const renderItem = useCallback(
+        ({ item }: ListRenderItemInfo<TeamSummary>) => <TeamRow team={item} />,
+        []
+    );
+
     return (
         <FlatList
             data={visibleItems}
             keyExtractor={(item) => item.team_id}
-            renderItem={({ item }) => <TeamRow team={item} />}
+            renderItem={renderItem}
             contentInsetAdjustmentBehavior="automatic"
             contentContainerStyle={[styles.content, visibleItems.length === 0 && styles.fill]}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
