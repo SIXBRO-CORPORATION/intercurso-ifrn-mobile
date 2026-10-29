@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useCallback, useEffect, useMemo } from 'react';
 import Toast from 'react-native-toast-message';
 import { toastConfig } from '@/components/overlays/toast';
 import { setToastCallback } from '@/utils/http-client';
@@ -54,8 +54,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         });
     }, [showToast]);
 
+    const contextValue = useMemo(
+        () => ({ showToast, success, error, info }),
+        [showToast, success, error, info]
+    );
+
     return (
-        <ToastContext.Provider value={{ showToast, success, error, info }}>
+        <ToastContext.Provider value={contextValue}>
             {children}
             <Toast config={toastConfig} />
         </ToastContext.Provider>

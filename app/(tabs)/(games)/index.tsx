@@ -24,6 +24,7 @@ import { colors, spacing } from '@/theme';
 import type { MatchListFilters, MatchListItemResponse } from '@/types/match-list';
 
 const NO_ACTIVE_SEASON_STATUS = 400;
+const EMPTY_MATCHES: MatchListItemResponse[] = [];
 
 function errorMessage(error: unknown, fallback: string): string {
     return error instanceof ApiError ? error.message : fallback;
@@ -109,6 +110,14 @@ function buildSections(matches: MatchListItemResponse[]): GameSection[] {
     return sections;
 }
 
+function MatchSeparator() {
+    return <View style={styles.separator} />;
+}
+
+function SectionSeparator() {
+    return <View style={styles.sectionSeparator} />;
+}
+
 function matchRowProps(match: MatchListItemResponse) {
     const showScore = match.status !== 'SCHEDULED';
     const team1 = { name: match.team1?.name ?? 'A definir', score: showScore ? match.team1?.score : undefined };
@@ -152,9 +161,17 @@ export default function GamesScreen() {
 
     const list = useMatchList(listFilters ?? { seasonId: '' }, !!listFilters);
 
-    const matches: MatchListItemResponse[] = list.data?.pages.flatMap((page) => page.items) ?? [];
+    const matches = useMemo<MatchListItemResponse[]>(
+        () => list.data?.pages.flatMap((page) => page.items) ?? EMPTY_MATCHES,
+        [list.data]
+    );
     const sections = useMemo(() => buildSections(matches), [matches]);
     const hasActiveFilters = modalityFilter !== 'all';
+
+    const contentStyle = useMemo(
+        () => [styles.content, sections.length === 0 && styles.contentFill],
+        [sections.length]
+    );
 
     const clearFilters = () => setModalityFilter('all');
 
@@ -180,6 +197,23 @@ export default function GamesScreen() {
             );
         },
         [list.dataUpdatedAt]
+    );
+
+    const renderSectionHeader = useCallback(
+        ({ section }: { section: GameSection }) => (
+            <View style={styles.sectionHeader}>
+                <View style={styles.sectionHeaderLeft}>
+                    {section.kind === 'live' ? <View style={styles.liveDot} /> : null}
+                    <ThemedText variant="heading">{section.title}</ThemedText>
+                </View>
+                {section.trailing ? (
+                    <ThemedText variant="body" style={styles.sectionTrailing}>
+                        {section.trailing}
+                    </ThemedText>
+                ) : null}
+            </View>
+        ),
+        []
     );
 
     if (season.isPending) {
@@ -280,24 +314,12 @@ export default function GamesScreen() {
             sections={sections}
             keyExtractor={(item) => item.match_id}
             stickySectionHeadersEnabled={false}
-            renderSectionHeader={({ section }) => (
-                <View style={styles.sectionHeader}>
-                    <View style={styles.sectionHeaderLeft}>
-                        {section.kind === 'live' ? <View style={styles.liveDot} /> : null}
-                        <ThemedText variant="heading">{section.title}</ThemedText>
-                    </View>
-                    {section.trailing ? (
-                        <ThemedText variant="body" style={styles.sectionTrailing}>
-                            {section.trailing}
-                        </ThemedText>
-                    ) : null}
-                </View>
-            )}
+            renderSectionHeader={renderSectionHeader}
             renderItem={renderItem}
             contentInsetAdjustmentBehavior="automatic"
-            contentContainerStyle={[styles.content, sections.length === 0 && styles.contentFill]}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
-            SectionSeparatorComponent={() => <View style={styles.sectionSeparator} />}
+            contentContainerStyle={contentStyle}
+            ItemSeparatorComponent={MatchSeparator}
+            SectionSeparatorComponent={SectionSeparator}
             ListHeaderComponent={
                 <View style={styles.header}>
                     <View style={styles.headerTop}>

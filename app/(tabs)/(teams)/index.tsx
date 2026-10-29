@@ -115,6 +115,10 @@ const TeamCard = memo(function TeamCard({ team, role }: { team: TeamSummary; rol
     );
 });
 
+function TeamSeparator() {
+    return <View style={styles.separator} />;
+}
+
 export default function TeamsScreen() {
     const insets = useSafeAreaInsets();
     const { user, isAuthenticated, isInitializing } = useAuth();
@@ -206,7 +210,7 @@ export default function TeamsScreen() {
                 contentInsetAdjustmentBehavior="automatic"
                 contentContainerStyle={[styles.content, items.length === 0 && styles.fill]}
                 ListHeaderComponent={renderHeader}
-                ItemSeparatorComponent={() => <View style={styles.separator} />}
+                ItemSeparatorComponent={TeamSeparator}
                 ListEmptyComponent={renderEmpty}
                 refreshControl={
                     <RefreshControl

@@ -267,7 +267,7 @@ function TeamsManagementContent({ defaultSeasonId }: { defaultSeasonId: string }
             renderItem={renderItem}
             contentInsetAdjustmentBehavior="automatic"
             contentContainerStyle={[styles.content, visibleItems.length === 0 && styles.fill]}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            ItemSeparatorComponent={TeamSeparator}
             ListHeaderComponent={renderHeader}
             ListEmptyComponent={renderEmpty}
             refreshControl={<RefreshControl refreshing={teams.isRefetching} onRefresh={() => teams.refetch()} />}
@@ -283,6 +283,10 @@ function TeamsManagementGate() {
     }
 
     return <TeamsManagementContent defaultSeasonId={activeSeason.data?.season_id ?? ALL} />;
+}
+
+function TeamSeparator() {
+    return <View style={styles.separator} />;
 }
 
 export default function TeamsManagementScreen() {
