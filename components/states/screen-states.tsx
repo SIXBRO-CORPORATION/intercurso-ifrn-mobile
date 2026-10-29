@@ -26,12 +26,12 @@ export function LoadingState({ label = 'Carregando…' }: { label?: string }) {
     );
 }
 
-interface ErrorStateProps {
+type ErrorStateProps = {
     title: string;
     description: string;
     onRetry?: () => void;
     retrying?: boolean;
-}
+};
 
 export function ErrorState({ title, description, onRetry, retrying = false }: ErrorStateProps) {
     return (
@@ -50,12 +50,12 @@ export function ErrorState({ title, description, onRetry, retrying = false }: Er
     );
 }
 
-interface EmptyStateProps {
+type EmptyStateProps = {
     title: string;
     description?: string;
     actionLabel?: string;
     onAction?: () => void;
-}
+};
 
 export function EmptyState({ title, description, actionLabel, onAction }: EmptyStateProps) {
     return (

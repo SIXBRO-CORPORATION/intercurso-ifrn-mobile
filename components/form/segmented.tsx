@@ -11,12 +11,12 @@ interface SegmentedOption<T extends string> {
     value: T;
 }
 
-interface SegmentedProps<T extends string> {
+type SegmentedProps<T extends string> = {
     options: SegmentedOption<T>[];
     value: T;
     onChange: (value: T) => void;
     disabled?: boolean;
-}
+};
 
 export function Segmented<T extends string>({ options, value, onChange, disabled = false }: SegmentedProps<T>) {
     const [trackWidth, setTrackWidth] = useState(0);

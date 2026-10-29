@@ -9,12 +9,12 @@ const THUMB_SIZE = 22;
 const THUMB_MARGIN = (TRACK_HEIGHT - THUMB_SIZE) / 2;
 const THUMB_TRAVEL = TRACK_WIDTH - THUMB_SIZE - THUMB_MARGIN * 2;
 
-interface ToggleProps {
+type ToggleProps = {
     value: boolean;
     onValueChange: (value: boolean) => void;
     disabled?: boolean;
     accessibilityLabel?: string;
-}
+};
 
 export function Toggle({ value, onValueChange, disabled = false, accessibilityLabel }: ToggleProps) {
     const progress = useSharedValue(value ? 1 : 0);

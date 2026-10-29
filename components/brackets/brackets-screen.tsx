@@ -30,9 +30,9 @@ function countDistinctTeams(matches: BracketMatchResponse[]): number {
     return ids.size;
 }
 
-interface BracketsScreenProps {
+type BracketsScreenProps = {
     initialModalityId?: string;
-}
+};
 
 export function BracketsScreen({ initialModalityId }: BracketsScreenProps) {
     const season = useActiveSeason();

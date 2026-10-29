@@ -223,7 +223,7 @@ function RejectedHero({ team }: { team: TeamDetails }) {
     );
 }
 
-interface DraftHeroProps {
+type DraftHeroProps = {
     team: TeamDetails;
     memberCount: number;
     min?: number;
@@ -233,7 +233,7 @@ interface DraftHeroProps {
     copied: boolean;
     onRegenerateInvite: () => void;
     regenerating: boolean;
-}
+};
 
 function DraftHero({
     team,

@@ -10,9 +10,9 @@ const legacyVariantAlias = {
 
 type LegacyVariant = keyof typeof legacyVariantAlias;
 
-interface ThemedTextProps extends TextProps {
+type ThemedTextProps = TextProps & {
     variant?: TextStyleVariant | LegacyVariant;
-}
+};
 
 export function ThemedText({ variant = 'body', style, ...props }: ThemedTextProps) {
     const resolvedVariant: TextStyleVariant =

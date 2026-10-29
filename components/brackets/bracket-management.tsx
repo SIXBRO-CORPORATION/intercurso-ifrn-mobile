@@ -347,14 +347,14 @@ function ReviewAndDrawStep({
     );
 }
 
-export interface BracketManagementProps {
+export type BracketManagementProps = {
     seasonId: string;
     modalityId: string;
     onTitleChange?: (title: string) => void;
     onViewTree: () => void;
     onUnavailableBack?: () => void;
     scrollable?: boolean;
-}
+};
 
 export function BracketManagement({
     seasonId,

@@ -10,14 +10,14 @@ export interface BracketCardTeam {
     score?: number;
 }
 
-interface BracketMatchCardProps {
+type BracketMatchCardProps = {
     team1: BracketCardTeam;
     team2: BracketCardTeam;
     live?: boolean;
     liveLabel?: string;
     onPress?: () => void;
     accessibilityLabel?: string;
-}
+};
 
 function TeamRow({
     team,

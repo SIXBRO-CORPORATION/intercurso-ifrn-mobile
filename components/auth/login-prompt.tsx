@@ -8,11 +8,11 @@ import { useToast } from '@/providers/ToastProvider';
 import { colors, radius, spacing } from '@/theme';
 import { AuthCancelledError } from '@/types/auth';
 
-interface LoginPromptProps {
+type LoginPromptProps = {
     message: string;
     title?: string;
     icon?: IconName;
-}
+};
 
 export function LoginPrompt({ message, title = 'Entre para participar', icon = 'users' }: LoginPromptProps) {
     const { isLoading, loginWithSuap } = useAuth();

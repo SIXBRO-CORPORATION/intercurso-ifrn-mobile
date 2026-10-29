@@ -5,7 +5,7 @@ import { colors, spacing } from '@/theme';
 
 const BUTTON_SIZE = 36;
 
-interface StepperProps {
+type StepperProps = {
     value: number;
     onChange: (value: number) => void;
     min?: number;
@@ -13,7 +13,7 @@ interface StepperProps {
     step?: number;
     disabled?: boolean;
     accessibilityLabel?: string;
-}
+};
 
 export function Stepper({
     value,

@@ -121,12 +121,12 @@ export default function ProfileScreen() {
     );
 }
 
-interface MenuRowProps {
+type MenuRowProps = {
     icon: IconName;
     label: string;
     trailing?: ReactNode;
     onPress?: () => void;
-}
+};
 
 function MenuRow({ icon, label, trailing, onPress }: MenuRowProps) {
     const content = (

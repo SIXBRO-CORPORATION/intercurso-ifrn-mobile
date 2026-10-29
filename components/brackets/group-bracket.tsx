@@ -12,18 +12,18 @@ import type { BracketGroupResponse } from '@/types/bracket';
 import type { ModalityFormat } from '@/types/enums';
 import type { MatchListItemResponse } from '@/types/match-list';
 
-interface GroupBracketProps {
+type GroupBracketProps = {
     groups: BracketGroupResponse[];
     matches: MatchListItemResponse[];
     format: ModalityFormat;
     qualifyingSpots?: number;
     dataUpdatedAt: number;
-}
+};
 
-interface GroupMatchRowProps {
+type GroupMatchRowProps = {
     match: MatchListItemResponse;
     dataUpdatedAt: number;
-}
+};
 
 function GroupMatchRow({ match, dataUpdatedAt }: GroupMatchRowProps) {
     const isLive = match.status === 'IN_PROGRESS';

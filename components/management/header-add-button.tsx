@@ -3,10 +3,10 @@ import { router, type Href } from 'expo-router';
 import { Icon } from '@/components/icon';
 import { colors } from '@/theme';
 
-interface HeaderAddButtonProps {
+type HeaderAddButtonProps = {
     href: Href;
     label: string;
-}
+};
 
 export function HeaderAddButton({ href, label }: HeaderAddButtonProps) {
     return (

@@ -5,7 +5,7 @@ import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { colors, motion, radius, shadows, spacing } from '@/theme';
 
-interface ConfirmDialogProps {
+type ConfirmDialogProps = {
     visible: boolean;
     title: string;
     description?: string;
@@ -17,7 +17,7 @@ interface ConfirmDialogProps {
     children?: ReactNode;
     onConfirm: () => void;
     onCancel: () => void;
-}
+};
 
 export function ConfirmDialog({
     visible,

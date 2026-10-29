@@ -3,12 +3,12 @@ import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { colors, radius, spacing, textStyles } from '@/theme';
 
-interface FormFieldProps extends TextInputProps {
+type FormFieldProps = TextInputProps & {
     label: string;
     error?: string;
     hint?: string;
     showCount?: boolean;
-}
+};
 
 export function FormField({
     label,

@@ -7,7 +7,7 @@ import { colors, fontFamily, radius, spacing } from '@/theme';
 const ROW_BACKGROUND = colors.field;
 const ROW_RADIUS = radius.md;
 
-interface ListRowProps {
+type ListRowProps = {
     leading?: ReactNode;
     title: string;
     subtitle?: string;
@@ -15,7 +15,7 @@ interface ListRowProps {
     emphasis?: 'bold' | 'regular';
     onPress?: () => void;
     accessibilityLabel?: string;
-}
+};
 
 export function ListRow({
     leading,
@@ -81,13 +81,13 @@ interface MatchListRowTeam {
     score?: number;
 }
 
-interface MatchListRowProps {
+type MatchListRowProps = {
     team1: MatchListRowTeam;
     team2: MatchListRowTeam;
     trailing: ReactNode;
     onPress?: () => void;
     accessibilityLabel?: string;
-}
+};
 
 function TeamLine({ team }: { team: MatchListRowTeam }) {
     return (

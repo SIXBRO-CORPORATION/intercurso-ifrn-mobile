@@ -7,12 +7,12 @@ export interface FilterChipOption<T extends string> {
     label: string;
 }
 
-interface FilterChipsProps<T extends string> {
+type FilterChipsProps<T extends string> = {
     options: FilterChipOption<T>[];
     selected: T;
     onSelect: (value: T) => void;
     accessibilityLabel: string;
-}
+};
 
 export function FilterChips<T extends string>({ options, selected, onSelect, accessibilityLabel }: FilterChipsProps<T>) {
     return (

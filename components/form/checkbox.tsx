@@ -2,12 +2,12 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Icon } from '@/components/icon';
 import { colors, radius } from '@/theme';
 
-interface CheckboxProps {
+type CheckboxProps = {
     value: boolean;
     onValueChange: (value: boolean) => void;
     disabled?: boolean;
     accessibilityLabel?: string;
-}
+};
 
 export function Checkbox({ value, onValueChange, disabled = false, accessibilityLabel }: CheckboxProps) {
     return (

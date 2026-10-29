@@ -6,7 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { colors, radius, spacing } from '@/theme';
 import { formatPickerDate, formatPickerDateTime } from '@/utils/campus-time';
 
-interface DateFieldProps {
+type DateFieldProps = {
     label: string;
     value: Date;
     onChange: (date: Date) => void;
@@ -14,7 +14,7 @@ interface DateFieldProps {
     error?: string;
     hint?: string;
     mode?: 'date' | 'datetime' | 'time';
-}
+};
 
 type AndroidStep = 'closed' | 'date' | 'time';
 

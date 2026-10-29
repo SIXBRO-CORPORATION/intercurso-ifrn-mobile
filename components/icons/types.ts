@@ -1,8 +1,8 @@
 import type { StyleProp, ViewStyle } from 'react-native';
 
-export interface AppIconProps {
+export type AppIconProps = {
     size?: number;
     color?: string;
     strokeWidth?: number;
     style?: StyleProp<ViewStyle>;
-}
+};

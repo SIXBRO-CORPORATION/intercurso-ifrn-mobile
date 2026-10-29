@@ -41,7 +41,7 @@ const disabledStyle: VariantStyle = { background: colors.field, foreground: colo
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-interface ButtonProps {
+type ButtonProps = {
     title: string;
     variant?: Variant;
     size?: Size;
@@ -50,7 +50,7 @@ interface ButtonProps {
     disabled?: boolean;
     onPress?: () => void;
     style?: StyleProp<ViewStyle>;
-}
+};
 
 export function Button({
     title,

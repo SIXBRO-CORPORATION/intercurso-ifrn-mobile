@@ -4,12 +4,12 @@ import { Icon, type IconName } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
 import { colors, radius, spacing } from '@/theme';
 
-interface ManagementCardProps {
+type ManagementCardProps = {
     title: string;
     subtitle?: string;
     href: Href;
     icon?: IconName;
-}
+};
 
 export function ManagementCard({ title, subtitle, href, icon }: ManagementCardProps) {
     return (

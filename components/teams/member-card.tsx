@@ -42,13 +42,13 @@ export function MemberAvatar({ name, size = AVATAR_SIZE }: { name: string; size?
     );
 }
 
-interface MemberCardProps {
+type MemberCardProps = {
     name: string;
     isOwner: boolean;
     isCaptain: boolean;
     donation?: DonationStatus;
     onPress?: () => void;
-}
+};
 
 export function MemberCard({ name, isOwner, isCaptain, donation, onPress }: MemberCardProps) {
     const donationConfirmed = donation === 'DONATION_CONFIRMED';

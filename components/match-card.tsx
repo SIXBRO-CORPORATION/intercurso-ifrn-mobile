@@ -9,10 +9,10 @@ import { colors, radius, shadows, spacing } from '@/theme';
 import type { MatchListItemResponse } from '@/types/match-list';
 import type { MatchTeamResponse } from '@/types/match';
 
-interface MatchCardProps {
+type MatchCardProps = {
     match: MatchListItemResponse;
     dataUpdatedAt: number;
-}
+};
 
 function initialsOf(name: string): string {
     const letters = name

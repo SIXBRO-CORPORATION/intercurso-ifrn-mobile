@@ -93,9 +93,9 @@ const icons = {
 
 export type IconName = keyof typeof icons;
 
-interface IconProps extends AppIconProps {
+type IconProps = AppIconProps & {
     name: IconName;
-}
+};
 
 export function Icon({ name, size = 24, color = colors.ink, strokeWidth = 2.2, style }: IconProps) {
     const IconComponent = icons[name];

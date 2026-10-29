@@ -12,13 +12,13 @@ import { colors, radius, spacing } from '@/theme';
 
 export type BottomSheetHandle = BottomSheetModalRef;
 
-interface BottomSheetProps {
+type BottomSheetProps = {
     title?: string;
     description?: string;
     snapPoints?: (string | number)[];
     children?: ReactNode;
     onDismiss?: () => void;
-}
+};
 
 export const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(
     ({ title, description, snapPoints, children, onDismiss }, ref) => {

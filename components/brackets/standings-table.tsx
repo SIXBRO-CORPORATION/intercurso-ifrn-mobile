@@ -4,10 +4,10 @@ import { ThemedText } from '@/components/themed-text';
 import { colors, fontFamily, radius, spacing } from '@/theme';
 import type { BracketGroupTeamResponse } from '@/types/bracket';
 
-interface StandingsTableProps {
+type StandingsTableProps = {
     teams: BracketGroupTeamResponse[];
     qualifyingSpots?: number;
-}
+};
 
 export function StandingsTable({ teams, qualifyingSpots }: StandingsTableProps) {
     const ordered = teams;

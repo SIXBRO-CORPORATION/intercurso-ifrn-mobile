@@ -2,10 +2,10 @@ import { ScrollView, StyleSheet } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { colors, spacing } from '@/theme';
 
-interface ScreenPlaceholderProps {
+type ScreenPlaceholderProps = {
     title: string;
     description: string;
-}
+};
 
 export function ScreenPlaceholder({ title, description }: ScreenPlaceholderProps) {
     return (

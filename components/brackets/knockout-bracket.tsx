@@ -17,10 +17,10 @@ export interface BracketMatchScoreInfo {
     team2Score?: number;
 }
 
-interface KnockoutBracketProps {
+type KnockoutBracketProps = {
     matches: BracketMatchResponse[];
     scoreByMatchId: Map<string, BracketMatchScoreInfo>;
-}
+};
 
 interface Round {
     key: string;
