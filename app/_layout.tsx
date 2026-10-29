@@ -1,4 +1,4 @@
-import { useNavigationContainerRef } from 'expo-router';
+import { router, useNavigationContainerRef } from 'expo-router';
 import { Stack } from 'expo-router/stack';
 import { ThemeProvider } from 'expo-router/react-navigation';
 import { useEffect } from 'react';
@@ -10,7 +10,12 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useReactNavigationDevTools } from '@dev-plugins/react-navigation';
 import { useReactQueryDevTools } from '@dev-plugins/react-query';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
-import { ToastProvider } from '@/providers/ToastProvider';
+import { ToastProvider, useToast } from '@/providers/ToastProvider';
+import {
+    pushNotificationService,
+    PUBLIC_TOPICS,
+    type RemoteMessage,
+} from '@/services/notification.service';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { queryClient } from '@/QueryClient';
 import { fonts, navigationTheme } from '@/theme';
@@ -43,6 +48,59 @@ function SplashGate() {
             SplashScreen.hideAsync();
         }
     }, [isInitializing]);
+
+    return null;
+}
+
+function navigateFromPushMessage(message: RemoteMessage) {
+    const matchId = message.data?.match_id;
+    if (typeof matchId === 'string' && matchId.length > 0) {
+        router.push(`/match/${matchId}` as never);
+    }
+}
+
+function PushNotificationListener() {
+    const { info } = useToast();
+
+    useEffect(() => {
+        (async () => {
+            const granted = await pushNotificationService.requestPermission();
+            if (!granted) return;
+
+            await Promise.all(
+                PUBLIC_TOPICS.map((topic) => pushNotificationService.subscribeToTopic(topic))
+            ).catch((error) => {
+                console.warn('[push-notification] Falha ao inscrever nos tópicos públicos:', error);
+            });
+        })();
+
+        const unsubscribeForeground = pushNotificationService.onForegroundMessage((message) => {
+            const text = [message.notification?.title, message.notification?.body]
+                .filter(Boolean)
+                .join(' — ');
+            if (text) info(text);
+        });
+
+        const unsubscribeOpenedApp = pushNotificationService.onNotificationOpenedApp(
+            navigateFromPushMessage
+        );
+
+        pushNotificationService.getInitialNotification().then((message) => {
+            if (message) navigateFromPushMessage(message);
+        });
+
+        const unsubscribeTokenRefresh = pushNotificationService.onTokenRefresh((token) => {
+            pushNotificationService.registerDeviceToken(token).catch((error) => {
+                console.warn('[push-notification] Falha ao atualizar o device token:', error);
+            });
+        });
+
+        return () => {
+            unsubscribeForeground();
+            unsubscribeOpenedApp();
+            unsubscribeTokenRefresh();
+        };
+    }, [info]);
 
     return null;
 }
@@ -82,6 +140,7 @@ function RootLayoutNav() {
                             <ToastProvider>
                                 <AuthProvider>
                                     <SplashGate />
+                                    <PushNotificationListener />
                                     <RootNavigator />
                                 </AuthProvider>
                             </ToastProvider>

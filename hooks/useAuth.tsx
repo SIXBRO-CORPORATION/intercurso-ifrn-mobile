@@ -1,6 +1,18 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { authService } from '@/services/auth.service';
+import { pushNotificationService } from '@/services/notification.service';
 import type { User } from '@/types/user';
+
+async function syncPushTokenWithBackend() {
+    try {
+        const granted = await pushNotificationService.requestPermission();
+        if (!granted) return;
+
+        await pushNotificationService.registerDeviceToken();
+    } catch (error) {
+        console.warn('[push-notification] Falha ao registrar o device token:', error);
+    }
+}
 
 interface AuthContextData {
     user: User | null;
@@ -35,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             const userData = await authService.getMe();
             setUser(userData);
+            void syncPushTokenWithBackend();
         } catch (error) {
             console.error('Falha ao buscar usuário autenticado:', error);
             setUser(null);
@@ -47,6 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             const userData = await authService.loginWithSuap();
             setUser(userData);
+            void syncPushTokenWithBackend();
         } finally {
             setIsLoading(false);
         }
@@ -55,6 +69,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const logout = useCallback(async () => {
         setIsLoading(true);
         try {
+            try {
+                await pushNotificationService.removeDeviceToken();
+            } catch (error) {
+                console.warn('[push-notification] Falha ao remover o device token:', error);
+            }
             await authService.logout();
         } finally {
             setUser(null);
