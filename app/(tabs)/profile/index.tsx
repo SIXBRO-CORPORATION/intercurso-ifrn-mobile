@@ -130,7 +130,7 @@ export default function ProfileScreen() {
                 ) : null}
                 <MenuRow
                     icon="bell"
-                    label="Notificações push"
+                    label="Notificações"
                     trailing={
                         <Toggle
                             value={notifications.enabled}
