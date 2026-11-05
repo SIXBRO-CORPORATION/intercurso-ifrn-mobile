@@ -43,7 +43,7 @@ export default function ProfileScreen() {
         toast.info('Sessão encerrada');
     }, [logout, toast]);
 
-    const rulesUrl = activeSeason.data?.rules_document_url ?? null;
+    const rulesUrl = activeSeason.data?.rules_document ?? null;
 
     const handleOpenRegulation = useCallback(async () => {
         if (activeSeason.isPending) return;
