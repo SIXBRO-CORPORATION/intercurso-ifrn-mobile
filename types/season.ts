@@ -51,6 +51,7 @@ export interface SeasonSummary {
     active: boolean;
     registration_start_date?: IsoDateString | null;
     registration_end_date?: IsoDateString | null;
+    rules_document_url?: string | null;
 }
 
 export interface SeasonDetails extends SeasonSummary {

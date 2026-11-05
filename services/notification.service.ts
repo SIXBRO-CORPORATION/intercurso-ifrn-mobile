@@ -2,6 +2,7 @@ import { Platform, PermissionsAndroid } from 'react-native';
 import {
     getMessaging,
     requestPermission as requestFcmPermission,
+    hasPermission as hasFcmPermission,
     getToken as getFcmToken,
     onMessage,
     onNotificationOpenedApp as onFcmNotificationOpenedApp,
@@ -14,6 +15,7 @@ import {
     type RemoteMessage,
 } from '@react-native-firebase/messaging';
 import { httpClient } from '@/utils/http-client';
+import { pushPreference } from '@/utils/storage';
 
 const BASE_PATH = '/messaging';
 
@@ -24,6 +26,61 @@ export type { RemoteMessage };
 class PushNotificationService {
     private get messaging() {
         return getMessaging();
+    }
+
+    isEnabled(): Promise<boolean> {
+        return pushPreference.isEnabled();
+    }
+
+    async hasPermission(): Promise<boolean> {
+        if (Platform.OS === 'android' && Platform.Version >= 33) {
+            const granted = await PermissionsAndroid.check(
+                PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+            );
+            if (!granted) return false;
+        }
+
+        const authStatus = await hasFcmPermission(this.messaging);
+
+        return (
+            authStatus === AuthorizationStatus.AUTHORIZED ||
+            authStatus === AuthorizationStatus.PROVISIONAL
+        );
+    }
+
+    async isActive(): Promise<boolean> {
+        const [enabled, permitted] = await Promise.all([this.isEnabled(), this.hasPermission()]);
+        return enabled && permitted;
+    }
+
+    async enable(): Promise<boolean> {
+        const granted = await this.requestPermission();
+        if (!granted) return false;
+
+        try {
+            await this.registerDeviceToken();
+            await this.subscribeToPublicTopics();
+        } catch (error) {
+            await this.removeDeviceToken().catch(() => undefined);
+            throw error;
+        }
+
+        await pushPreference.setEnabled(true);
+        return true;
+    }
+
+    async disable(): Promise<void> {
+        await this.removeDeviceToken();
+        await this.unsubscribeFromPublicTopics();
+        await pushPreference.setEnabled(false);
+    }
+
+    async subscribeToPublicTopics(): Promise<void> {
+        await Promise.all(PUBLIC_TOPICS.map((topic) => this.subscribeToTopic(topic)));
+    }
+
+    async unsubscribeFromPublicTopics(): Promise<void> {
+        await Promise.all(PUBLIC_TOPICS.map((topic) => this.unsubscribeFromTopic(topic)));
     }
 
     async requestPermission(): Promise<boolean> {

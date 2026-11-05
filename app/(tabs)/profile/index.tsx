@@ -1,7 +1,8 @@
-import { useCallback, useState, type ReactNode } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, type ReactNode } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import Constants from 'expo-constants';
+import * as WebBrowser from 'expo-web-browser';
 import { Button } from '@/components/button';
 import { LoginPrompt } from '@/components/auth/login-prompt';
 import { Toggle } from '@/components/form/toggle';
@@ -9,10 +10,14 @@ import { Icon, type IconName } from '@/components/icon';
 import { LoadingState } from '@/components/states/screen-states';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
+import { usePushNotificationsSetting } from '@/hooks/usePushNotificationsSetting';
+import { useActiveSeason } from '@/hooks/useSeasons';
 import { useToast } from '@/providers/ToastProvider';
 import { colors, radius, spacing } from '@/theme';
+import { ApiError } from '@/types/api';
 import { UserRoleLabel } from '@/types/enums';
 import { formatCampusLabel } from '@/utils/campus-label';
+import { documentFormatLabel, resolveDocumentUrl } from '@/utils/remote-document';
 
 const APP_NAME = Constants.expoConfig?.name ?? 'Intercurso IFRN';
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
@@ -30,16 +35,41 @@ export default function ProfileScreen() {
     const { user, isAuthenticated, isInitializing, isLoading, logout } = useAuth();
     const toast = useToast();
 
-    const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+    const notifications = usePushNotificationsSetting();
+    const activeSeason = useActiveSeason();
 
     const handleLogout = useCallback(async () => {
         await logout();
         toast.info('Sessão encerrada');
     }, [logout, toast]);
 
-    const handleOpenRegulation = useCallback(() => {
-        toast.info('Regulamento em breve por aqui');
-    }, [toast]);
+    const rulesUrl = activeSeason.data?.rules_document_url ?? null;
+
+    const handleOpenRegulation = useCallback(async () => {
+        if (activeSeason.isPending) return;
+
+        if (activeSeason.isError) {
+            if (activeSeason.error instanceof ApiError && activeSeason.error.status === 404) {
+                toast.info('Não há temporada ativa no momento.');
+                return;
+            }
+            toast.error('Não foi possível carregar o regulamento. Tente novamente.');
+            void activeSeason.refetch();
+            return;
+        }
+
+        if (!rulesUrl) {
+            toast.info('O regulamento desta temporada ainda não foi publicado.');
+            return;
+        }
+
+        try {
+            await WebBrowser.openBrowserAsync(resolveDocumentUrl(rulesUrl));
+        } catch (error) {
+            console.warn('[profile] Falha ao abrir o regulamento:', error);
+            toast.error('Não foi possível abrir o regulamento.');
+        }
+    }, [activeSeason, rulesUrl, toast]);
 
     const handleOpenAbout = useCallback(() => {
         Alert.alert(APP_NAME, `Versão ${APP_VERSION}\n\nApp oficial do Intercurso IFRN.`);
@@ -52,6 +82,15 @@ export default function ProfileScreen() {
     if (!isAuthenticated || !user) {
         return <LoginPrompt message="Entre com sua conta SUAP para ver seu perfil." />;
     }
+
+    const rulesFormat = rulesUrl ? documentFormatLabel(rulesUrl) : null;
+    const rulesLabel = [
+        'Regulamento',
+        activeSeason.data?.year,
+        rulesFormat ? `(${rulesFormat})` : null,
+    ]
+        .filter(Boolean)
+        .join(' ');
 
     const subtitle = [UserRoleLabel[user.role], formatCampusLabel(user.campus)].filter(Boolean).join(' · ');
 
@@ -94,14 +133,20 @@ export default function ProfileScreen() {
                     label="Notificações push"
                     trailing={
                         <Toggle
-                            value={notificationsEnabled}
-                            onValueChange={setNotificationsEnabled}
+                            value={notifications.enabled}
+                            onValueChange={notifications.setNotificationsEnabled}
+                            disabled={notifications.isPending}
                             accessibilityLabel="Notificações push"
                         />
                     }
                 />
                 <Divider />
-                <MenuRow icon="file" label="Regulamento" onPress={handleOpenRegulation} />
+                <MenuRow
+                    icon="file"
+                    label={rulesLabel}
+                    loading={activeSeason.isPending}
+                    onPress={handleOpenRegulation}
+                />
                 <Divider />
                 <MenuRow icon="info" label="Sobre o app" onPress={handleOpenAbout} />
             </View>
@@ -125,10 +170,11 @@ type MenuRowProps = {
     icon: IconName;
     label: string;
     trailing?: ReactNode;
+    loading?: boolean;
     onPress?: () => void;
 };
 
-function MenuRow({ icon, label, trailing, onPress }: MenuRowProps) {
+function MenuRow({ icon, label, trailing, loading = false, onPress }: MenuRowProps) {
     const content = (
         <View style={styles.menuRow}>
             <View style={styles.menuIconBubble}>
@@ -137,7 +183,11 @@ function MenuRow({ icon, label, trailing, onPress }: MenuRowProps) {
             <ThemedText variant="body" style={styles.menuLabel} numberOfLines={1}>
                 {label}
             </ThemedText>
-            {trailing ?? (onPress ? <Icon name="chev_r" size={20} color={colors.textMuted} /> : null)}
+            {loading ? (
+                <ActivityIndicator size="small" color={colors.textMuted} />
+            ) : (
+                (trailing ?? (onPress ? <Icon name="chev_r" size={20} color={colors.textMuted} /> : null))
+            )}
         </View>
     );
 

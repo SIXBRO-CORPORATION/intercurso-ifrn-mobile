@@ -11,11 +11,7 @@ import { useReactNavigationDevTools } from '@dev-plugins/react-navigation';
 import { useReactQueryDevTools } from '@dev-plugins/react-query';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { ToastProvider, useToast } from '@/providers/ToastProvider';
-import {
-    pushNotificationService,
-    PUBLIC_TOPICS,
-    type RemoteMessage,
-} from '@/services/notification.service';
+import { pushNotificationService, type RemoteMessage } from '@/services/notification.service';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { queryClient } from '@/QueryClient';
 import { fonts, navigationTheme } from '@/theme';
@@ -64,17 +60,19 @@ function PushNotificationListener() {
 
     useEffect(() => {
         (async () => {
+            if (!(await pushNotificationService.isEnabled())) return;
+
             const granted = await pushNotificationService.requestPermission();
             if (!granted) return;
 
-            await Promise.all(
-                PUBLIC_TOPICS.map((topic) => pushNotificationService.subscribeToTopic(topic))
-            ).catch((error) => {
+            await pushNotificationService.subscribeToPublicTopics().catch((error) => {
                 console.warn('[push-notification] Falha ao inscrever nos tópicos públicos:', error);
             });
         })();
 
-        const unsubscribeForeground = pushNotificationService.onForegroundMessage((message) => {
+        const unsubscribeForeground = pushNotificationService.onForegroundMessage(async (message) => {
+            if (!(await pushNotificationService.isEnabled())) return;
+
             const text = [message.notification?.title, message.notification?.body]
                 .filter(Boolean)
                 .join(' — ');
@@ -89,7 +87,9 @@ function PushNotificationListener() {
             if (message) navigateFromPushMessage(message);
         });
 
-        const unsubscribeTokenRefresh = pushNotificationService.onTokenRefresh((token) => {
+        const unsubscribeTokenRefresh = pushNotificationService.onTokenRefresh(async (token) => {
+            if (!(await pushNotificationService.isEnabled())) return;
+
             pushNotificationService.registerDeviceToken(token).catch((error) => {
                 console.warn('[push-notification] Falha ao atualizar o device token:', error);
             });

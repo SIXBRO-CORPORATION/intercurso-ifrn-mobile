@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 const KEYS = {
     ACCESS_TOKEN: 'access_token',
     REFRESH_TOKEN: 'refresh_token',
+    PUSH_NOTIFICATIONS_ENABLED: 'push_notifications_enabled',
 } as const;
 
 
@@ -36,5 +37,16 @@ export const tokenManager = {
         ]);
 
         return !!(accessToken && refreshToken);
+    },
+};
+
+export const pushPreference = {
+    isEnabled: async (): Promise<boolean> => {
+        const value = await SecureStore.getItemAsync(KEYS.PUSH_NOTIFICATIONS_ENABLED);
+        return value !== 'false';
+    },
+
+    setEnabled: (enabled: boolean): Promise<void> => {
+        return SecureStore.setItemAsync(KEYS.PUSH_NOTIFICATIONS_ENABLED, String(enabled));
     },
 };

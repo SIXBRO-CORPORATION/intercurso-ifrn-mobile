@@ -5,6 +5,8 @@ import type { User } from '@/types/user';
 
 async function syncPushTokenWithBackend() {
     try {
+        if (!(await pushNotificationService.isEnabled())) return;
+
         const granted = await pushNotificationService.requestPermission();
         if (!granted) return;
 
