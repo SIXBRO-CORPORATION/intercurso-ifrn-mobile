@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, AppState, Linking } from 'react-native';
 import { pushNotificationService } from '@/services/notification.service';
 import { useToast } from '@/providers/ToastProvider';
@@ -7,10 +7,19 @@ export function usePushNotificationsSetting() {
     const toast = useToast();
     const [enabled, setEnabled] = useState(false);
     const [isPending, setIsPending] = useState(true);
+    const wasActive = useRef(false);
 
     const refresh = useCallback(async () => {
         try {
-            setEnabled(await pushNotificationService.isActive());
+            const active = await pushNotificationService.isActive();
+            setEnabled(active);
+
+            if (active && !wasActive.current) {
+                pushNotificationService.sync().catch((error) => {
+                    console.warn('[push-notification] Falha ao sincronizar as notificações:', error);
+                });
+            }
+            wasActive.current = active;
         } catch (error) {
             console.warn('[push-notification] Falha ao ler o estado das notificações:', error);
         } finally {
@@ -18,8 +27,6 @@ export function usePushNotificationsSetting() {
         }
     }, []);
 
-    // Relê ao abrir a tela e ao voltar das configurações do sistema, onde
-    // o usuário pode ter liberado ou bloqueado a permissão.
     useEffect(() => {
         void refresh();
 
@@ -51,21 +58,27 @@ export function usePushNotificationsSetting() {
             try {
                 if (next) {
                     const granted = await pushNotificationService.enable();
+                    wasActive.current = granted;
                     if (!granted) {
                         setEnabled(false);
                         promptOpenSettings();
                     }
                 } else {
+                    wasActive.current = false;
                     await pushNotificationService.disable();
                 }
             } catch (error) {
                 console.warn('[push-notification] Falha ao alterar as notificações:', error);
-                setEnabled(!next);
-                toast.error(
-                    next
-                        ? 'Não foi possível ativar as notificações. Tente novamente.'
-                        : 'Não foi possível desativar as notificações. Tente novamente.'
-                );
+
+                if (next) {
+                    wasActive.current = false;
+                    setEnabled(false);
+                    toast.error('Não foi possível ativar as notificações. Tente novamente.');
+                } else {
+                    toast.info(
+                        'Notificações desativadas neste aparelho. Vamos concluir a atualização no servidor assim que possível.'
+                    );
+                }
             } finally {
                 setIsPending(false);
             }

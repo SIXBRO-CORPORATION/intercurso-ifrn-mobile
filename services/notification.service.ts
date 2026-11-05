@@ -15,7 +15,7 @@ import {
     type RemoteMessage,
 } from '@react-native-firebase/messaging';
 import { httpClient } from '@/utils/http-client';
-import { pushPreference } from '@/utils/storage';
+import { pushPreference, tokenManager } from '@/utils/storage';
 
 const BASE_PATH = '/messaging';
 
@@ -66,13 +66,41 @@ class PushNotificationService {
         }
 
         await pushPreference.setEnabled(true);
+        await pushPreference.setCleanupPending(false);
         return true;
     }
 
     async disable(): Promise<void> {
-        await this.removeDeviceToken();
-        await this.unsubscribeFromPublicTopics();
         await pushPreference.setEnabled(false);
+        await this.cleanupRemote();
+    }
+
+    async sync(): Promise<void> {
+        await Promise.all([this.registerDeviceToken(), this.subscribeToPublicTopics()]);
+    }
+
+    async flushPendingCleanup(): Promise<void> {
+        if (!(await pushPreference.isCleanupPending())) return;
+        if (await pushPreference.isEnabled()) return;
+        if (!(await tokenManager.hasTokens())) return;
+
+        await this.cleanupRemote();
+    }
+
+    private async cleanupRemote(): Promise<void> {
+        await pushPreference.setCleanupPending(true);
+
+        const results = await Promise.allSettled([
+            this.removeDeviceToken(),
+            this.unsubscribeFromPublicTopics(),
+        ]);
+
+        const failure = results.find(
+            (result): result is PromiseRejectedResult => result.status === 'rejected'
+        );
+        if (failure) throw failure.reason;
+
+        await pushPreference.setCleanupPending(false);
     }
 
     async subscribeToPublicTopics(): Promise<void> {

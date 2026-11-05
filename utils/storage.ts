@@ -4,6 +4,7 @@ const KEYS = {
     ACCESS_TOKEN: 'access_token',
     REFRESH_TOKEN: 'refresh_token',
     PUSH_NOTIFICATIONS_ENABLED: 'push_notifications_enabled',
+    PUSH_CLEANUP_PENDING: 'push_cleanup_pending',
 } as const;
 
 
@@ -48,5 +49,14 @@ export const pushPreference = {
 
     setEnabled: (enabled: boolean): Promise<void> => {
         return SecureStore.setItemAsync(KEYS.PUSH_NOTIFICATIONS_ENABLED, String(enabled));
+    },
+    
+    isCleanupPending: async (): Promise<boolean> => {
+        const value = await SecureStore.getItemAsync(KEYS.PUSH_CLEANUP_PENDING);
+        return value === 'true';
+    },
+
+    setCleanupPending: (pending: boolean): Promise<void> => {
+        return SecureStore.setItemAsync(KEYS.PUSH_CLEANUP_PENDING, String(pending));
     },
 };

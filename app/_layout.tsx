@@ -60,7 +60,12 @@ function PushNotificationListener() {
 
     useEffect(() => {
         (async () => {
-            if (!(await pushNotificationService.isEnabled())) return;
+            if (!(await pushNotificationService.isEnabled())) {
+                await pushNotificationService.flushPendingCleanup().catch((error) => {
+                    console.warn('[push-notification] Falha ao concluir a limpeza pendente:', error);
+                });
+                return;
+            }
 
             const granted = await pushNotificationService.requestPermission();
             if (!granted) return;
