@@ -7,7 +7,7 @@ export const navigationTheme = {
         ...DefaultTheme.colors,
         primary: colors.primary,
         background: colors.background,
-        card: colors.surface,
+        card: colors.background,
         text: colors.ink,
         border: colors.border,
         notification: colors.danger,

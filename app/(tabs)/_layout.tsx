@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, type IconName } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
-import { colors, radius, shadows, spacing } from '@/theme';
+import { colors, fontFamily, radius, spacing } from '@/theme';
 
 type TabButtonProps = TabTriggerSlotProps & {
     icon: IconName;
@@ -25,11 +25,17 @@ function TabButton({ icon, label, isFocused, ref, ...props }: TabButtonProps) {
             accessibilityState={{ selected: isFocused }}
             accessibilityLabel={label}
         >
-            <Icon name={icon} size={24} color={tint} strokeWidth={isFocused ? 2.4 : 2.2} />
-            <ThemedText variant="caption" style={{ color: tint }}>
+            <View style={styles.divider} />
+            {isFocused ? <View style={styles.activeDivider} /> : null}
+            <View style={[styles.iconPill, isFocused && styles.iconPillActive]}>
+                <Icon name={icon} size={24} color={tint} strokeWidth={isFocused ? 2.4 : 2.2} />
+            </View>
+            <ThemedText
+                variant="caption"
+                style={{ color: tint, fontFamily: isFocused ? fontFamily.bold : fontFamily.medium }}
+            >
                 {label}
             </ThemedText>
-            <View style={[styles.indicator, { opacity: isFocused ? 1 : 0 }]} />
         </Pressable>
     );
 }
@@ -43,7 +49,7 @@ export default function TabsLayout() {
         <Tabs style={styles.root}>
             <TabSlot />
             <TabList asChild>
-                <View style={StyleSheet.flatten([styles.tabList, { paddingBottom: Math.max(insets.bottom, spacing.sm) }])}>
+                <View style={StyleSheet.flatten([styles.tabList, { paddingBottom: Math.max(insets.bottom, spacing.xs) }])}>
                     {canManage ? (
                         <>
                             <TabTrigger name="panel" href="/(management)" asChild>
@@ -91,23 +97,40 @@ const styles = StyleSheet.create({
     },
     tabList: {
         flexDirection: 'row',
-        backgroundColor: colors.surface,
-        borderTopWidth: StyleSheet.hairlineWidth,
-        borderTopColor: colors.border,
-        paddingTop: spacing.xs,
-        boxShadow: shadows.card,
+        backgroundColor: colors.background,
     },
     trigger: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
         gap: spacing.xxs,
-        paddingVertical: spacing.xxs,
+        paddingTop: spacing.xs,
+        paddingBottom: spacing.xxs,
     },
-    indicator: {
-        width: 4,
-        height: 4,
-        borderRadius: radius.pill,
+    divider: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 1,
+        backgroundColor: colors.border,
+    },
+    activeDivider: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 2,
         backgroundColor: colors.primary,
+    },
+    iconPill: {
+        width: 56,
+        height: 32,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: radius.pill,
+    },
+    iconPillActive: {
+        backgroundColor: colors.background,
     },
 });

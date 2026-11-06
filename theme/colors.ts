@@ -18,7 +18,7 @@ export const colors = {
     textMuted: '#A9B4AC',
     border: '#E1E7E2',
     field: '#F1F4F1',
-    background: '#F5F7F4',
+    background: '#FFFFFF',
     surface: '#FFFFFF',
 } as const;
 
