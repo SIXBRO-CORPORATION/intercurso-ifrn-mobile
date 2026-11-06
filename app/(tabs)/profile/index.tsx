@@ -2,7 +2,6 @@ import { useCallback, type ReactNode } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import Constants from 'expo-constants';
-import * as WebBrowser from 'expo-web-browser';
 import { Button } from '@/components/button';
 import { LoginPrompt } from '@/components/auth/login-prompt';
 import { Toggle } from '@/components/form/toggle';
@@ -45,7 +44,7 @@ export default function ProfileScreen() {
 
     const rulesUrl = activeSeason.data?.rules_document ?? null;
 
-    const handleOpenRegulation = useCallback(async () => {
+    const handleOpenRegulation = useCallback(() => {
         if (activeSeason.isPending) return;
 
         if (activeSeason.isError) {
@@ -63,12 +62,10 @@ export default function ProfileScreen() {
             return;
         }
 
-        try {
-            await WebBrowser.openBrowserAsync(resolveDocumentUrl(rulesUrl));
-        } catch (error) {
-            console.warn('[profile] Falha ao abrir o regulamento:', error);
-            toast.error('Não foi possível abrir o regulamento.');
-        }
+        router.push({
+            pathname: '/profile/rules' as never,
+            params: { url: resolveDocumentUrl(rulesUrl), title: 'Regulamento' },
+        });
     }, [activeSeason, rulesUrl, toast]);
 
     const handleOpenAbout = useCallback(() => {

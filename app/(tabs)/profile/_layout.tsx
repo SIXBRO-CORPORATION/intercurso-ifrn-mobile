@@ -15,6 +15,7 @@ export default function ProfileLayout() {
             }}
         >
             <Stack.Screen name="index" options={{ title: '' }} />
+            <Stack.Screen name="rules" options={{ title: 'Regulamento', headerLargeTitleEnabled: false }} />
         </Stack>
     );
 }

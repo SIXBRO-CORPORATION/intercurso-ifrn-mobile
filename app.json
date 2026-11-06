@@ -22,7 +22,9 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.sixbro.intercursoifrn",
       "googleServicesFile": "./google-services.json",
-      "permissions": ["android.permission.POST_NOTIFICATIONS"]
+      "permissions": [
+        "android.permission.POST_NOTIFICATIONS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -58,7 +60,8 @@
           "backgroundColor": "#2F9E41"
         }
       ],
-      "expo-status-bar"
+      "expo-status-bar",
+      "react-native-blob-util"
     ]
   }
 }
