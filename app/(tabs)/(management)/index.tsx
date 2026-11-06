@@ -1,35 +1,31 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Button } from '@/components/button';
 import { Icon } from '@/components/icon';
 import { ListRowIcon, MatchListRow } from '@/components/list-row';
 import { ManagementCard } from '@/components/management/management-card';
 import { ManagementGuard } from '@/components/management/management-guard';
+import { CurrentSeasonHero, NoSeasonHero } from '@/components/management/season-hero';
 import { LoadingState } from '@/components/states/screen-states';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/hooks/useAuth';
 import { useAllModalities } from '@/hooks/useModalities';
 import { useStartMatch, useMatchList } from '@/hooks/useMatches';
-import { useActiveSeason, useSeasonDetails, useSeasons } from '@/hooks/useSeasons';
+import { useSeasonOverview } from '@/hooks/useSeasons';
 import { useTeams } from '@/hooks/useTeams';
-import { ApiError } from '@/types/api';
 import { SeasonStatusLabel } from '@/types/enums';
-import { colors, radius, shadows, spacing } from '@/theme';
-import { formatCampusTime } from '@/utils/campus-time';
+import type { SeasonSummary } from '@/types/season';
+import { colors, radius, spacing } from '@/theme';
+import { formatCampusDate, formatCampusTime } from '@/utils/campus-time';
 import type { MatchListItemResponse } from '@/types/match-list';
 
-const NO_ACTIVE_SEASON_STATUS = 400;
 const UPCOMING_MATCHES_LIMIT = 2;
 
-function ActiveSeasonCard() {
-    const season = useActiveSeason();
-    const details = useSeasonDetails(season.data?.season_id ?? '');
-
-    if (season.isPending) {
+function SeasonHeroSection({ overview }: { overview: ReturnType<typeof useSeasonOverview> }) {
+    if (overview.isPending) {
         return (
-            <View style={[styles.heroCard, styles.heroFallback]}>
+            <View style={[styles.heroFallback, styles.heroFallbackRow]}>
                 <ActivityIndicator color={colors.primary} />
                 <ThemedText variant="body" style={styles.heroFallbackText}>
                     Carregando temporada…
@@ -38,90 +34,56 @@ function ActiveSeasonCard() {
         );
     }
 
-    if (season.isError) {
-        if (season.error instanceof ApiError && season.error.status === NO_ACTIVE_SEASON_STATUS) {
-            return (
-                <View style={[styles.heroCard, styles.heroFallback]}>
-                    <ThemedText variant="section" style={styles.heroFallbackTitle}>
-                        Nenhuma temporada ativa
-                    </ThemedText>
-                    <ThemedText variant="body" style={styles.heroFallbackText}>
-                        Crie uma temporada para liberar as inscrições.
-                    </ThemedText>
-                    <Button
-                        title="Criar temporada"
-                        variant="dark"
-                        size="compact"
-                        onPress={() => router.push('/seasons/create')}
-                    />
-                </View>
-            );
-        }
-
+    if (overview.isError) {
         return (
-            <View style={[styles.heroCard, styles.heroFallback]}>
+            <View style={styles.heroFallback}>
                 <ThemedText variant="body" style={styles.heroFallbackText}>
-                    Não foi possível carregar a temporada ativa.
+                    Não foi possível carregar a temporada.
                 </ThemedText>
                 <Button
                     title="Tentar de novo"
                     variant="outline"
                     size="compact"
-                    onPress={() => season.refetch()}
-                    loading={season.isRefetching}
+                    onPress={() => overview.refetch()}
+                    loading={overview.isRefetching}
                 />
             </View>
         );
     }
 
-    const data = season.data;
-    const stats = details.data;
+    return overview.current ? <CurrentSeasonHero season={overview.current} /> : <NoSeasonHero />;
+}
+
+function LastSeasonRow({ season }: { season: SeasonSummary }) {
+    const subtitle = season.finished_at
+        ? `Finalizada em ${formatCampusDate(season.finished_at)}`
+        : `Finalizada · ${season.year}`;
 
     return (
-        <LinearGradient colors={colors.gradientPrimary} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
-            <View style={styles.heroTop}>
-                <ThemedText variant="overline" style={styles.heroOverline}>
-                    Temporada ativa
-                </ThemedText>
-                <View style={styles.heroPill}>
-                    <View style={styles.heroPillDot} />
-                    <ThemedText variant="label" style={styles.heroPillLabel}>
-                        {SeasonStatusLabel[data.status]}
-                    </ThemedText>
-                </View>
+        <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+                <ThemedText variant="heading">Última temporada</ThemedText>
             </View>
-            <ThemedText variant="title" style={styles.heroTitle} numberOfLines={1}>
-                {data.name}
-            </ThemedText>
-            <View style={styles.heroStats}>
-                <View style={styles.heroStat}>
-                    <ThemedText variant="largeTitle" style={styles.heroStatValue}>
-                        {stats ? stats.total_teams_created : '—'}
+            <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${season.name}. ${subtitle}. Abrir`}
+                onPress={() => router.push(`/seasons/${season.season_id}`)}
+                style={({ pressed }) => [styles.lastSeasonRow, { opacity: pressed ? 0.7 : 1 }]}
+            >
+                <ListRowIcon background={colors.surface} size={52}>
+                    <Icon name="archive" size={22} color={colors.textSecondary} />
+                </ListRowIcon>
+                <View style={styles.lastSeasonTexts}>
+                    <ThemedText variant="section" numberOfLines={1}>
+                        {season.name}
                     </ThemedText>
-                    <ThemedText variant="label" style={styles.heroStatLabel}>
-                        Criados
-                    </ThemedText>
-                </View>
-                <View style={styles.heroDivider} />
-                <View style={styles.heroStat}>
-                    <ThemedText variant="largeTitle" style={styles.heroStatValue}>
-                        {stats ? stats.total_teams_submitted : '—'}
-                    </ThemedText>
-                    <ThemedText variant="label" style={styles.heroStatLabel}>
-                        Submetidos
+                    <ThemedText variant="bodySm" style={styles.lastSeasonSubtitle}>
+                        {subtitle}
                     </ThemedText>
                 </View>
-                <View style={styles.heroDivider} />
-                <View style={styles.heroStat}>
-                    <ThemedText variant="largeTitle" style={styles.heroStatValue}>
-                        {stats ? stats.total_teams_approved : '—'}
-                    </ThemedText>
-                    <ThemedText variant="label" style={styles.heroStatLabel}>
-                        Aprovados
-                    </ThemedText>
-                </View>
-            </View>
-        </LinearGradient>
+                <Icon name="chev_r" size={20} color={colors.textMuted} />
+            </Pressable>
+        </View>
     );
 }
 
@@ -227,9 +189,16 @@ function UpcomingMatches({ seasonId }: { seasonId: string }) {
 
 function ManagementHub() {
     const { user } = useAuth();
-    const seasons = useSeasons();
+    const overview = useSeasonOverview();
     const modalities = useAllModalities();
-    const activeSeason = useActiveSeason();
+    const current = overview.current;
+    const showEmptyState = !overview.isPending && !overview.isError && !current;
+
+    const seasonShortcutSubtitle = overview.isPending
+        ? 'Carregando…'
+        : current
+          ? SeasonStatusLabel[current.status]
+          : 'Nenhuma ativa';
 
     return (
         <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
@@ -242,14 +211,14 @@ function ManagementHub() {
                 </View>
             </View>
 
-            <ActiveSeasonCard />
-            <PendingTeamsBanner seasonId={activeSeason.data?.season_id} />
+            <SeasonHeroSection overview={overview} />
+            {current ? <PendingTeamsBanner seasonId={current.season_id} /> : null}
 
             <View style={styles.cardsRow}>
                 <View style={styles.cardsRowItem}>
                     <ManagementCard
-                        title="Temporadas"
-                        subtitle={seasons.isPending ? 'Carregando…' : `${seasons.data?.length ?? 0} cadastradas`}
+                        title="Temporada"
+                        subtitle={seasonShortcutSubtitle}
                         href="/seasons"
                         icon="calendar"
                     />
@@ -262,9 +231,18 @@ function ManagementHub() {
                         icon="tag"
                     />
                 </View>
+                <View style={styles.cardsRowItem}>
+                    <ManagementCard
+                        title="Histórico"
+                        subtitle={overview.isPending ? 'Carregando…' : `${overview.finished.length} anteriores`}
+                        href="/seasons/history"
+                        icon="history"
+                    />
+                </View>
             </View>
 
-            {activeSeason.data ? <UpcomingMatches seasonId={activeSeason.data.season_id} /> : null}
+            {showEmptyState && overview.lastFinished ? <LastSeasonRow season={overview.lastFinished} /> : null}
+            {current ? <UpcomingMatches seasonId={current.season_id} /> : null}
         </ScrollView>
     );
 }
@@ -301,71 +279,20 @@ const styles = StyleSheet.create({
     headerSubtitle: {
         color: colors.textSecondary,
     },
-    heroCard: {
-        borderRadius: radius.xl,
-        borderCurve: 'continuous',
-        padding: spacing.lg,
-        gap: spacing.md,
-        boxShadow: shadows.card,
-    },
     heroFallback: {
-        backgroundColor: colors.field,
+        gap: spacing.sm,
         alignItems: 'flex-start',
+        padding: spacing.lg,
+        borderRadius: radius.hero,
+        borderCurve: 'continuous',
+        backgroundColor: colors.field,
     },
-    heroFallbackTitle: {
-        color: colors.ink,
+    heroFallbackRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     heroFallbackText: {
         color: colors.textSecondary,
-    },
-    heroTop: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    heroOverline: {
-        color: colors.primarySoft,
-    },
-    heroPill: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.xxs,
-        paddingHorizontal: spacing.sm,
-        paddingVertical: spacing.xxs,
-        borderRadius: radius.pill,
-        backgroundColor: 'rgba(255,255,255,0.22)',
-    },
-    heroPillDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: colors.surface,
-    },
-    heroPillLabel: {
-        color: colors.surface,
-    },
-    heroTitle: {
-        color: colors.surface,
-    },
-    heroStats: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    heroStat: {
-        flex: 1,
-        gap: 2,
-    },
-    heroStatValue: {
-        color: colors.surface,
-    },
-    heroStatLabel: {
-        color: colors.primarySoft,
-    },
-    heroDivider: {
-        width: 1,
-        alignSelf: 'stretch',
-        marginHorizontal: spacing.md,
-        backgroundColor: 'rgba(255,255,255,0.3)',
     },
     pendingBanner: {
         flexDirection: 'row',
@@ -390,7 +317,7 @@ const styles = StyleSheet.create({
     },
     cardsRow: {
         flexDirection: 'row',
-        gap: spacing.md,
+        gap: spacing.sm,
     },
     cardsRowItem: {
         flex: 1,
@@ -413,5 +340,21 @@ const styles = StyleSheet.create({
     emptyMatchesText: {
         color: colors.textSecondary,
         paddingHorizontal: spacing.xs,
+    },
+    lastSeasonRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
+        padding: spacing.md,
+        borderRadius: radius.xl,
+        borderCurve: 'continuous',
+        backgroundColor: colors.field,
+    },
+    lastSeasonTexts: {
+        flex: 1,
+        gap: 2,
+    },
+    lastSeasonSubtitle: {
+        color: colors.textSecondary,
     },
 });

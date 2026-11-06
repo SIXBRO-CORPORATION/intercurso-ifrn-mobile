@@ -2,8 +2,17 @@ import { useEffect, type ReactNode } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { Button } from '@/components/button';
+import { Icon, type IconName } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
 import { colors, motion, radius, shadows, spacing } from '@/theme';
+
+type IconTone = 'primary' | 'warning' | 'danger';
+
+const iconBubble: Record<IconTone, { background: string; foreground: string }> = {
+    primary: { background: colors.primarySoft, foreground: colors.primary },
+    warning: { background: colors.warningSoft, foreground: colors.warningText },
+    danger: { background: colors.dangerSoft, foreground: colors.danger },
+};
 
 type ConfirmDialogProps = {
     visible: boolean;
@@ -12,6 +21,8 @@ type ConfirmDialogProps = {
     confirmLabel?: string;
     cancelLabel?: string;
     tone?: 'primary' | 'danger';
+    icon?: IconName;
+    iconTone?: IconTone;
     confirming?: boolean;
     confirmDisabled?: boolean;
     children?: ReactNode;
@@ -26,6 +37,8 @@ export function ConfirmDialog({
     confirmLabel = 'Confirmar',
     cancelLabel = 'Cancelar',
     tone = 'primary',
+    icon,
+    iconTone,
     confirming = false,
     confirmDisabled = false,
     children,
@@ -63,6 +76,11 @@ export function ConfirmDialog({
                     accessibilityRole="button"
                 />
                 <Animated.View style={[styles.card, cardStyle]} accessibilityRole="alert">
+                    {icon ? (
+                        <View style={[styles.iconBubble, { backgroundColor: iconBubble[iconTone ?? tone].background }]}>
+                            <Icon name={icon} size={28} color={iconBubble[iconTone ?? tone].foreground} />
+                        </View>
+                    ) : null}
                     <ThemedText variant="heading" style={styles.title}>
                         {title}
                     </ThemedText>
@@ -105,6 +123,14 @@ const styles = StyleSheet.create({
         padding: spacing.xl,
         gap: spacing.md,
         boxShadow: shadows.sheet,
+    },
+    iconBubble: {
+        alignSelf: 'center',
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     title: {
         textAlign: 'center',

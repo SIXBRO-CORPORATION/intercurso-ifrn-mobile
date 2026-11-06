@@ -76,8 +76,8 @@ export type SeasonStatus =
 export const SeasonStatusLabel: Record<SeasonStatus, string> = {
     DRAFT: 'Rascunho',
     REGISTRATION_OPEN: 'Inscrições abertas',
-    REGISTRATION_CLOSED: 'Inscrições fechadas',
-    IN_PROGRESS: 'Em progresso',
+    REGISTRATION_CLOSED: 'Inscrições encerradas',
+    IN_PROGRESS: 'Em andamento',
     FINISHED: 'Finalizada',
 };
 

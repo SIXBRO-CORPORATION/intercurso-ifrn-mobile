@@ -22,7 +22,7 @@ export default function ModalitiesLayout() {
                 options={{
                     title: 'Nova modalidade',
                     headerTitleAlign: 'center',
-                    presentation: 'modal',
+                    presentation: 'fullScreenModal',
                     animation: 'slide_from_bottom',
                     headerLeft: () => <CancelButton />,
                     headerRight: undefined,

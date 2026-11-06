@@ -4,7 +4,7 @@ import { Icon, type IconName } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
 import { colors, motion, shadows, spacing } from '@/theme';
 
-type Variant = 'primary' | 'outline' | 'soft' | 'neutral' | 'danger' | 'dangerSoft' | 'warning' | 'dark';
+type Variant = 'primary' | 'outline' | 'soft' | 'neutral' | 'danger' | 'dangerSoft' | 'warning' | 'dark' | 'light';
 type Size = 'default' | 'compact' | 'small';
 
 const heights: Record<Size, number> = {
@@ -35,6 +35,7 @@ const variants: Record<Variant, VariantStyle> = {
     dangerSoft: { background: colors.dangerSoft, foreground: colors.danger },
     warning: { background: colors.warningSoft, foreground: colors.warningText },
     dark: { background: colors.ink, foreground: colors.surface },
+    light: { background: colors.surface, foreground: colors.primaryDark },
 };
 
 const disabledStyle: VariantStyle = { background: colors.field, foreground: colors.textMuted };

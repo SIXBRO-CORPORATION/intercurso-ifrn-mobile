@@ -1,6 +1,7 @@
 import type { ElementType } from 'react';
 import {
     AlertTriangle,
+    Archive,
     BarChart3,
     Bell,
     Calendar,
@@ -26,6 +27,7 @@ import {
     Play,
     Plus,
     QrCode,
+    RotateCcwClock,
     Search,
     Share,
     Shuffle,
@@ -89,6 +91,8 @@ const icons = {
     star: Star,
     tag: Tag,
     heart: Heart,
+    archive: Archive,
+    history: RotateCcwClock,
 } as const satisfies Record<string, ElementType<AppIconProps>>;
 
 export type IconName = keyof typeof icons;

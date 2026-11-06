@@ -1,228 +1,157 @@
-import { memo, useCallback, useState } from 'react';
-import { FlatList, type ListRenderItemInfo, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
-import { Link, router } from 'expo-router';
-import { FilterChips, type FilterChipOption } from '@/components/filter-chips';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { Redirect, router } from 'expo-router';
+import { Button } from '@/components/button';
 import { Icon } from '@/components/icon';
-import { SeasonStatusBadge } from '@/components/management/season-status-badge';
-import { EmptyState, ErrorState, LoadingState } from '@/components/states/screen-states';
+import { ManagementGuard } from '@/components/management/management-guard';
+import { PreviousSeasonsLink } from '@/components/management/previous-seasons-link';
+import { ErrorState, LoadingState } from '@/components/states/screen-states';
 import { ThemedText } from '@/components/themed-text';
-import { useSeasons } from '@/hooks/useSeasons';
-import { ApiError } from '@/types/api';
-import { friendlyErrorMessage } from '@/utils/api-error-message';
-import { type SeasonStatus } from '@/types/enums';
+import { useSeasonOverview } from '@/hooks/useSeasons';
 import type { SeasonSummary } from '@/types/season';
 import { colors, radius, spacing } from '@/theme';
 import { formatCampusDate } from '@/utils/campus-time';
 
-type StatusFilter = 'ALL' | SeasonStatus;
-
-const SEASON_STATUSES: SeasonStatus[] = [
-    'DRAFT',
-    'REGISTRATION_OPEN',
-    'REGISTRATION_CLOSED',
-    'IN_PROGRESS',
-    'FINISHED',
-];
-
-const STATUS_LABEL: Record<SeasonStatus, string> = {
-    DRAFT: 'Rascunho',
-    REGISTRATION_OPEN: 'Inscrições abertas',
-    REGISTRATION_CLOSED: 'Inscrições fechadas',
-    IN_PROGRESS: 'Em andamento',
-    FINISHED: 'Finalizadas',
-};
-
-const STATUS_OPTIONS: FilterChipOption<StatusFilter>[] = [
-    { value: 'ALL', label: 'Todas' },
-    ...SEASON_STATUSES.map((status) => ({ value: status, label: STATUS_LABEL[status] })),
-];
-
-function registrationLabel(season: SeasonSummary): string {
-    if (season.registration_start_date && season.registration_end_date) {
-        return `Inscrições: ${formatCampusDate(season.registration_start_date)} a ${formatCampusDate(season.registration_end_date)}`;
-    }
-
-    if (season.registration_end_date) {
-        return `Inscrições até ${formatCampusDate(season.registration_end_date)}`;
-    }
-
-    return 'Sem prazo de inscrição';
+function lastSeasonLabel(season: SeasonSummary): string {
+    return season.finished_at ? `${season.name} · ${formatCampusDate(season.finished_at)}` : season.name;
 }
 
-const SeasonRow = memo(function SeasonRow({ season }: { season: SeasonSummary }) {
+function NoActiveSeason({ lastFinished, finishedCount }: { lastFinished?: SeasonSummary; finishedCount: number }) {
     return (
-        <Link href={`/seasons/${season.season_id}`} asChild>
-            <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${season.name}, ${season.year}. Abrir detalhes`}
-            >
-                {({ pressed }) => (
-                    <View style={[styles.card, { opacity: pressed ? 0.85 : 1 }]}>
-                        <View style={styles.cardTop}>
-                            <ThemedText variant="section" numberOfLines={1} style={styles.cardTitle}>
-                                {season.name}
-                            </ThemedText>
-                            {season.active ? (
-                                <View style={styles.activeBadge} accessibilityLabel="Temporada ativa">
-                                    <Icon name="star" size={16} color={colors.warning} />
-                                </View>
-                            ) : null}
-                        </View>
-                        <ThemedText variant="bodySm" style={styles.cardSubtitle}>
-                            {registrationLabel(season)}
-                        </ThemedText>
-                        <View style={styles.cardFooter}>
-                            <SeasonStatusBadge status={season.status} />
-                            <View style={styles.cardFooterRight}>
-                                <ThemedText variant="caption" style={styles.year}>
-                                    {season.year}
-                                </ThemedText>
-                                <Icon name="chev_r" size={18} color={colors.textMuted} />
-                            </View>
-                        </View>
+        <ScrollView contentContainerStyle={styles.content}>
+            <View style={styles.hero}>
+                <View style={styles.ring}>
+                    <View style={styles.ringInner}>
+                        <Icon name="calendar" size={40} color={colors.primary} />
                     </View>
-                )}
-            </Pressable>
-        </Link>
+                </View>
+                <ThemedText variant="title" style={styles.centered}>
+                    Nenhuma temporada ativa
+                </ThemedText>
+                <ThemedText variant="bodyLg" style={[styles.centered, styles.description]}>
+                    A temporada anterior foi finalizada. Crie a próxima quando for iniciar um novo campeonato.
+                </ThemedText>
+            </View>
+
+            {lastFinished ? (
+                <View style={styles.lastSeason}>
+                    <View style={styles.lastSeasonIcon}>
+                        <Icon name="archive" size={20} color={colors.textSecondary} />
+                    </View>
+                    <View style={styles.lastSeasonTexts}>
+                        <ThemedText variant="caption">Última temporada</ThemedText>
+                        <ThemedText variant="section" numberOfLines={1}>
+                            {lastSeasonLabel(lastFinished)}
+                        </ThemedText>
+                    </View>
+                </View>
+            ) : null}
+
+            <View style={styles.cta}>
+                <Button title="Criar temporada" icon="plus" onPress={() => router.push('/seasons/create')} />
+                <ThemedText variant="caption" style={[styles.centered, styles.ctaHint]}>
+                    Só uma temporada pode existir por vez.
+                </ThemedText>
+            </View>
+
+            <PreviousSeasonsLink count={finishedCount} />
+        </ScrollView>
     );
-});
+}
 
-export default function SeasonsScreen() {
-    const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
-    const seasons = useSeasons(statusFilter === 'ALL' ? undefined : { status: statusFilter });
-    const items = seasons.data ?? [];
+function SeasonsEntry() {
+    const overview = useSeasonOverview();
 
-    const renderEmpty = () => {
-        if (seasons.isPending) {
-            return <LoadingState label="Carregando temporadas…" />;
-        }
+    if (overview.isPending) {
+        return <LoadingState label="Carregando temporada…" />;
+    }
 
-        if (seasons.isError) {
-            if (seasons.error instanceof ApiError && seasons.error.status === 403) {
-                return (
-                    <ErrorState
-                        title="Sem permissão"
-                        description="Esta área é exclusiva para monitores e administradores."
-                    />
-                );
-            }
-
-            return (
-                <ErrorState
-                    title="Não foi possível carregar as temporadas"
-                    description={friendlyErrorMessage(seasons.error, 'Tente de novo.')}
-                    onRetry={() => seasons.refetch()}
-                    retrying={seasons.isRefetching}
-                />
-            );
-        }
-
-        if (statusFilter !== 'ALL') {
-            return (
-                <EmptyState
-                    title="Nenhuma temporada com este status"
-                    actionLabel="Ver todas"
-                    onAction={() => setStatusFilter('ALL')}
-                />
-            );
-        }
-
+    if (overview.isError) {
         return (
-            <EmptyState
-                title="Nenhuma temporada cadastrada"
-                description="Crie a primeira temporada para liberar as inscrições."
-                actionLabel="Criar temporada"
-                onAction={() => router.push('/seasons/create')}
+            <ErrorState
+                title="Não foi possível carregar a temporada"
+                description="Verifique sua conexão e tente de novo."
+                onRetry={() => overview.refetch()}
+                retrying={overview.isRefetching}
             />
         );
-    };
+    }
 
-    const renderItem = useCallback(
-        ({ item }: ListRenderItemInfo<SeasonSummary>) => <SeasonRow season={item} />,
-        []
-    );
+    // F07: com temporada em andamento, "Temporada" abre direto a atual (sem botão de criar).
+    if (overview.current) {
+        return <Redirect href={`/seasons/${overview.current.season_id}`} />;
+    }
 
+    return <NoActiveSeason lastFinished={overview.lastFinished} finishedCount={overview.finished.length} />;
+}
+
+export default function SeasonsEntryScreen() {
     return (
-        <FlatList
-            data={items}
-            keyExtractor={(item) => item.season_id}
-            renderItem={renderItem}
-            contentInsetAdjustmentBehavior="automatic"
-            contentContainerStyle={[styles.content, items.length === 0 && styles.fill]}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
-            ListHeaderComponent={
-                <View style={styles.header}>
-                    <FilterChips
-                        accessibilityLabel="Filtrar temporadas por status"
-                        options={STATUS_OPTIONS}
-                        selected={statusFilter}
-                        onSelect={setStatusFilter}
-                    />
-                </View>
-            }
-            ListEmptyComponent={renderEmpty}
-            refreshControl={<RefreshControl refreshing={seasons.isRefetching} onRefresh={() => seasons.refetch()} />}
-        />
+        <ManagementGuard>
+            <SeasonsEntry />
+        </ManagementGuard>
     );
 }
 
 const styles = StyleSheet.create({
     content: {
-        paddingHorizontal: spacing.md,
-        paddingBottom: spacing.xl,
-    },
-    fill: {
         flexGrow: 1,
+        padding: spacing.md,
+        paddingBottom: spacing.xl,
+        gap: spacing.lg,
     },
-    header: {
-        paddingTop: spacing.sm,
-        paddingBottom: spacing.md,
-        marginHorizontal: -spacing.md,
+    hero: {
+        alignItems: 'center',
+        gap: spacing.md,
+        paddingTop: spacing.xl,
     },
-    separator: {
-        height: spacing.sm,
+    ring: {
+        width: 140,
+        height: 140,
+        borderRadius: 70,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.primarySoft,
     },
-    card: {
-        gap: spacing.xs,
+    ringInner: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.surface,
+    },
+    centered: {
+        textAlign: 'center',
+    },
+    description: {
+        color: colors.textSecondary,
+        paddingHorizontal: spacing.md,
+    },
+    lastSeason: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
         padding: spacing.md,
         borderRadius: radius.lg,
         borderCurve: 'continuous',
-        backgroundColor: colors.surface,
-        borderWidth: 1,
-        borderColor: colors.border,
+        backgroundColor: colors.field,
     },
-    cardTop: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: spacing.sm,
-    },
-    cardTitle: {
-        flex: 1,
-    },
-    activeBadge: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
+    lastSeasonIcon: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: colors.warningSoft,
+        backgroundColor: colors.surface,
     },
-    cardSubtitle: {
-        color: colors.textSecondary,
+    lastSeasonTexts: {
+        flex: 1,
+        gap: 2,
     },
-    cardFooter: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginTop: spacing.xs,
+    cta: {
+        gap: spacing.sm,
     },
-    cardFooterRight: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.xs,
-    },
-    year: {
+    ctaHint: {
         color: colors.textMuted,
     },
 });

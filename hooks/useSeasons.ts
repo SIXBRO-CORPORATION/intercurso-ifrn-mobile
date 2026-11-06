@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { seasonService } from '@/services/season.service';
 import { queryKeys } from '@/utils/query-keys';
@@ -8,6 +9,7 @@ import type {
     SeasonFinishRequest,
     SeasonListFilters,
     SeasonReopenRequest,
+    SeasonSummary,
 } from '@/types/season';
 
 export function useSeasons(filters?: SeasonListFilters) {
@@ -15,6 +17,34 @@ export function useSeasons(filters?: SeasonListFilters) {
         queryKey: queryKeys.seasons.list(filters),
         queryFn: ({ signal }) => seasonService.listSeasons(filters, signal),
     });
+}
+
+function byMostRecent(a: SeasonSummary, b: SeasonSummary): number {
+    if (a.year !== b.year) return b.year - a.year;
+    return (b.registration_end_date ?? '').localeCompare(a.registration_end_date ?? '');
+}
+
+export function useSeasonOverview() {
+    const query = useSeasons();
+
+    const { current, finished } = useMemo(() => {
+        const all = query.data ?? [];
+        return {
+            current: all.find((season) => season.status !== 'FINISHED'),
+            finished: all.filter((season) => season.status === 'FINISHED').sort(byMostRecent),
+        };
+    }, [query.data]);
+
+    return {
+        current,
+        finished,
+        lastFinished: finished[0],
+        isPending: query.isPending,
+        isError: query.isError,
+        error: query.error,
+        isRefetching: query.isRefetching,
+        refetch: query.refetch,
+    };
 }
 
 export function useSeasonDetails(seasonId: string) {

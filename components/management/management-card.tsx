@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Link, type Href } from 'expo-router';
 import { Icon, type IconName } from '@/components/icon';
 import { ThemedText } from '@/components/themed-text';
-import { colors, radius, spacing } from '@/theme';
+import { colors, fontFamily, radius, spacing } from '@/theme';
 
 type ManagementCardProps = {
     title: string;
@@ -24,15 +24,15 @@ export function ManagementCard({ title, subtitle, href, icon }: ManagementCardPr
                     >
                         {icon ? (
                             <View style={styles.iconBubble}>
-                                <Icon name={icon} size={22} color={colors.primaryDark} />
+                                <Icon name={icon} size={20} color={colors.primary} />
                             </View>
                         ) : null}
                         <View style={styles.texts}>
-                            <ThemedText variant="section" style={styles.left}>
+                            <ThemedText variant="bodySm" style={styles.title} numberOfLines={1}>
                                 {title}
                             </ThemedText>
                             {subtitle ? (
-                                <ThemedText variant="bodySm" style={styles.left}>
+                                <ThemedText variant="caption" style={styles.subtitle} numberOfLines={2}>
                                     {subtitle}
                                 </ThemedText>
                             ) : null}
@@ -46,13 +46,12 @@ export function ManagementCard({ title, subtitle, href, icon }: ManagementCardPr
 
 const styles = StyleSheet.create({
     card: {
-        flexDirection: 'row',
         alignItems: 'center',
-        gap: spacing.md,
-        minHeight: 72,
-        paddingHorizontal: spacing.lg,
+        gap: spacing.xs,
+        minHeight: 112,
+        paddingHorizontal: spacing.xs,
         paddingVertical: spacing.md,
-        borderRadius: radius.md,
+        borderRadius: radius.lg,
         borderCurve: 'continuous',
         backgroundColor: colors.field,
     },
@@ -62,15 +61,17 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: colors.primarySoft,
+        backgroundColor: colors.surface,
     },
     texts: {
-        flex: 1,
-        alignItems: 'flex-start',
-        gap: spacing.xxs,
+        alignItems: 'center',
+        gap: 2,
     },
-    left: {
-        textAlign: 'left',
-        alignSelf: 'stretch',
+    title: {
+        fontFamily: fontFamily.bold,
+        textAlign: 'center',
+    },
+    subtitle: {
+        textAlign: 'center',
     },
 });
